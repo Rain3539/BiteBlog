@@ -1,0 +1,68 @@
+server:
+  port: 8080
+
+spring:
+  main:
+    web-application-type: reactive
+  application:
+    name: gateway-service
+  cloud:
+    nacos:
+      discovery:
+        server-addr: localhost:8848
+    gateway:
+      routes:
+        - id: user-service
+          uri: lb://user-service
+          predicates:
+            - Path=/api/user/**
+          filters:
+            - StripPrefix=1
+
+        - id: post-service
+          uri: lb://post-service
+          predicates:
+            - Path=/api/post/**
+          filters:
+            - StripPrefix=1
+
+        - id: feed-service
+          uri: lb://feed-service
+          predicates:
+            - Path=/api/feed/**
+          filters:
+            - StripPrefix=1
+
+        - id: recommend-service
+          uri: lb://recommend-service
+          predicates:
+            - Path=/api/recommend/**
+          filters:
+            - StripPrefix=1
+
+        - id: location-service
+          uri: lb://location-service
+          predicates:
+            - Path=/api/location/**
+          filters:
+            - StripPrefix=1
+
+        - id: rank-service
+          uri: lb://rank-service
+          predicates:
+            - Path=/api/rank/**
+          filters:
+            - StripPrefix=1
+
+        - id: notify-service
+          uri: lb://notify-service
+          predicates:
+            - Path=/api/notify/**
+          filters:
+            - StripPrefix=1
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: redis123456
