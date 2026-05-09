@@ -2,12 +2,14 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.biteblog</groupId>
     <artifactId>biteblog-backend</artifactId>
     <version>1.0.0</version>
     <packaging>pom</packaging>
+
     <name>BiteBlog Backend</name>
     <description>分布式美食探店社区平台 - 后端微服务</description>
 
@@ -27,6 +29,7 @@
         <java.version>17</java.version>
         <maven.compiler.source>17</maven.compiler.source>
         <maven.compiler.target>17</maven.compiler.target>
+        <maven.compiler.release>17</maven.compiler.release>
         <maven.compiler.parameters>true</maven.compiler.parameters>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
@@ -37,11 +40,13 @@
         <minio.version>8.5.9</minio.version>
         <jjwt.version>0.12.5</jjwt.version>
         <hutool.version>5.8.26</hutool.version>
+        <lombok.version>1.18.42</lombok.version>
     </properties>
 
     <!-- ==================== 依赖版本管理 ==================== -->
     <dependencyManagement>
         <dependencies>
+
             <!-- Spring Boot -->
             <dependency>
                 <groupId>org.springframework.boot</groupId>
@@ -89,12 +94,14 @@
                 <artifactId>jjwt-api</artifactId>
                 <version>${jjwt.version}</version>
             </dependency>
+
             <dependency>
                 <groupId>io.jsonwebtoken</groupId>
                 <artifactId>jjwt-impl</artifactId>
                 <version>${jjwt.version}</version>
                 <scope>runtime</scope>
             </dependency>
+
             <dependency>
                 <groupId>io.jsonwebtoken</groupId>
                 <artifactId>jjwt-jackson</artifactId>
@@ -109,31 +116,73 @@
                 <version>${hutool.version}</version>
             </dependency>
 
+            <!-- Lombok -->
+            <dependency>
+                <groupId>org.projectlombok</groupId>
+                <artifactId>lombok</artifactId>
+                <version>${lombok.version}</version>
+                <scope>provided</scope>
+            </dependency>
+
             <!-- 内部模块 -->
             <dependency>
                 <groupId>com.biteblog</groupId>
                 <artifactId>biteblog-common</artifactId>
                 <version>${project.version}</version>
             </dependency>
+
         </dependencies>
     </dependencyManagement>
 
     <!-- ==================== 公共依赖 ==================== -->
     <dependencies>
+
+        <!-- Lombok：用于 @Data、@Getter、@AllArgsConstructor、@Slf4j 等注解 -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <optional>true</optional>
+            <version>${lombok.version}</version>
+            <scope>provided</scope>
         </dependency>
+
+        <!-- Hutool 工具包 -->
         <dependency>
             <groupId>cn.hutool</groupId>
             <artifactId>hutool-all</artifactId>
         </dependency>
+
     </dependencies>
 
     <build>
+
+        <!-- ==================== 实际生效的构建插件 ==================== -->
+        <plugins>
+
+            <!-- Java 编译插件：显式启用 Lombok 注解处理器 -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+                <configuration>
+                    <release>17</release>
+                    <parameters>true</parameters>
+                    <annotationProcessorPaths>
+                        <path>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                            <version>${lombok.version}</version>
+                        </path>
+                    </annotationProcessorPaths>
+                </configuration>
+            </plugin>
+
+        </plugins>
+
+        <!-- ==================== 插件版本管理 ==================== -->
         <pluginManagement>
             <plugins>
+
+                <!-- Spring Boot 打包插件 -->
                 <plugin>
                     <groupId>org.springframework.boot</groupId>
                     <artifactId>spring-boot-maven-plugin</artifactId>
@@ -154,7 +203,10 @@
                         </excludes>
                     </configuration>
                 </plugin>
+
             </plugins>
         </pluginManagement>
+
     </build>
+
 </project>
