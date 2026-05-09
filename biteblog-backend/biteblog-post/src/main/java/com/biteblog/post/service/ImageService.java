@@ -27,6 +27,14 @@ public class ImageService {
             if (!found) {
                 minioClient.makeBucket(MakeBucketArgs.builder().bucket(bucket).build());
             }
+            // 确保 bucket 公开读（每次上传都兜底，防止已有 bucket 仍是私有）
+            String policy = "{\"Version\":\"2012-10-17\",\"Statement\":[{\"Effect\":\"Allow\",\"Principal\":{\"AWS\":[\"*\"]},\"Action\":[\"s3:GetObject\"],\"Resource\":[\"arn:aws:s3:::" + bucket + "/*\"]}]}";
+            try {
+                minioClient.setBucketPolicy(
+                        SetBucketPolicyArgs.builder().bucket(bucket).config(policy).build());
+            } catch (Exception ignored) {
+                // 策略可能已存在，忽略
+            }
             minioClient.putObject(
                     PutObjectArgs.builder()
                             .bucket(bucket)

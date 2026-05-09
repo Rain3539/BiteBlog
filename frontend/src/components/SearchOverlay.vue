@@ -18,82 +18,73 @@
       </div>
 
       <!-- 搜索结果 -->
-      <div v-if="searched" class="search-results">
-        <h4>搜索结果</h4>
+      <div v-if="searched" class="search-results" v-loading="searching">
+        <h4>搜索结果（{{ searchTotal }} 条）</h4>
         <div v-if="searchResults.length" class="rank-list">
           <div
             v-for="item in searchResults"
-            :key="item.id"
+            :key="item.postId"
             class="rank-item"
-            @click="goPost(item.id)"
+            @click="goPost(item.postId)"
           >
-            <span class="rank-num search-num">#</span>
+            <img v-if="item.cover" :src="item.cover" class="search-cover" />
+            <span v-else class="rank-num search-num">#</span>
             <div class="rank-info">
               <div class="rank-title">{{ item.title }}</div>
-              <div class="rank-meta">{{ item.authorName }} · {{ item.likeCount }} 赞</div>
+              <div class="rank-meta">
+                <span v-if="item.shopName">{{ item.shopName }}</span>
+                <span>{{ item.likeCount || 0 }} 赞</span>
+              </div>
             </div>
           </div>
         </div>
         <el-empty v-else description="暂无搜索结果" :image-size="60" />
       </div>
 
-      <!-- Top 10 热门笔记 -->
-      <div v-else class="top10-section">
-        <h4>热门笔记 Top 10</h4>
-        <div v-if="topList.length" class="rank-list">
-          <div
-            v-for="(item, index) in topList"
-            :key="item.id"
-            class="rank-item"
-            @click="goPost(item.id)"
-          >
-            <span class="rank-num" :class="{ 'top3': index < 3 }">{{ index + 1 }}</span>
-            <div class="rank-info">
-              <div class="rank-title">{{ item.title }}</div>
-              <div class="rank-meta">
-                <span>{{ item.authorName || '匿名' }}</span>
-                <span class="rank-score">{{ item.score || item.likeCount || 0 }} 热度</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        <el-empty v-else description="暂无排行数据" :image-size="60" />
+      <!-- 搜索引导（Rank Service 就绪后可替换为 Top10） -->
+      <div v-else class="search-hint">
+        <el-icon size="48" color="#c0c4cc"><Search /></el-icon>
+        <p>输入关键词搜索探店笔记</p>
+        <p class="hint-sub">支持按标题、正文、店铺名搜索</p>
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { Search } from '@element-plus/icons-vue'
-import { getTop10 } from '../api/rank'
+import { searchPosts } from '../api/post'
 
-defineEmits(['close'])
+const emit = defineEmits(['close'])
 
 const router = useRouter()
 const keyword = ref('')
 const searched = ref(false)
+const searching = ref(false)
 const searchResults = ref([])
-const topList = ref([])
+const searchTotal = ref(0)
 
-onMounted(async () => {
-  try {
-    const res = await getTop10()
-    topList.value = res.data?.list || res.data || []
-  } catch {
-    topList.value = []
-  }
-})
-
-function handleSearch() {
-  if (!keyword.value.trim()) return
-  // 搜索功能待 Post Service 实现 ES 搜索接口
+async function handleSearch() {
+  const kw = keyword.value.trim()
+  if (!kw) return
+  searching.value = true
   searched.value = true
-  searchResults.value = []
+  try {
+    const res = await searchPosts({ keyword: kw, page: 1, size: 20 })
+    searchResults.value = res.data?.list || []
+    searchTotal.value = res.data?.total || 0
+  } catch {
+    searchResults.value = []
+    searchTotal.value = 0
+  } finally {
+    searching.value = false
+  }
 }
 
 function goPost(id) {
+  emit('close')
   router.push(`/post/${id}`)
 }
 </script>
@@ -134,6 +125,24 @@ h4 {
   margin: 0 0 12px;
   font-size: 15px;
   color: #333;
+}
+
+.search-hint {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 32px 0 16px;
+  color: #909399;
+}
+
+.search-hint p {
+  margin: 8px 0 0;
+  font-size: 14px;
+}
+
+.hint-sub {
+  font-size: 12px !important;
+  color: #c0c4cc;
 }
 
 .rank-list {
@@ -178,6 +187,14 @@ h4 {
 .search-num {
   background: #ecf5ff;
   color: #409eff;
+}
+
+.search-cover {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  object-fit: cover;
+  flex-shrink: 0;
 }
 
 .rank-info {

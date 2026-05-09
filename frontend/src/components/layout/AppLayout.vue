@@ -6,14 +6,12 @@
         <h2 class="logo" @click="$router.push('/')">BiteBlog</h2>
       </div>
       <div class="header-nav">
-        <el-menu mode="horizontal" :default-active="activeMenu" router>
-          <el-menu-item index="/">首页</el-menu-item>
-          <el-menu-item index="/discover">发现</el-menu-item>
-          <el-menu-item index="/nearby">附近</el-menu-item>
-          <el-menu-item index="/publish">发布</el-menu-item>
-        </el-menu>
+        <router-link to="/" class="nav-link" :class="{ active: route.path === '/' }">首页</router-link>
+        <router-link to="/discover" class="nav-link" :class="{ active: route.path.startsWith('/discover') }">发现</router-link>
+        <router-link to="/nearby" class="nav-link" :class="{ active: route.path.startsWith('/nearby') }">附近</router-link>
       </div>
       <div class="header-right">
+        <el-button type="primary" :icon="Plus" @click="$router.push('/publish')">发布</el-button>
         <el-button :icon="Search" circle @click="showSearch = true" />
         <el-badge :value="unreadCount" :hidden="unreadCount === 0">
           <el-button :icon="Bell" circle @click="$router.push('/notify')" />
@@ -44,9 +42,9 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { Bell, Search } from '@element-plus/icons-vue'
+import { Bell, Search, Plus } from '@element-plus/icons-vue'
 import { useUserStore } from '../../stores/user'
 import SearchOverlay from '../SearchOverlay.vue'
 import { logout } from '../../utils/auth'
@@ -56,13 +54,6 @@ const router = useRouter()
 const userStore = useUserStore()
 const unreadCount = ref(0)
 const showSearch = ref(false)
-
-const activeMenu = computed(() => {
-  if (route.path.startsWith('/discover')) return '/discover'
-  if (route.path.startsWith('/nearby')) return '/nearby'
-  if (route.path.startsWith('/publish')) return '/publish'
-  return '/'
-})
 
 function handleCommand(cmd) {
   if (cmd === 'profile') {
@@ -95,7 +86,28 @@ function handleCommand(cmd) {
   flex: 1;
   display: flex;
   justify-content: center;
+  gap: 8px;
 }
+
+.nav-link {
+  text-decoration: none;
+  color: #606266;
+  font-size: 14px;
+  padding: 8px 16px;
+  border-radius: 6px;
+  transition: color 0.2s, background 0.2s;
+}
+
+.nav-link:hover {
+  color: #409eff;
+  background: #ecf5ff;
+}
+
+.nav-link.active {
+  color: #409eff;
+  font-weight: 600;
+}
+
 .header-right {
   display: flex;
   align-items: center;
