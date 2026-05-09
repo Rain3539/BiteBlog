@@ -26,6 +26,12 @@ spring:
   elasticsearch:
     uris: http://localhost:9200
 
+minio:
+  endpoint: http://localhost:9000
+  access-key: minioadmin
+  secret-key: minioadmin
+  bucket: biteblog-post-images
+
 mybatis-plus:
   configuration:
     log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
