@@ -1,0 +1,318 @@
+# Recommend Service 测试说明
+
+> 本文实际测试对象为成员 3 的 `Recommend Service (8084)`。
+
+## 1. 测试范围
+
+本文件记录 Recommend Service 的命令行测试、接口测试、非功能验证和 JMeter 脚本说明。JMeter 参考脚本保存为：
+
+```text
+jmeter/recommend-service-test.jmx
+```
+
+当前服务骨架已有接口：
+
+```text
+GET /recommend/discover
+```
+
+通过网关访问：
+
+```text
+GET /api/recommend/discover
+```
+
+后续建议补充：
+
+```text
+POST /recommend/exposures
+```
+
+初始化数据脚本保存为：
+
+```text
+sql/init-recommend-data.ps1
+```
+
+## 2. 启动前准备
+
+基础中间件：
+
+```powershell
+docker compose up -d mysql redis rabbitmq nacos elasticsearch
+```
+
+启动后端服务：
+
+```powershell
+cd biteblog-backend
+mvn -pl biteblog-recommend -am spring-boot:run
+```
+
+如果通过网关测试，还需要启动：
+
+```powershell
+mvn -pl biteblog-gateway -am spring-boot:run
+```
+
+测试前建议确认端口：
+
+| 服务 | 端口 |
+|---|---:|
+| Gateway | 8080 |
+| Recommend Service | 8084 |
+| Redis | 6379 |
+| Elasticsearch | 9200 |
+
+初始化 Recommend Service 测试数据：
+
+```powershell
+.\sql\init-recommend-data.ps1
+```
+
+该脚本会单独写入成员 3 需要的演示用户、推荐候选笔记、用户行为数据、Redis 热度池和曝光集合。后期联调稳定后，再合并到总初始化脚本。
+
+## 3. 命令行接口测试
+
+### 3.1 直连发现页推荐接口
+
+直连服务时当前 Controller 需要 `X-User-Id`：
+
+```bash
+curl -s "http://localhost:8084/recommend/discover?cursor=0&size=20" \
+  -H "X-User-Id: 1001"
+```
+
+当前骨架预期：
+
+```json
+{
+  "code": 200,
+  "data": {
+    "list": [],
+    "hasMore": false
+  }
+}
+```
+
+后续实现后预期：
+
+| 检查点 | 期望 |
+|---|---|
+| `code` | 200 |
+| `data.list` | 返回推荐笔记数组 |
+| `data.cursor` | 返回下一页游标 |
+| `data.hasMore` | 表示是否还有更多 |
+| `reason` | 每条推荐有可解释原因 |
+
+### 3.2 网关鉴权测试
+
+无 Token：
+
+```bash
+curl -i "http://localhost:8080/api/recommend/discover?cursor=0&size=20"
+```
+
+预期：
+
+```text
+HTTP/1.1 401 Unauthorized
+```
+
+有效 Token：
+
+```bash
+TOKEN="<你的Token>"
+curl -s "http://localhost:8080/api/recommend/discover?cursor=0&size=20" \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+预期：网关校验 Token 后透传 `X-User-Id`，推荐服务返回 `code=200`。
+
+### 3.3 分页参数边界测试
+
+```bash
+curl -s "http://localhost:8084/recommend/discover?cursor=0&size=1" \
+  -H "X-User-Id: 1001"
+
+curl -s "http://localhost:8084/recommend/discover?cursor=0&size=50" \
+  -H "X-User-Id: 1001"
+
+curl -s "http://localhost:8084/recommend/discover?cursor=0&size=999" \
+  -H "X-User-Id: 1001"
+```
+
+建议实现后的期望：
+
+| 参数 | 期望 |
+|---|---|
+| `size=1` | 正常返回最多 1 条 |
+| `size=50` | 正常返回最多 50 条 |
+| `size=999` | 被限制为最大页大小，或返回参数错误 |
+
+### 3.4 曝光过滤测试
+
+建议实现曝光接口后执行：
+
+```bash
+TOKEN="<你的Token>"
+curl -s -X POST "http://localhost:8080/api/recommend/exposures" \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"postIds":[101,102,103]}'
+```
+
+检查 Redis：
+
+```bash
+docker exec biteblog-redis redis-cli -a redis123456 SMEMBERS "user:exposed:1001"
+docker exec biteblog-redis redis-cli -a redis123456 TTL "user:exposed:1001"
+```
+
+预期：
+
+| 检查点 | 期望 |
+|---|---|
+| Set 成员 | 包含 101、102、103 |
+| TTL | 大于 0，建议约 7 天 |
+| 再次推荐 | 不再返回已曝光 postId |
+
+### 3.5 ES 候选召回测试
+
+检查索引是否存在：
+
+```bash
+curl -s "http://localhost:9200/_cat/indices/post_recommend_index?v"
+```
+
+查询候选：
+
+```bash
+curl -s "http://localhost:9200/post_recommend_index/_search" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "size": 5,
+    "query": {
+      "bool": {
+        "must": [
+          { "match_all": {} }
+        ],
+        "filter": [
+          { "term": { "city.keyword": "广州" } }
+        ]
+      }
+    },
+    "sort": [
+      { "hot_score": "desc" },
+      { "publish_time": "desc" }
+    ]
+  }'
+```
+
+预期：索引存在并能返回候选笔记；若索引为空，应先执行 Post Service 的 ES 同步或导入测试数据。
+
+### 3.6 冷启动降级测试
+
+构造一个没有行为数据的新用户：
+
+```bash
+curl -s "http://localhost:8084/recommend/discover?cursor=0&size=20" \
+  -H "X-User-Id: 999999"
+```
+
+实现后预期：
+
+| 检查点 | 期望 |
+|---|---|
+| 返回结果 | 不为空，来自热度池或近期热门 |
+| 推荐原因 | 显示“近期热门”“同城热门”等兜底原因 |
+| 响应时间 | P99 < 600ms |
+
+### 3.7 ES 不可用降级测试
+
+停止 ES：
+
+```powershell
+docker compose stop elasticsearch
+```
+
+请求推荐：
+
+```bash
+curl -s "http://localhost:8084/recommend/discover?cursor=0&size=20" \
+  -H "X-User-Id: 1001"
+```
+
+实现后预期：接口不崩溃，不暴露异常堆栈；返回 Redis 热榜或数据库近期热门，并在日志中记录降级原因。
+
+恢复 ES：
+
+```powershell
+docker compose start elasticsearch
+```
+
+## 4. 非功能测试
+
+### 4.1 性能目标
+
+| 指标 | 目标 |
+|---|---|
+| 发现页推荐 | 每页 20 条，P99 < 600ms |
+| 错误率 | 0% |
+| 高峰并发 | 课程演示压测可按 50 到 100 并发先验证，再视机器资源提升 |
+| 降级可用性 | ES 不可用时接口仍返回可接受兜底数据 |
+
+### 4.2 JMeter 执行
+
+参考脚本：
+
+```text
+jmeter/recommend-service-test.jmx
+```
+
+报告目录：
+
+```text
+jmeter/recommendservice-report
+```
+
+执行方式：
+
+```bash
+jmeter -n -t jmeter/recommend-service-test.jmx \
+  -Jhost=localhost \
+  -Jport=8080 \
+  -Jtoken=<你的Token> \
+  -JuserId=1001 \
+  -l jmeter/recommend-service-result.jtl \
+  -e -o jmeter/recommendservice-report
+```
+
+脚本当前覆盖：
+
+| 采样器 | 用途 |
+|---|---|
+| `GET /api/recommend/discover default` | 默认分页推荐 |
+| `GET /api/recommend/discover small page` | 小分页边界 |
+| `GET /api/recommend/discover tag filter` | 标签过滤场景 |
+
+注意：当前服务仍是骨架，JMeter 脚本仅作参考。等推荐、曝光、降级逻辑实现后，应补充曝光上报、ES 降级和 Redis 去重断言。
+
+## 5. 测试记录模板
+
+| 日期 | 场景 | 命令/脚本 | 结果 | 备注 |
+|---|---|---|---|---|
+| 2026-05-11 | 发现页推荐骨架接口 | curl 直连 8084 | 待执行 | 当前预期空列表 |
+| 2026-05-11 | 网关鉴权 | curl 无 Token | 待执行 | 预期 401 |
+| 2026-05-11 | JMeter 压测 | recommend-service-test.jmx | 待执行 | 实现后关注 P99 |
+
+## 6. 每个任务的测试清单
+
+| 任务 | 功能测试 | 非功能测试 |
+|---|---|---|
+| 发现页推荐 | 正常用户、新用户、分页、标签过滤 | P99 < 600ms，错误率 0%，返回结构统一 |
+| 标签推荐 | 标签命中、标签不命中、多标签排序 | 权重可配置，排序稳定 |
+| ItemCF | 相似笔记召回、共同交互排序 | 离线重建可恢复，耗时可控 |
+| 冷启动 | 行为不足时返回热门内容 | ES 不可用时可降级 |
+| 曝光过滤 | 上报后不重复推荐 | Redis Set 有 TTL，Redis 异常有日志 |
+| 候选补齐 | ES 候选不足时补齐 | 不返回删除/下架内容，页大小受控 |
