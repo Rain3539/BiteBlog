@@ -1,0 +1,625 @@
+# Recommend Service 开发步骤
+
+> 本文件作为后续 Recommend Service 开发执行清单。后续开发按本文顺序推进，除非需求文档或联调接口发生变化。
+
+## 1. 当前状态
+
+Recommend Service 端口为 `8084`，服务名为 `recommend-service`。
+
+当前已有内容：
+
+| 类型 | 路径 | 状态 |
+|---|---|---|
+| Maven 模块 | `biteblog-backend/biteblog-recommend` | 已存在 |
+| 启动类 | `RecommendApplication.java` | 已存在 |
+| Controller 骨架 | `RecommendController.java` | 已存在 |
+| 网关路由 | `/api/recommend/** -> recommend-service` | 已配置 |
+| 配置文件 | `application.yml` | 已配置 MySQL/Redis/RabbitMQ/ES |
+| 测试文档 | `docs/postservice-测试.cd` | 已补充参考版 |
+| 说明文档 | `docs/postservice-说明.cd` | 已补充参考版 |
+| JMeter 脚本 | `jmeter/recommend-service-test.jmx` | 已补充参考版 |
+| 初始化数据 | `sql/init-recommend-data.ps1` | 已补充参考版 |
+
+当前主要缺口：
+
+| 缺口 | 说明 |
+|---|---|
+| 推荐业务服务 | 现在 Controller 直接返回空列表，没有推荐逻辑 |
+| DTO/VO | 缺少推荐项、推荐响应、曝光上报请求对象 |
+| 数据访问 | 缺少 `note`、`user_behavior` 等表的 Mapper/Entity |
+| ES 召回 | 未接入 `post_index`、`item_sim_index` |
+| Redis 曝光过滤 | 未实现 `exposure:{userId}` Set 读写 |
+| 冷启动降级 | 未实现热度兜底和 ES 异常 fallback |
+| 命令行验证 | 文档有参考脚本，待实现后实际执行并记录结果 |
+
+## 2. 环境前置
+
+开发前确认：
+
+```powershell
+docker compose up -d
+docker compose ps
+```
+
+应至少启动：
+
+| 中间件 | 容器 | 用途 |
+|---|---|---|
+| MySQL | `biteblog-mysql` | 读取用户行为、笔记基础数据 |
+| Redis | `biteblog-redis` | 曝光去重、热度兜底池 |
+| Elasticsearch | `biteblog-elasticsearch` | 推荐候选召回、ItemCF 相似度 |
+| Nacos | `biteblog-nacos` | 服务注册发现 |
+| RabbitMQ | `biteblog-rabbitmq` | 后续行为事件/推荐刷新扩展 |
+
+后端编译检查：
+
+```powershell
+cd biteblog-backend
+mvn compile -DskipTests
+```
+
+推荐模块单独编译：
+
+```powershell
+cd biteblog-backend
+mvn -pl biteblog-recommend -am compile -DskipTests
+```
+
+前端构建检查：
+
+```powershell
+cd frontend
+npm.cmd install --cache ..\.npm-cache
+npm.cmd run build
+```
+
+初始化推荐测试数据：
+
+```powershell
+.\sql\init-recommend-data.ps1
+```
+
+## 3. 开发步骤
+
+### Step 1: 统一接口模型（已完成）
+
+目标：先把接口返回结构定下来，避免后面前后端联调反复改字段。
+
+新增建议文件：
+
+```text
+biteblog-backend/biteblog-recommend/src/main/java/com/biteblog/recommend/dto/RecommendItemVO.java
+biteblog-backend/biteblog-recommend/src/main/java/com/biteblog/recommend/dto/RecommendResponse.java
+biteblog-backend/biteblog-recommend/src/main/java/com/biteblog/recommend/dto/ExposureRequest.java
+```
+
+完成情况：
+
+| 文件 | 状态 |
+|---|---|
+| `RecommendItemVO.java` | 已新增 |
+| `RecommendResponse.java` | 已新增 |
+| `ExposureRequest.java` | 已新增 |
+| `RecommendController.java` | 已改为返回 `Result<RecommendResponse>`，避免 `Map.of` 空值问题 |
+
+推荐项字段建议：
+
+| 字段 | 类型 | 说明 |
+|---|---|---|
+| `postId` | Long/String | 笔记 ID |
+| `authorId` | Long/String | 作者 ID |
+| `title` | String | 标题 |
+| `coverUrl` | String | 封面图 |
+| `shopName` | String | 店铺名 |
+| `tags` | List<String> | 标签 |
+| `likeCount` | Long | 点赞数 |
+| `collectCount` | Long | 收藏数 |
+| `commentCount` | Long | 评论数 |
+| `score` | Double | 推荐分 |
+| `reason` | String | 推荐原因 |
+| `createdAt` | LocalDateTime/String | 发布时间 |
+
+验收：
+
+```text
+GET /recommend/discover
+```
+
+返回仍可为空列表，但结构必须稳定：
+
+```json
+{
+  "list": [],
+  "cursor": null,
+  "hasMore": false
+}
+```
+
+### Step 2: 建立数据访问层
+
+目标：推荐服务能读取 MySQL 中的笔记和用户行为数据。
+
+新增建议文件：
+
+```text
+entity/Note.java
+entity/UserBehavior.java
+mapper/NoteMapper.java
+mapper/UserBehaviorMapper.java
+```
+
+需要读取的数据：
+
+| 表 | 用途 |
+|---|---|
+| `note` | 冷启动兜底、补齐推荐摘要、过滤删除内容 |
+| `note_image` | 获取封面图，可先不做或后续补 |
+| `user_behavior` | 判断用户行为是否充足，生成标签/ItemCF 依据 |
+
+建议先做到：
+
+1. 能查询当前用户最近行为数量。
+2. 能查询近期热门正常笔记。
+3. 能按 ID 批量查询笔记摘要。
+
+验收：
+
+```powershell
+mvn -pl biteblog-recommend -am compile -DskipTests
+```
+
+### Step 3: 实现冷启动兜底
+
+目标：即使没有 ES 或用户行为不足，也能返回推荐结果。
+
+逻辑：
+
+```text
+用户行为数 < minBehaviorCount
+-> 查询 Redis recommend:hot:pool
+-> Redis 没有则查 MySQL note 表近期热门
+-> 过滤 status != 1
+-> 返回列表
+```
+
+推荐分建议：
+
+```text
+hotScore = likeCount * 3 + collectCount * 5 + commentCount * 4 + qualityScore + freshBoost
+qualityScore = (scoreTaste + scoreSmell + scoreColor) / 3
+freshBoost = 24 / sqrt(hoursSinceCreated)
+```
+
+验收：
+
+```bash
+curl -s "http://localhost:8084/recommend/discover?cursor=0&size=20" -H "X-User-Id: 999999"
+```
+
+预期：新用户能返回热门/近期笔记，不返回 500。
+
+### Step 4: 实现 Redis 曝光过滤
+
+目标：用户已经看过的内容不要重复推荐。
+
+Redis Key 统一使用：
+
+```text
+exposure:{userId}
+```
+
+接口行为：
+
+1. 推荐返回前读取 `SMEMBERS exposure:{userId}` 或批量 `SISMEMBER`。
+2. 过滤已曝光 postId。
+3. 前端曝光后调用曝光上报接口。
+4. 曝光 Set 设置 TTL，建议 7 天。
+
+验收：
+
+```bash
+curl -s -X POST "http://localhost:8084/recommend/exposures" \
+  -H "X-User-Id: 1001" \
+  -H "Content-Type: application/json" \
+  -d "{\"postIds\":[101,102,103]}"
+```
+
+Redis 检查：
+
+```bash
+docker exec biteblog-redis redis-cli -a redis123456 SMEMBERS "exposure:1001"
+docker exec biteblog-redis redis-cli -a redis123456 TTL "exposure:1001"
+```
+
+### Step 5: 接入 ES 标签召回
+
+目标：对老用户按兴趣标签从 `post_index` 召回候选。
+
+输入来源：
+
+| 来源 | 说明 |
+|---|---|
+| `user_behavior` | 通过用户点赞/收藏/评论过的笔记推导兴趣 |
+| `post_index.tags` | 如果笔记有标签，优先匹配标签 |
+| `title/content/shopName` | 标签不足时可用关键词/店铺名兜底 |
+
+排序策略：
+
+```text
+tagScore = 标签命中分 + 热度分 + 新鲜度分
+```
+
+验收：
+
+```bash
+curl -s "http://localhost:8084/recommend/discover?cursor=0&size=20&tag=火锅" -H "X-User-Id: 1001"
+```
+
+预期：标签相关内容靠前。
+
+### Step 6: 接入 ItemCF
+
+目标：根据用户历史交互笔记，推荐相似笔记。
+
+优先级：
+
+1. 若 `item_sim_index` 有数据，直接从 ES 查相似笔记。
+2. 若 `item_sim_index` 暂无数据，则用 `user_behavior` 简化计算共同交互。
+3. 演示版本可以先做简化 ItemCF，保证能说明算法过程。
+
+建议分数：
+
+```text
+itemCfScore = simScore * behaviorWeight
+```
+
+行为权重：
+
+| 行为 | 权重 |
+|---|---:|
+| view | 1 |
+| dwell | 3 |
+| like | 5 |
+| collect | 8 |
+| comment | 10 |
+
+验收：构造用户 A 与用户 B 对同一批笔记有共同交互时，相似笔记进入推荐列表。
+
+### Step 7: 混合排序
+
+目标：满足需求里的“标签推荐 60% + ItemCF 40%”。
+
+最终分：
+
+```text
+finalScore = tagScore * 0.6 + itemCfScore * 0.4 + hotBoost + freshBoost
+```
+
+补充规则：
+
+1. 已曝光内容直接过滤。
+2. 删除/下架内容直接过滤。
+3. 候选不足时用冷启动热度池补齐。
+4. 同一作者连续出现可做轻量打散。
+
+验收：
+
+1. 老用户请求时不是纯热门排序。
+2. 新用户请求时走冷启动。
+3. 候选不足时仍尽量返回足量结果。
+
+### Step 8: 降级与异常处理
+
+目标：依赖组件异常时接口可用。
+
+| 异常 | 降级策略 |
+|---|---|
+| ES 不可用 | 返回 Redis 热度池或 MySQL 近期热门 |
+| Redis 不可用 | 暂时跳过曝光过滤，记录日志 |
+| MySQL 查询失败 | 返回错误码或空列表，不能暴露堆栈 |
+| 参数非法 | 返回统一参数错误 |
+
+验收：
+
+```powershell
+docker compose stop elasticsearch
+```
+
+然后请求：
+
+```bash
+curl -s "http://localhost:8084/recommend/discover?cursor=0&size=20" -H "X-User-Id: 1001"
+```
+
+预期：不返回 500，返回热度兜底列表。
+
+### Step 9: 网关联调
+
+目标：通过网关访问推荐接口。
+
+启动：
+
+```powershell
+cd biteblog-backend
+mvn -pl biteblog-gateway -am spring-boot:run
+mvn -pl biteblog-recommend -am spring-boot:run
+```
+
+登录拿 Token 后请求：
+
+```bash
+curl -s "http://localhost:8080/api/recommend/discover?cursor=0&size=20" \
+  -H "Authorization: Bearer <token>"
+```
+
+验收：
+
+1. 无 Token 返回 401。
+2. 有 Token 正常返回推荐列表。
+3. Gateway 能透传 `X-User-Id`。
+
+### Step 10: 测试与文档回填
+
+目标：实现后把测试结果写回文档。
+
+需要更新：
+
+| 文件 | 内容 |
+|---|---|
+| `docs/postservice-说明.cd` | 更新实际实现文件、算法、降级策略 |
+| `docs/postservice-测试.cd` | 更新实际 curl 输出、测试记录 |
+| `jmeter/recommend-service-test.jmx` | 根据最终接口补断言 |
+| `jmeter/recommendservice-report/` | 保存 JMeter HTML 报告 |
+| `sql/init-recommend-data.ps1` | 根据最终字段修正测试数据 |
+
+最终验收命令：
+
+```powershell
+cd biteblog-backend
+mvn -pl biteblog-recommend -am compile -DskipTests
+
+cd ..\frontend
+npm.cmd run build
+```
+
+JMeter：
+
+```bash
+jmeter -n -t jmeter/recommend-service-test.jmx \
+  -Jhost=localhost \
+  -Jport=8080 \
+  -Jtoken=<token> \
+  -JuserId=1001 \
+  -l jmeter/recommend-service-result.jtl \
+  -e -o jmeter/recommendservice-report
+```
+
+## 4. 对外接口说明
+
+### 4.1 发现页推荐
+
+用于前端发现页拉取推荐列表。
+
+```http
+GET /api/recommend/discover?cursor=0&size=20&tag=火锅&city=广州
+Authorization: Bearer <token>
+```
+
+服务内直连：
+
+```http
+GET /recommend/discover?cursor=0&size=20&tag=火锅&city=广州
+X-User-Id: 1001
+```
+
+请求参数：
+
+| 参数 | 类型 | 必填 | 默认 | 说明 |
+|---|---|---|---|---|
+| `cursor` | Long/String | 否 | `0` | 游标，首次请求传 0 或不传 |
+| `size` | Integer | 否 | `20` | 每页条数，建议最大 50 |
+| `tag` | String | 否 | 无 | 标签过滤 |
+| `city` | String | 否 | 无 | 城市过滤 |
+
+响应：
+
+```json
+{
+  "code": 200,
+  "msg": "success",
+  "data": {
+    "list": [
+      {
+        "postId": 101,
+        "authorId": 12,
+        "title": "周末火锅探店",
+        "coverUrl": "http://localhost:9000/...",
+        "shopName": "某某火锅",
+        "tags": ["火锅", "聚餐"],
+        "likeCount": 18,
+        "collectCount": 6,
+        "commentCount": 3,
+        "score": 87.5,
+        "reason": "你最近喜欢火锅类探店",
+        "createdAt": "2026-05-11T10:00:00"
+      }
+    ],
+    "cursor": 101,
+    "hasMore": true
+  }
+}
+```
+
+非功能要求：
+
+| 项 | 要求 |
+|---|---|
+| 响应时间 | 需求文档目标 P99 < 600ms；人员分工文档要求 < 1s |
+| 鉴权 | 必须通过 Gateway JWT；服务内依赖 `X-User-Id` |
+| 降级 | ES 不可用时返回热度兜底 |
+| 去重 | 已曝光 postId 不应再次返回 |
+
+### 4.2 曝光上报
+
+用于前端告诉推荐服务哪些笔记已经展示给用户。
+
+```http
+POST /api/recommend/exposures
+Authorization: Bearer <token>
+Content-Type: application/json
+
+{
+  "postIds": [101, 102, 103]
+}
+```
+
+服务内直连：
+
+```http
+POST /recommend/exposures
+X-User-Id: 1001
+Content-Type: application/json
+
+{
+  "postIds": [101, 102, 103]
+}
+```
+
+响应：
+
+```json
+{
+  "code": 200,
+  "msg": "success",
+  "data": {
+    "saved": true,
+    "count": 3
+  }
+}
+```
+
+Redis 写入：
+
+```text
+SADD exposure:{userId} 101 102 103
+EXPIRE exposure:{userId} 604800
+```
+
+参数限制：
+
+| 项 | 建议 |
+|---|---|
+| `postIds` 长度 | 1 到 100 |
+| TTL | 7 天 |
+| 幂等性 | 重复上报不报错 |
+
+### 4.3 推荐健康检查
+
+建议新增，便于 JMeter 和联调快速确认服务已启动。
+
+```http
+GET /api/recommend/health
+```
+
+服务内直连：
+
+```http
+GET /recommend/health
+```
+
+响应：
+
+```json
+{
+  "code": 200,
+  "msg": "success",
+  "data": {
+    "service": "recommend-service",
+    "status": "UP"
+  }
+}
+```
+
+## 5. 内部依赖接口与数据
+
+### 5.1 依赖 Post Service
+
+推荐服务主要复用 Post Service 写入的数据，不一定必须同步调用 Post Service。
+
+可选内部调用：
+
+| 接口 | 用途 |
+|---|---|
+| `GET /post/{id}` | 补齐笔记详情 |
+| `GET /post/search` | 关键词召回兜底 |
+
+优先建议：推荐服务直接读 ES/MySQL 摘要，减少跨服务调用。
+
+### 5.2 依赖 Rank Service
+
+冷启动可复用 Rank Service：
+
+| 接口 | 用途 |
+|---|---|
+| `GET /rank/top10?type=daily` | 新用户冷启动 |
+| `GET /rank/list?type=weekly&page=1&size=20` | 候选补齐 |
+
+若不走 HTTP，可直接读 Redis：
+
+```text
+rank:hot:daily
+rank:hot:weekly
+rank:hot:all
+```
+
+### 5.3 依赖 Redis
+
+| Key | 类型 | 用途 |
+|---|---|---|
+| `exposure:{userId}` | Set | 曝光去重 |
+| `recommend:hot:pool` | ZSet | 推荐冷启动热度池 |
+| `rank:hot:daily` | ZSet | 复用 Rank 日榜 |
+
+### 5.4 依赖 Elasticsearch
+
+| 索引 | 用途 |
+|---|---|
+| `post_index` | 标签召回、候选检索 |
+| `behavior_index` | 用户行为召回，可选 |
+| `user_profile_index` | 用户兴趣画像，可选 |
+| `item_sim_index` | ItemCF 相似笔记 |
+| `rank_index` | 热度兜底，可选 |
+
+### 5.5 依赖 MySQL
+
+| 表 | 用途 |
+|---|---|
+| `note` | 冷启动、摘要补齐、状态过滤 |
+| `note_image` | 封面图 |
+| `user_behavior` | 兴趣画像、ItemCF |
+| `note_like` / `note_favorite` / `comment` | 行为补充，通常不直接查 |
+
+## 6. 推荐实现优先级
+
+如果时间紧，按这个顺序做：
+
+1. `GET /recommend/health`
+2. `GET /recommend/discover` 冷启动热度列表
+3. `POST /recommend/exposures`
+4. Redis 曝光过滤
+5. ES 标签召回
+6. 简化 ItemCF
+7. 60/40 混排
+8. ES 降级与 JMeter 报告
+
+最小可演示版本：
+
+```text
+冷启动热度列表 + 曝光过滤 + 标签过滤 + 网关鉴权 + JMeter 压测
+```
+
+完整需求版本：
+
+```text
+标签推荐 60% + ItemCF 40% + 冷启动 + 曝光去重 + ES 降级 + 非功能测试报告
+```
