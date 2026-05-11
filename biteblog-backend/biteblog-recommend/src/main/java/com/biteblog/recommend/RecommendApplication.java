@@ -5,7 +5,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.cloud.client.discovery.EnableDiscoveryClient;
 
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = {"com.biteblog.recommend", "com.biteblog.common"})
 @EnableDiscoveryClient
 @MapperScan("com.biteblog.recommend.mapper")
 public class RecommendApplication {
