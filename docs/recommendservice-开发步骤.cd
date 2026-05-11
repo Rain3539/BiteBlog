@@ -15,8 +15,8 @@ Recommend Service 端口为 `8084`，服务名为 `recommend-service`。
 | Controller | `RecommendController.java` | 已实现 discover/exposures/health |
 | 网关路由 | `/api/recommend/** -> recommend-service` | 已配置 |
 | 配置文件 | `application.yml` | 已配置 MySQL/Redis/RabbitMQ/ES |
-| 测试文档 | `docs/postservice-测试.cd` | 已补充参考版 |
-| 说明文档 | `docs/postservice-说明.cd` | 已补充参考版 |
+| 测试文档 | `docs/recommendservice-测试.cd` | 已补充参考版 |
+| 说明文档 | `docs/recommendservice-说明.cd` | 已补充参考版 |
 | JMeter 脚本 | `jmeter/recommend-service-test.jmx` | 已补充参考版 |
 | 初始化数据 | `sql/init-recommend-data.ps1` | 已补充参考版 |
 
@@ -417,8 +417,8 @@ curl -s "http://localhost:8080/api/recommend/discover?cursor=0&size=20" \
 
 | 文件 | 内容 |
 |---|---|
-| `docs/postservice-说明.cd` | 更新实际实现文件、算法、降级策略 |
-| `docs/postservice-测试.cd` | 更新实际 curl 输出、测试记录 |
+| `docs/recommendservice-说明.cd` | 更新实际实现文件、算法、降级策略 |
+| `docs/recommendservice-测试.cd` | 更新实际 curl 输出、测试记录 |
 | `jmeter/recommend-service-test.jmx` | 根据最终接口补断言 |
 | `jmeter/recommendservice-report/` | 保存 JMeter HTML 报告 |
 | `sql/init-recommend-data.ps1` | 根据最终字段修正测试数据 |
@@ -445,7 +445,7 @@ jmeter -n -t jmeter/recommend-service-test.jmx \
   -e -o jmeter/recommendservice-report
 ```
 
-完成情况：已更新 `docs/postservice-说明.cd`、`docs/postservice-测试.cd`、`jmeter/recommend-service-test.jmx`、`jmeter/recommendservice-report/README.md`、`sql/init-recommend-data.ps1`。本地已执行推荐模块编译验证；由于当前会话没有可用 Docker 权限，curl/JMeter 运行结果待重启或重新登录 Docker 权限生效后补充。
+完成情况：已更新 `docs/recommendservice-说明.cd`、`docs/recommendservice-测试.cd`、`jmeter/recommend-service-test.jmx`、`jmeter/recommendservice-report/README.md`、`sql/init-recommend-data.ps1`。本地已执行推荐模块编译验证；由于当前会话没有可用 Docker 权限，curl/JMeter 运行结果待重启或重新登录 Docker 权限生效后补充。
 
 ## 4. 对外接口说明
 
