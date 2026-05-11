@@ -1,25 +1,44 @@
 package com.biteblog.recommend.controller;
 
 import com.biteblog.common.result.Result;
-import org.springframework.web.bind.annotation.*;
+import com.biteblog.recommend.dto.ExposureRequest;
+import com.biteblog.recommend.dto.RecommendResponse;
+import com.biteblog.recommend.service.RecommendService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
 
 import java.util.Map;
 
-/**
- * 推荐服务 Controller（骨架）
- * 负责人: 组员 4（Feed + Recommend Service）
- */
 @RestController
 @RequestMapping("/recommend")
+@RequiredArgsConstructor
 public class RecommendController {
 
-    /** 发现页推荐 GET /recommend/discover */
+    private final RecommendService recommendService;
+
     @GetMapping("/discover")
-    public Result<?> discover(@RequestHeader("X-User-Id") Long userId,
-                              @RequestParam(required = false) Long cursor,
-                              @RequestParam(defaultValue = "20") int size) {
-        // TODO: 判断行为数据量 → 足够: ES 检索候选 → 标签推荐(60%) + ItemCF(40%)
-        //       不够: 热度加权兜底 → Redis Set 去除已曝光 → 返回推荐列表
-        return Result.success(Map.of("list", java.util.List.of(), "cursor", null, "hasMore", false));
+    public Result<RecommendResponse> discover(@RequestHeader("X-User-Id") Long userId,
+                                              @RequestParam(required = false) Long cursor,
+                                              @RequestParam(defaultValue = "20") int size,
+                                              @RequestParam(required = false) String tag,
+                                              @RequestParam(required = false) String city) {
+        return Result.success(recommendService.discover(userId, cursor, size, tag, city));
+    }
+
+    @PostMapping("/exposures")
+    public Result<Map<String, Object>> saveExposures(@RequestHeader("X-User-Id") Long userId,
+                                                     @RequestBody ExposureRequest request) {
+        return Result.success(recommendService.saveExposures(userId, request == null ? null : request.getPostIds()));
+    }
+
+    @GetMapping("/health")
+    public Result<Map<String, Object>> health() {
+        return Result.success(Map.of("service", "recommend-service", "status", "UP"));
     }
 }
