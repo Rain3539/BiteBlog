@@ -135,7 +135,7 @@ GET /recommend/discover
 }
 ```
 
-### Step 2: 建立数据访问层
+### Step 2: 建立数据访问层（已完成）
 
 目标：推荐服务能读取 MySQL 中的笔记和用户行为数据。
 
@@ -147,6 +147,20 @@ entity/UserBehavior.java
 mapper/NoteMapper.java
 mapper/UserBehaviorMapper.java
 ```
+
+完成情况：
+
+| 文件 | 状态 |
+|---|---|
+| `entity/Note.java` | 已新增，映射 `note` 表 |
+| `entity/NoteImage.java` | 已新增，映射 `note_image` 表，用于封面图 |
+| `entity/UserBehavior.java` | 已新增，映射 `user_behavior` 表 |
+| `mapper/NoteMapper.java` | 已新增 |
+| `mapper/NoteImageMapper.java` | 已新增 |
+| `mapper/UserBehaviorMapper.java` | 已新增 |
+| `service/RecommendDataService.java` | 已新增，封装只读数据访问 |
+| `RecommendApplication.java` | 已开启 `@MapperScan("com.biteblog.recommend.mapper")` |
+| `pom.xml` | 已补充 Web、MyBatis-Plus、MySQL 驱动依赖 |
 
 需要读取的数据：
 
@@ -161,6 +175,7 @@ mapper/UserBehaviorMapper.java
 1. 能查询当前用户最近行为数量。
 2. 能查询近期热门正常笔记。
 3. 能按 ID 批量查询笔记摘要。
+4. 能按 ID 批量查询封面图。
 
 验收：
 
