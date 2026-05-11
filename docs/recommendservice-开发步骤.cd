@@ -183,7 +183,7 @@ mapper/UserBehaviorMapper.java
 mvn -pl biteblog-recommend -am compile -DskipTests
 ```
 
-### Step 3: 实现冷启动兜底
+### Step 3: 实现冷启动兜底（已完成）
 
 目标：即使没有 ES 或用户行为不足，也能返回推荐结果。
 
@@ -212,6 +212,30 @@ curl -s "http://localhost:8084/recommend/discover?cursor=0&size=20" -H "X-User-I
 ```
 
 预期：新用户能返回热门/近期笔记，不返回 500。
+
+完成情况：
+
+| 文件 | 状态 |
+|---|---|
+| `service/RecommendService.java` | 已新增，封装推荐入口、冷启动兜底、分数计算和游标分页 |
+| `service/RecommendDataService.java` | 已补充分页查询热门正常笔记能力 |
+| `controller/RecommendController.java` | 已改为调用 `RecommendService.discover` 返回真实推荐结果 |
+
+当前实现：
+
+1. `GET /recommend/discover` 先读取 `user_behavior` 数量，行为数小于 `5` 时走冷启动。
+2. 冷启动优先读取 Redis ZSet `recommend:hot:pool`，按分数倒序分页。
+3. Redis 没数据或不可用时降级查询 MySQL `note` 表，按点赞、收藏、评论、发布时间取热门正常笔记。
+4. 返回项补齐 `coverUrl`、互动计数、`score`、`reason`、`cursor`、`hasMore`。
+5. 冷启动推荐分按 `likeCount * 3 + collectCount * 5 + commentCount * 4 + qualityScore + freshBoost` 计算。
+6. Redis 异常只记录 warn 日志并回退 MySQL，避免接口因为热度池不可用直接 500。
+
+已验证：
+
+```powershell
+cd biteblog-backend
+mvn -pl biteblog-recommend -am compile -DskipTests
+```
 
 ### Step 4: 实现 Redis 曝光过滤
 

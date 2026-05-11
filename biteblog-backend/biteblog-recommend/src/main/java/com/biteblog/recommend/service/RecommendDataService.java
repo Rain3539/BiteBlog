@@ -50,6 +50,11 @@ public class RecommendDataService {
     }
 
     public List<Note> listHotNotes(int size) {
+        return listHotNotes(0, size);
+    }
+
+    public List<Note> listHotNotes(int offset, int size) {
+        int safeOffset = Math.max(0, offset);
         int safeSize = Math.max(1, Math.min(size, MAX_HOT_NOTES_SIZE));
         return noteMapper.selectList(new LambdaQueryWrapper<Note>()
                 .eq(Note::getStatus, NORMAL_STATUS)
@@ -57,7 +62,7 @@ public class RecommendDataService {
                 .orderByDesc(Note::getCollectCount)
                 .orderByDesc(Note::getCommentCount)
                 .orderByDesc(Note::getCreatedAt)
-                .last("LIMIT " + safeSize));
+                .last("LIMIT " + safeOffset + ", " + safeSize));
     }
 
     public Map<Long, Note> getNormalNotesByIds(Collection<Long> noteIds) {
