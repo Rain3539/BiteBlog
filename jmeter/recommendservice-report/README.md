@@ -2,6 +2,14 @@
 
 This directory is reserved for Recommend Service JMeter HTML report output.
 
+Current reference script covers:
+
+- `GET /api/recommend/discover?cursor=0&size=20`
+- `GET /api/recommend/discover?cursor=0&size=5`
+- `GET /api/recommend/discover?cursor=0&size=20&tag=火锅`
+- `POST /api/recommend/exposures`
+- `GET /api/recommend/health`
+
 Suggested command:
 
 ```bash
@@ -16,3 +24,8 @@ jmeter -n -t jmeter/recommend-service-test.jmx \
 
 If the directory already contains an old report, clean or move the old generated files before running JMeter again.
 
+Last code verification:
+
+```text
+2026-05-11 mvn -pl biteblog-recommend -am compile -DskipTests: PASS
+```

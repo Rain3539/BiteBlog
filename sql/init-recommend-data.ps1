@@ -15,7 +15,8 @@ VALUES
 ('13900003001', 'recommend_user_foodie', '\$2a\$10\$recommend.demo.hash.0001', NULL, 'Recommend demo user: likes hotpot and bbq', 1),
 ('13900003002', 'recommend_user_tea', '\$2a\$10\$recommend.demo.hash.0002', NULL, 'Recommend demo user: likes tea and dessert', 1),
 ('13900003003', 'recommend_user_new', '\$2a\$10\$recommend.demo.hash.0003', NULL, 'Recommend cold start user', 1),
-('13900003004', 'recommend_author_01', '\$2a\$10\$recommend.demo.hash.0004', NULL, 'Recommend demo author', 1)
+('13900003004', 'recommend_author_01', '\$2a\$10\$recommend.demo.hash.0004', NULL, 'Recommend demo author', 1),
+('13900003005', 'recommend_user_neighbor', '\$2a\$10\$recommend.demo.hash.0005', NULL, 'Recommend similar user for ItemCF', 1)
 ON DUPLICATE KEY UPDATE
   username = VALUES(username),
   bio = VALUES(bio),
@@ -25,6 +26,7 @@ SELECT id INTO @foodie FROM user WHERE phone = '13900003001';
 SELECT id INTO @tea FROM user WHERE phone = '13900003002';
 SELECT id INTO @new_user FROM user WHERE phone = '13900003003';
 SELECT id INTO @author FROM user WHERE phone = '13900003004';
+SELECT id INTO @neighbor FROM user WHERE phone = '13900003005';
 
 DELETE ub FROM user_behavior ub
 JOIN note n ON ub.note_id = n.id
@@ -77,6 +79,12 @@ SELECT @tea, id, 'like', 3, NULL, NOW() FROM note WHERE title IN ('Recommend Tes
 INSERT INTO user_behavior (user_id, note_id, behavior_type, weight, dwell_time, created_at)
 SELECT @tea, id, 'collect', 5, NULL, NOW() FROM note WHERE title = 'Recommend Test 03 Dessert';
 
+INSERT INTO user_behavior (user_id, note_id, behavior_type, weight, dwell_time, created_at)
+SELECT @neighbor, id, 'like', 5, NULL, NOW() FROM note WHERE title IN ('Recommend Test 01 Hotpot', 'Recommend Test 02 BBQ', 'Recommend Test 05 Noodles');
+
+INSERT INTO user_behavior (user_id, note_id, behavior_type, weight, dwell_time, created_at)
+SELECT @neighbor, id, 'collect', 8, NULL, NOW() FROM note WHERE title = 'Recommend Test 05 Noodles';
+
 INSERT INTO note_like (note_id, user_id, created_at)
 SELECT id, @foodie, NOW() FROM note WHERE title IN ('Recommend Test 01 Hotpot', 'Recommend Test 02 BBQ')
 ON DUPLICATE KEY UPDATE created_at = VALUES(created_at);
@@ -97,6 +105,7 @@ SELECT 'foodie_user_id', @foodie;
 SELECT 'tea_user_id', @tea;
 SELECT 'cold_start_user_id', @new_user;
 SELECT 'author_user_id', @author;
+SELECT 'neighbor_user_id', @neighbor;
 SELECT id, title FROM note WHERE title LIKE 'Recommend Test%' ORDER BY id;
 "@
 
@@ -109,7 +118,7 @@ Write-Host "Writing Redis recommend hot pool and exposure sample..." -Foreground
 $noteIds = docker exec $mysqlContainer mysql -N -uroot "-p$mysqlPassword" biteblog -e "SELECT id FROM note WHERE title LIKE 'Recommend Test%' ORDER BY id;"
 $foodieUserId = docker exec $mysqlContainer mysql -N -uroot "-p$mysqlPassword" biteblog -e "SELECT id FROM user WHERE phone='13900003001';"
 
-docker exec $redisContainer redis-cli -a $redisPassword DEL recommend:hot:pool "user:exposed:$foodieUserId" | Out-Null
+docker exec $redisContainer redis-cli -a $redisPassword DEL recommend:hot:pool "exposure:$foodieUserId" | Out-Null
 
 $score = 100
 foreach ($id in $noteIds) {
@@ -121,8 +130,8 @@ foreach ($id in $noteIds) {
 }
 
 if ($noteIds.Count -gt 0) {
-    docker exec $redisContainer redis-cli -a $redisPassword SADD "user:exposed:$foodieUserId" $noteIds[0] | Out-Null
-    docker exec $redisContainer redis-cli -a $redisPassword EXPIRE "user:exposed:$foodieUserId" 604800 | Out-Null
+    docker exec $redisContainer redis-cli -a $redisPassword SADD "exposure:$foodieUserId" $noteIds[0] | Out-Null
+    docker exec $redisContainer redis-cli -a $redisPassword EXPIRE "exposure:$foodieUserId" 604800 | Out-Null
 }
 
 Write-Host ""
@@ -131,7 +140,7 @@ Write-Host "Users:" -ForegroundColor White
 Write-Host "  13900003001 recommend_user_foodie"
 Write-Host "  13900003002 recommend_user_tea"
 Write-Host "  13900003003 recommend_user_new"
+Write-Host "  13900003005 recommend_user_neighbor"
 Write-Host "Redis keys:" -ForegroundColor White
 Write-Host "  recommend:hot:pool"
-Write-Host "  user:exposed:<foodieUserId>"
-
+Write-Host "  exposure:<foodieUserId>"

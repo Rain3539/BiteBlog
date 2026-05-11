@@ -54,10 +54,19 @@ public class RecommendDataService {
     }
 
     public List<Note> listHotNotes(int offset, int size) {
+        return listHotNotes(offset, size, List.of());
+    }
+
+    public List<Note> listHotNotes(int offset, int size, Collection<Long> excludedNoteIds) {
         int safeOffset = Math.max(0, offset);
         int safeSize = Math.max(1, Math.min(size, MAX_HOT_NOTES_SIZE));
-        return noteMapper.selectList(new LambdaQueryWrapper<Note>()
-                .eq(Note::getStatus, NORMAL_STATUS)
+        LambdaQueryWrapper<Note> wrapper = new LambdaQueryWrapper<Note>()
+                .eq(Note::getStatus, NORMAL_STATUS);
+        List<Long> excluded = distinctIds(excludedNoteIds);
+        if (!excluded.isEmpty()) {
+            wrapper.notIn(Note::getId, excluded);
+        }
+        return noteMapper.selectList(wrapper
                 .orderByDesc(Note::getLikeCount)
                 .orderByDesc(Note::getCollectCount)
                 .orderByDesc(Note::getCommentCount)
@@ -65,14 +74,56 @@ public class RecommendDataService {
                 .last("LIMIT " + safeOffset + ", " + safeSize));
     }
 
-    public Map<Long, Note> getNormalNotesByIds(Collection<Long> noteIds) {
-        if (noteIds == null || noteIds.isEmpty()) {
-            return Map.of();
+    public List<Note> searchNormalNotes(String keyword, String city, int size, Collection<Long> excludedNoteIds) {
+        int safeSize = Math.max(1, Math.min(size, MAX_HOT_NOTES_SIZE));
+        LambdaQueryWrapper<Note> wrapper = new LambdaQueryWrapper<Note>()
+                .eq(Note::getStatus, NORMAL_STATUS);
+        if (keyword != null && !keyword.isBlank()) {
+            String text = keyword.trim();
+            wrapper.and(item -> item.like(Note::getTitle, text)
+                    .or()
+                    .like(Note::getContent, text)
+                    .or()
+                    .like(Note::getShopName, text));
         }
-        List<Long> ids = noteIds.stream()
-                .filter(Objects::nonNull)
-                .distinct()
-                .toList();
+        if (city != null && !city.isBlank()) {
+            wrapper.like(Note::getAddress, city.trim());
+        }
+        List<Long> excluded = distinctIds(excludedNoteIds);
+        if (!excluded.isEmpty()) {
+            wrapper.notIn(Note::getId, excluded);
+        }
+        return noteMapper.selectList(wrapper
+                .orderByDesc(Note::getLikeCount)
+                .orderByDesc(Note::getCollectCount)
+                .orderByDesc(Note::getCreatedAt)
+                .last("LIMIT " + safeSize));
+    }
+
+    public List<UserBehavior> listBehaviorsByNoteIds(Collection<Long> noteIds, int limit) {
+        List<Long> ids = distinctIds(noteIds);
+        if (ids.isEmpty() || limit <= 0) {
+            return List.of();
+        }
+        return userBehaviorMapper.selectList(new LambdaQueryWrapper<UserBehavior>()
+                .in(UserBehavior::getNoteId, ids)
+                .orderByDesc(UserBehavior::getCreatedAt)
+                .last("LIMIT " + Math.max(1, limit)));
+    }
+
+    public List<UserBehavior> listBehaviorsByUserIds(Collection<Long> userIds, int limit) {
+        List<Long> ids = distinctIds(userIds);
+        if (ids.isEmpty() || limit <= 0) {
+            return List.of();
+        }
+        return userBehaviorMapper.selectList(new LambdaQueryWrapper<UserBehavior>()
+                .in(UserBehavior::getUserId, ids)
+                .orderByDesc(UserBehavior::getCreatedAt)
+                .last("LIMIT " + Math.max(1, limit)));
+    }
+
+    public Map<Long, Note> getNormalNotesByIds(Collection<Long> noteIds) {
+        List<Long> ids = distinctIds(noteIds);
         if (ids.isEmpty()) {
             return Map.of();
         }
@@ -84,13 +135,7 @@ public class RecommendDataService {
     }
 
     public Map<Long, String> getCoverUrls(Collection<Long> noteIds) {
-        if (noteIds == null || noteIds.isEmpty()) {
-            return Map.of();
-        }
-        List<Long> ids = noteIds.stream()
-                .filter(Objects::nonNull)
-                .distinct()
-                .toList();
+        List<Long> ids = distinctIds(noteIds);
         if (ids.isEmpty()) {
             return Map.of();
         }
@@ -112,5 +157,15 @@ public class RecommendDataService {
                     .ifPresent(url -> covers.put(id, url));
         }
         return covers;
+    }
+
+    private List<Long> distinctIds(Collection<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of();
+        }
+        return ids.stream()
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
     }
 }

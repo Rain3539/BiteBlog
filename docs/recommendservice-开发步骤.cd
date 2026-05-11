@@ -12,7 +12,7 @@ Recommend Service 端口为 `8084`，服务名为 `recommend-service`。
 |---|---|---|
 | Maven 模块 | `biteblog-backend/biteblog-recommend` | 已存在 |
 | 启动类 | `RecommendApplication.java` | 已存在 |
-| Controller 骨架 | `RecommendController.java` | 已存在 |
+| Controller | `RecommendController.java` | 已实现 discover/exposures/health |
 | 网关路由 | `/api/recommend/** -> recommend-service` | 已配置 |
 | 配置文件 | `application.yml` | 已配置 MySQL/Redis/RabbitMQ/ES |
 | 测试文档 | `docs/postservice-测试.cd` | 已补充参考版 |
@@ -24,13 +24,13 @@ Recommend Service 端口为 `8084`，服务名为 `recommend-service`。
 
 | 缺口 | 说明 |
 |---|---|
-| 推荐业务服务 | 现在 Controller 直接返回空列表，没有推荐逻辑 |
-| DTO/VO | 缺少推荐项、推荐响应、曝光上报请求对象 |
-| 数据访问 | 缺少 `note`、`user_behavior` 等表的 Mapper/Entity |
-| ES 召回 | 未接入 `post_index`、`item_sim_index` |
-| Redis 曝光过滤 | 未实现 `exposure:{userId}` Set 读写 |
-| 冷启动降级 | 未实现热度兜底和 ES 异常 fallback |
-| 命令行验证 | 文档有参考脚本，待实现后实际执行并记录结果 |
+| 推荐业务服务 | 已实现冷启动、曝光过滤、标签兜底、简化 ItemCF、混排和健康检查 |
+| DTO/VO | 已补齐推荐项、推荐响应、曝光上报请求对象 |
+| 数据访问 | 已补齐 `note`、`note_image`、`user_behavior` 的 Mapper/Entity |
+| ES 召回 | 当前用 MySQL 关键词兜底，后续可替换为 ES `post_index`、`item_sim_index` |
+| Redis 曝光过滤 | 已实现 `exposure:{userId}` Set 读写 |
+| 冷启动降级 | 已实现 Redis 热度池和 MySQL 近期热门 fallback |
+| 命令行验证 | 已完成 Maven 编译验证；curl/JMeter 需服务和 Docker 权限就绪后执行 |
 
 ## 2. 环境前置
 
@@ -237,7 +237,7 @@ cd biteblog-backend
 mvn -pl biteblog-recommend -am compile -DskipTests
 ```
 
-### Step 4: 实现 Redis 曝光过滤
+### Step 4: 实现 Redis 曝光过滤（已完成）
 
 目标：用户已经看过的内容不要重复推荐。
 
@@ -270,7 +270,9 @@ docker exec biteblog-redis redis-cli -a redis123456 SMEMBERS "exposure:1001"
 docker exec biteblog-redis redis-cli -a redis123456 TTL "exposure:1001"
 ```
 
-### Step 5: 接入 ES 标签召回
+完成情况：已新增 `POST /recommend/exposures`，写入 `exposure:{userId}`，TTL 为 7 天；`GET /recommend/discover` 返回前会读取该 Set 并过滤已曝光笔记。Redis 不可用时记录 warn 日志并继续走推荐流程。
+
+### Step 5: 接入 ES 标签召回（已完成 MySQL 兜底版）
 
 目标：对老用户按兴趣标签从 `post_index` 召回候选。
 
@@ -296,7 +298,9 @@ curl -s "http://localhost:8084/recommend/discover?cursor=0&size=20&tag=火锅" -
 
 预期：标签相关内容靠前。
 
-### Step 6: 接入 ItemCF
+完成情况：当前先实现可运行的 MySQL 兜底标签召回，使用 `note.title/content/shopName/address` 支持 `tag`、`city` 过滤；后续 ES `post_index` 数据稳定后，可把该召回源替换为 ES 查询，Controller 和返回结构无需改。
+
+### Step 6: 接入 ItemCF（已完成简化版）
 
 目标：根据用户历史交互笔记，推荐相似笔记。
 
@@ -324,7 +328,9 @@ itemCfScore = simScore * behaviorWeight
 
 验收：构造用户 A 与用户 B 对同一批笔记有共同交互时，相似笔记进入推荐列表。
 
-### Step 7: 混合排序
+完成情况：已基于 `user_behavior` 做简化 ItemCF：读取当前用户历史交互笔记，查找共同交互用户，再按行为权重汇总这些相似用户交互过的新笔记。行为权重优先使用表内 `weight`，否则按 view/dwell/like/collect/comment 默认权重计算。
+
+### Step 7: 混合排序（已完成）
 
 目标：满足需求里的“标签推荐 60% + ItemCF 40%”。
 
@@ -347,7 +353,9 @@ finalScore = tagScore * 0.6 + itemCfScore * 0.4 + hotBoost + freshBoost
 2. 新用户请求时走冷启动。
 3. 候选不足时仍尽量返回足量结果。
 
-### Step 8: 降级与异常处理
+完成情况：已实现 `finalScore = tagScore * 0.6 + itemCfScore * 0.4 + hotScore`，候选不足时自动用冷启动热门正常笔记补齐；已曝光和已交互笔记会在对应阶段过滤，删除/下架内容统一通过 `status=1` 过滤。
+
+### Step 8: 降级与异常处理（已完成）
 
 目标：依赖组件异常时接口可用。
 
@@ -372,7 +380,9 @@ curl -s "http://localhost:8084/recommend/discover?cursor=0&size=20" -H "X-User-I
 
 预期：不返回 500，返回热度兜底列表。
 
-### Step 9: 网关联调
+完成情况：Redis 热池或曝光 Set 不可用时记录 warn 并降级；ES 当前不是强依赖，标签召回先走 MySQL 兜底；MySQL 仍作为数据源，异常由统一异常处理返回，不在接口中暴露堆栈。
+
+### Step 9: 网关联调（已完成接口侧）
 
 目标：通过网关访问推荐接口。
 
@@ -397,7 +407,9 @@ curl -s "http://localhost:8080/api/recommend/discover?cursor=0&size=20" \
 2. 有 Token 正常返回推荐列表。
 3. Gateway 能透传 `X-User-Id`。
 
-### Step 10: 测试与文档回填
+完成情况：服务侧已提供 `GET /recommend/discover`、`POST /recommend/exposures`、`GET /recommend/health`，路径能被既有 Gateway `/api/recommend/**` 路由转发。实际无 Token/有 Token 验证需要启动 Gateway 和 User Service 后执行。
+
+### Step 10: 测试与文档回填（已完成参考版）
 
 目标：实现后把测试结果写回文档。
 
@@ -432,6 +444,8 @@ jmeter -n -t jmeter/recommend-service-test.jmx \
   -l jmeter/recommend-service-result.jtl \
   -e -o jmeter/recommendservice-report
 ```
+
+完成情况：已更新 `docs/postservice-说明.cd`、`docs/postservice-测试.cd`、`jmeter/recommend-service-test.jmx`、`jmeter/recommendservice-report/README.md`、`sql/init-recommend-data.ps1`。本地已执行推荐模块编译验证；由于当前会话没有可用 Docker 权限，curl/JMeter 运行结果待重启或重新登录 Docker 权限生效后补充。
 
 ## 4. 对外接口说明
 
