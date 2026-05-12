@@ -21,6 +21,12 @@ public class LocationController {
 
     private final LocationService locationService;
 
+    /** 健康检查 GET /location/health */
+    @GetMapping("/health")
+    public Result<?> health() {
+        return Result.success(Map.of("service", "location-service", "status", "UP"));
+    }
+
     /** POI 搜索（高德 API 代理） GET /location/poi/search */
     @GetMapping("/poi/search")
     public Result<?> searchPoi(@RequestParam String keyword,

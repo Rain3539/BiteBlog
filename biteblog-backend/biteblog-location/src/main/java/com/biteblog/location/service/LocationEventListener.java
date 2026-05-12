@@ -21,6 +21,13 @@ public class LocationEventListener {
         log.info("Location note published event consumed: noteId={}", noteId);
     }
 
+    @RabbitListener(queues = LocationRabbitConfig.NOTE_DELETED_QUEUE)
+    public void onNoteDeleted(Map<String, Object> event) {
+        Long noteId = toLong(event.get("noteId"));
+        locationService.removeNoteLocation(noteId);
+        log.info("Location note deleted event consumed: noteId={}", noteId);
+    }
+
     private Long toLong(Object value) {
         if (value == null) {
             return null;

@@ -140,6 +140,14 @@ public class LocationService {
         return pois;
     }
 
+    public void removeNoteLocation(Long noteId) {
+        if (noteId == null) {
+            return;
+        }
+        redisTemplate.opsForGeo().remove(GEO_KEY, noteId.toString());
+        log.info("Removed note location from GEO: noteId={}", noteId);
+    }
+
     public void addNoteLocation(Long noteId) {
         if (noteId == null) {
             return;

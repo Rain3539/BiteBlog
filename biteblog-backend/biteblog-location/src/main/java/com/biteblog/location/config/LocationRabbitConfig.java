@@ -13,6 +13,7 @@ import org.springframework.context.annotation.Configuration;
 public class LocationRabbitConfig {
     public static final String POST_EXCHANGE = "biteblog.post";
     public static final String NOTE_PUBLISHED_QUEUE = "location.note.published.queue";
+    public static final String NOTE_DELETED_QUEUE = "location.note.deleted.queue";
 
     @Bean
     public TopicExchange postExchange() {
@@ -25,7 +26,17 @@ public class LocationRabbitConfig {
     }
 
     @Bean
+    public Queue noteDeletedQueue() {
+        return QueueBuilder.durable(NOTE_DELETED_QUEUE).build();
+    }
+
+    @Bean
     public Binding notePublishedBinding() {
         return BindingBuilder.bind(notePublishedQueue()).to(postExchange()).with("note.published");
+    }
+
+    @Bean
+    public Binding noteDeletedBinding() {
+        return BindingBuilder.bind(noteDeletedQueue()).to(postExchange()).with("note.deleted");
     }
 }
