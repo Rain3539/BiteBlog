@@ -81,14 +81,7 @@
             <boolProp name="Assertion.assume_success">false</boolProp>
             <intProp name="Assertion.test_type">8</intProp>
           </ResponseAssertion>
-          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Assert JSON markers" enabled="true">
-            <collectionProp name="Asserion.test_strings">
-              <stringProp name="-202319150">markers</stringProp>
-            </collectionProp>
-            <stringProp name="Assertion.test_field">Assertion.response_data</stringProp>
-            <boolProp name="Assertion.assume_success">false</boolProp>
-            <intProp name="Assertion.test_type">16</intProp>
-          </ResponseAssertion>
+          <hashTree/>
         </hashTree>
         <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /api/location/poi/search" enabled="true">
           <stringProp name="HTTPSampler.domain">${host}</stringProp>

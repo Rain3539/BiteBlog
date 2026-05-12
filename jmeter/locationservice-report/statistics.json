@@ -1,0 +1,50 @@
+{
+  "GET /api/location/nearby/markers" : {
+    "transaction" : "GET /api/location/nearby/markers",
+    "sampleCount" : 200,
+    "errorCount" : 0,
+    "errorPct" : 0.0,
+    "meanResTime" : 3.8850000000000007,
+    "medianResTime" : 3.0,
+    "minResTime" : 1.0,
+    "maxResTime" : 67.0,
+    "pct1ResTime" : 6.0,
+    "pct2ResTime" : 8.899999999999977,
+    "pct3ResTime" : 27.930000000000064,
+    "throughput" : 21.258503401360542,
+    "receivedKBytesPerSec" : 7.720220656622025,
+    "sentKBytesPerSec" : 5.522228422619048
+  },
+  "Total" : {
+    "transaction" : "Total",
+    "sampleCount" : 400,
+    "errorCount" : 0,
+    "errorPct" : 0.0,
+    "meanResTime" : 3.650000000000002,
+    "medianResTime" : 3.0,
+    "minResTime" : 1.0,
+    "maxResTime" : 67.0,
+    "pct1ResTime" : 6.0,
+    "pct2ResTime" : 8.0,
+    "pct3ResTime" : 18.970000000000027,
+    "throughput" : 42.50797024442083,
+    "receivedKBytesPerSec" : 15.438197396386823,
+    "sentKBytesPerSec" : 11.208156216790648
+  },
+  "GET /api/location/poi/search" : {
+    "transaction" : "GET /api/location/poi/search",
+    "sampleCount" : 200,
+    "errorCount" : 0,
+    "errorPct" : 0.0,
+    "meanResTime" : 3.4150000000000014,
+    "medianResTime" : 3.0,
+    "minResTime" : 1.0,
+    "maxResTime" : 19.0,
+    "pct1ResTime" : 5.900000000000006,
+    "pct2ResTime" : 8.0,
+    "pct3ResTime" : 15.970000000000027,
+    "throughput" : 21.417862497322766,
+    "receivedKBytesPerSec" : 7.779139169254659,
+    "sentKBytesPerSec" : 5.730951488541444
+  }
+}
