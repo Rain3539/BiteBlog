@@ -117,13 +117,16 @@ public class LocationService {
         }
 
         WebClient webClient = WebClient.create(amapBaseUrl);
-        String uri = String.format("/v3/place/text?key=%s&keywords=%s&city=%s&output=JSON",
-                amapApiKey, keyword, city != null ? city : "");
-
         String response;
         try {
             response = webClient.get()
-                    .uri(uri)
+                    .uri(uriBuilder -> uriBuilder
+                            .path("/v3/place/text")
+                            .queryParam("key", amapApiKey)
+                            .queryParam("keywords", keyword)
+                            .queryParam("city", city != null ? city : "")
+                            .queryParam("output", "JSON")
+                            .build())
                     .retrieve()
                     .bodyToMono(String.class)
                     .block();

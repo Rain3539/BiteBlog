@@ -40,5 +40,5 @@ mybatis-plus:
       logic-not-delete-value: 1
 
 amap:
-  api-key: YOUR_AMAP_API_KEY
+  api-key: f076f0792e41e1cd3ce7f31ffffd47d3
   base-url: https://restapi.amap.com
