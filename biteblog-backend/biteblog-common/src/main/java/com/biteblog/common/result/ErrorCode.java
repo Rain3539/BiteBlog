@@ -37,6 +37,8 @@ public enum ErrorCode {
 
     // 位置模块 5xxx
     LOCATION_ERROR(5001, "地理位置获取失败"),
+    POI_SEARCH_FAIL(5002, "POI搜索失败"),
+    COORDINATE_INVALID(5003, "坐标参数无效"),
 
     // 通知模块 6xxx
     NOTIFY_SEND_FAIL(6001, "通知发送失败");

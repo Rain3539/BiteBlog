@@ -1,24 +1,32 @@
 package com.biteblog.location.controller;
 
 import com.biteblog.common.result.Result;
+import com.biteblog.location.dto.NearbyMarkerVO;
+import com.biteblog.location.dto.PoiItemVO;
+import com.biteblog.location.service.LocationService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
 
 /**
- * 位置服务 Controller（骨架）
- * 负责人: 组员 3（Post + Location + Rank Service）
+ * 位置服务 Controller
+ * 负责人: 成员 4（Location Service）
  */
 @RestController
 @RequestMapping("/location")
+@RequiredArgsConstructor
 public class LocationController {
+
+    private final LocationService locationService;
 
     /** POI 搜索（高德 API 代理） GET /location/poi/search */
     @GetMapping("/poi/search")
     public Result<?> searchPoi(@RequestParam String keyword,
                                @RequestParam(required = false) String city) {
-        // TODO: 调用高德 Web API → 返回 POI 列表
-        return Result.success(Map.of("list", java.util.List.of()));
+        List<PoiItemVO> list = locationService.searchPoi(keyword, city);
+        return Result.success(Map.of("list", list));
     }
 
     /** 获取附近笔记坐标 GET /location/nearby/markers */
@@ -26,7 +34,7 @@ public class LocationController {
     public Result<?> nearbyMarkers(@RequestParam Double longitude,
                                    @RequestParam Double latitude,
                                    @RequestParam(defaultValue = "3") int radius) {
-        // TODO: ES geo_distance 查询 → 返回笔记坐标点列表
-        return Result.success(Map.of("markers", java.util.List.of()));
+        List<NearbyMarkerVO> markers = locationService.nearbyMarkers(longitude, latitude, radius);
+        return Result.success(Map.of("markers", markers));
     }
 }

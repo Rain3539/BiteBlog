@@ -1,0 +1,9 @@
+package com.biteblog.location.mapper;
+
+import com.baomidou.mybatisplus.core.mapper.BaseMapper;
+import com.biteblog.location.entity.Note;
+import org.apache.ibatis.annotations.Mapper;
+
+@Mapper
+public interface NoteMapper extends BaseMapper<Note> {
+}
