@@ -1,46 +1,51 @@
 package com.biteblog.notify.controller;
 
 import com.biteblog.common.result.Result;
+import com.biteblog.notify.service.NotifyService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
 
 /**
- * 通知服务 Controller（骨架）
- * 负责人: 组员 5（Notify + WebSocket）
+ * 通知服务：GET /notify/list、unread-count；POST read-all、/{id}/read
  */
 @RestController
 @RequestMapping("/notify")
+@RequiredArgsConstructor
 public class NotifyController {
 
-    /** 通知列表 GET /notify/list */
+    private final NotifyService notifyService;
+
+    @GetMapping("/health")
+    public Result<Map<String, String>> health() {
+        return Result.success(Map.of("service", "notify-service", "status", "UP"));
+    }
+
+    /** 通知列表：传统分页 list + total（未读数请用 /notify/unread-count） */
     @GetMapping("/list")
-    public Result<?> list(@RequestHeader("X-User-Id") Long userId,
-                          @RequestParam(defaultValue = "1") int page,
-                          @RequestParam(defaultValue = "20") int size) {
-        // TODO: 分页查询通知 → 包含发送者信息 + 关联笔记
-        return Result.success(Map.of("list", java.util.List.of(), "total", 0, "unreadCount", 0));
+    public Result<Map<String, Object>> list(@RequestHeader("X-User-Id") Long userId,
+                                            @RequestParam(defaultValue = "1") int page,
+                                            @RequestParam(defaultValue = "20") int size) {
+        return Result.success(notifyService.pageList(userId, page, size));
     }
 
-    /** 全部已读 POST /notify/read-all */
     @PostMapping("/read-all")
-    public Result<?> readAll(@RequestHeader("X-User-Id") Long userId) {
-        // TODO: 批量更新已读状态
+    public Result<Void> readAll(@RequestHeader("X-User-Id") Long userId) {
+        notifyService.markAllRead(userId);
         return Result.success();
     }
 
-    /** 标记单条已读 POST /notify/{id}/read */
     @PostMapping("/{id}/read")
-    public Result<?> readOne(@PathVariable Long id,
-                             @RequestHeader("X-User-Id") Long userId) {
-        // TODO: 更新单条通知已读状态
+    public Result<Void> readOne(@PathVariable Long id,
+                                @RequestHeader("X-User-Id") Long userId) {
+        notifyService.markRead(userId, id);
         return Result.success();
     }
 
-    /** 未读数 GET /notify/unread-count */
     @GetMapping("/unread-count")
-    public Result<?> unreadCount(@RequestHeader("X-User-Id") Long userId) {
-        // TODO: 查询未读通知数
-        return Result.success(Map.of("unreadCount", 0));
+    public Result<Map<String, Long>> unreadCount(@RequestHeader("X-User-Id") Long userId) {
+        long c = notifyService.countUnread(userId);
+        return Result.success(Map.of("unreadCount", c));
     }
 }
