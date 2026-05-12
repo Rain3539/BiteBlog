@@ -23,6 +23,9 @@ spring:
     port: 5672
     username: guest
     password: guest
+    listener:
+      simple:
+        auto-startup: true
   elasticsearch:
     uris: http://localhost:9200
 
@@ -35,3 +38,7 @@ mybatis-plus:
       logic-delete-field: status
       logic-delete-value: 0
       logic-not-delete-value: 1
+
+amap:
+  api-key: f076f0792e41e1cd3ce7f31ffffd47d3
+  base-url: https://restapi.amap.com
