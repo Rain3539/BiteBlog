@@ -33,14 +33,11 @@ public class FeedService {
      * 4. inbox 为空时降级到数据库查询（冷启动兜底）
      */
     public Map<String, Object> getTimeline(Long userId, Long cursor, int size) {
-        // cursor 作为 offset（页码），null 或 0 表示第一页
-        int offset = (cursor != null && cursor > 0) ? cursor.intValue() : 0;
+        // cursor 为上一页最后一条笔记的时间戳(毫秒)，null 表示第一页
 
-        // 1. 获取inbox中已推送的笔记（按索引分页）
-        long start = offset;
-        long end = offset + size * 2L - 1;
+        // 1. 全量获取inbox中已推送的笔记
         Set<String> inboxNoteIds = redisTemplate.opsForZSet().reverseRange(
-                INBOX_PREFIX + userId, start, end);
+                INBOX_PREFIX + userId, 0, -1);
 
         // 2. 获取当前用户关注的大V列表，实时拉取
         Set<String> bigVs = redisTemplate.opsForSet().members(BIG_V_KEY);
@@ -53,7 +50,7 @@ public class FeedService {
 
             for (String bigVId : followedBigVs) {
                 Set<String> bvNotes = redisTemplate.opsForZSet().reverseRange(
-                        INBOX_PREFIX + bigVId, 0, 9);
+                        INBOX_PREFIX + bigVId, 0, -1);
                 if (bvNotes != null) {
                     for (String n : bvNotes) {
                         bigVNoteIds.add(Long.parseLong(n));
@@ -71,6 +68,12 @@ public class FeedService {
         }
         allNoteIds.addAll(bigVNoteIds);
 
+        // 3.5 始终拉取用户自己的最新笔记（兜底fanout延迟/故障）
+        List<Long> ownNoteIds = jdbcTemplate.queryForList(
+                "SELECT id FROM note WHERE author_id = ? AND status = 1 ORDER BY created_at DESC LIMIT 20",
+                Long.class, userId);
+        allNoteIds.addAll(ownNoteIds);
+
         // 4. inbox 为空 → 降级到数据库查询
         if (allNoteIds.isEmpty()) {
             return getTimelineFromDb(userId, size);
@@ -82,22 +85,32 @@ public class FeedService {
             allNoteIds.removeIf(id -> deletedIds.contains(id.toString()));
         }
 
-        // 6. 查询笔记详情
-        List<FeedItemVO> items = buildFeedItems(new ArrayList<>(allNoteIds), size);
+        // 6. 查询全部笔记详情，按时间倒序排列
+        List<FeedItemVO> allItems = queryAndSortByTime(new ArrayList<>(allNoteIds));
 
-        // 7. 计算下一页 offset 和 hasMore
-        Long nextCursor = null;
-        boolean hasMore = false;
-        if (!items.isEmpty()) {
-            if (items.size() > size) {
-                items = items.subList(0, size);
-                hasMore = true;
+        // 7. 基于时间戳游标分页：过滤掉已读的（时间戳 >= cursor 的项）
+        if (cursor != null && cursor > 0) {
+            List<FeedItemVO> filtered = new ArrayList<>();
+            for (FeedItemVO item : allItems) {
+                if (toTimestamp(item.getCreatedAt()) < cursor) {
+                    filtered.add(item);
+                }
             }
-            nextCursor = (long) (offset + items.size());
-            hasMore = hasMore || items.size() >= size;
+            allItems = filtered;
         }
 
-        return Map.of("list", items, "cursor", nextCursor, "hasMore", hasMore);
+        // 8. 取前 size 条
+        boolean hasMore = allItems.size() > size;
+        List<FeedItemVO> items = hasMore ? allItems.subList(0, size) : allItems;
+        Long nextCursor = (!items.isEmpty() && hasMore)
+                ? toTimestamp(items.get(items.size() - 1).getCreatedAt())
+                : null;
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("list", items);
+        result.put("cursor", nextCursor);
+        result.put("hasMore", hasMore);
+        return result;
     }
 
     /**
@@ -145,22 +158,26 @@ public class FeedService {
             nextCursor = toTimestamp(items.get(items.size() - 1).getCreatedAt());
         }
 
-        return Map.of("list", items, "cursor", nextCursor, "hasMore", false);
+        Map<String, Object> result = new HashMap<>();
+        result.put("list", items);
+        result.put("cursor", nextCursor);
+        result.put("hasMore", false);
+        return result;
     }
 
     // ==================== 辅助方法 ====================
 
-    private List<FeedItemVO> buildFeedItems(List<Long> noteIds, int limit) {
+    private List<FeedItemVO> queryAndSortByTime(List<Long> noteIds) {
         if (noteIds.isEmpty()) return Collections.emptyList();
 
-        List<Long> queryIds = noteIds.size() > limit ? noteIds.subList(0, limit) : noteIds;
-        String inClause = queryIds.stream().map(String::valueOf).collect(Collectors.joining(","));
+        String inClause = noteIds.stream().map(String::valueOf).collect(Collectors.joining(","));
 
         List<FeedItemVO> items = jdbcTemplate.query(
                 "SELECT n.id, n.author_id, n.title, n.shop_name, n.like_count, " +
                         "n.collect_count, n.comment_count, n.created_at, " +
                         "(SELECT ni.image_url FROM note_image ni WHERE ni.note_id = n.id ORDER BY ni.sort_order LIMIT 1) AS cover_url " +
-                        "FROM note n WHERE n.id IN (" + inClause + ") AND n.status = 1",
+                        "FROM note n WHERE n.id IN (" + inClause + ") AND n.status = 1 " +
+                        "ORDER BY n.created_at DESC",
                 (rs, rowNum) -> {
                     FeedItemVO vo = new FeedItemVO();
                     vo.setPostId(rs.getLong("id"));
@@ -175,15 +192,7 @@ public class FeedService {
                     return vo;
                 });
 
-        // 按原始顺序排序
-        Map<Long, FeedItemVO> itemMap = items.stream()
-                .collect(Collectors.toMap(FeedItemVO::getPostId, i -> i));
-        List<FeedItemVO> sorted = new ArrayList<>();
-        for (Long id : queryIds) {
-            FeedItemVO item = itemMap.get(id);
-            if (item != null) sorted.add(item);
-        }
-        return sorted;
+        return items;
     }
 
     private long toTimestamp(java.time.LocalDateTime dateTime) {

@@ -319,13 +319,3 @@ curl http://localhost:8080/api/rank/top10
 - [需求文档](docs/分布式美食探店社区平台_软件需求说明书_推荐ES版.docx)
 - [概要设计](docs/分布式美食探店社区平台_概要设计说明书_ES推荐版.docx)
 
-## 团队分工
-
-| 角色 | 负责模块 |
-|------|----------|
-| 架构师 + DevOps | 整体架构、Docker 编排、Gateway 网关 |
-| 组员2 | User Service |
-| 组员3 | Post + Location + Rank Service |
-| 组员4 | Feed + Recommend Service |
-| 组员5 | Notify Service + WebSocket |
-| 组员6 | 前端 + 测试 + 文档 |

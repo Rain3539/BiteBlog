@@ -1,0 +1,34 @@
+{
+  "GET /feed/timeline" : {
+    "transaction" : "GET /feed/timeline",
+    "sampleCount" : 10000,
+    "errorCount" : 0,
+    "errorPct" : 0.0,
+    "meanResTime" : 12.91819999999992,
+    "medianResTime" : 13.0,
+    "minResTime" : 7.0,
+    "maxResTime" : 43.0,
+    "pct1ResTime" : 15.0,
+    "pct2ResTime" : 17.0,
+    "pct3ResTime" : 22.0,
+    "throughput" : 838.2229673093042,
+    "receivedKBytesPerSec" : 3297.715678698659,
+    "sentKBytesPerSec" : 124.42372170997486
+  },
+  "Total" : {
+    "transaction" : "Total",
+    "sampleCount" : 10000,
+    "errorCount" : 0,
+    "errorPct" : 0.0,
+    "meanResTime" : 12.91819999999992,
+    "medianResTime" : 13.0,
+    "minResTime" : 7.0,
+    "maxResTime" : 43.0,
+    "pct1ResTime" : 15.0,
+    "pct2ResTime" : 17.0,
+    "pct3ResTime" : 22.0,
+    "throughput" : 838.2229673093042,
+    "receivedKBytesPerSec" : 3297.715678698659,
+    "sentKBytesPerSec" : 124.42372170997486
+  }
+}

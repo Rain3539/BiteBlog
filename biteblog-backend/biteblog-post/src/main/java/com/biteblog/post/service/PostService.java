@@ -12,6 +12,7 @@ import com.biteblog.post.entity.*;
 import com.biteblog.post.mapper.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,6 +29,7 @@ public class PostService extends ServiceImpl<NoteMapper, Note> {
     private final NoteLikeMapper likeMapper;
     private final NoteFavoriteMapper favoriteMapper;
     private final RedisTemplate<String, Object> objectRedisTemplate;
+    private final StringRedisTemplate stringRedisTemplate;
     private final EsSyncService esSyncService;
     private final PostEventPublisher eventPublisher;
 
@@ -75,6 +77,11 @@ public class PostService extends ServiceImpl<NoteMapper, Note> {
 
         // 发 MQ 事件
         eventPublisher.publishNoteCreated(note.getId(), authorId);
+
+        // 同步写入作者自己的inbox（绕过fanout延迟，保证发布者立即可见）
+        try {
+            stringRedisTemplate.opsForZSet().add("feed:inbox:" + authorId, note.getId().toString(), System.currentTimeMillis());
+        } catch (Exception ignored) {}
 
         return note.getId();
     }

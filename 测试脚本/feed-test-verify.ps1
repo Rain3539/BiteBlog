@@ -1,4 +1,6 @@
 ﻿$ErrorActionPreference = "SilentlyContinue"
+$transcriptFile = Join-Path $PSScriptRoot "feed-test-result.txt"
+Start-Transcript -Path $transcriptFile -Force | Out-Null
 $base = "http://localhost:8080/api"
 $redisContainer = "biteblog-redis"
 $redisPassword = "redis123456"
@@ -20,7 +22,7 @@ Write-Host "===== 1. Feed 流响应时间 (目标 < 300ms) =====" -ForegroundCol
 $times = @()
 for ($i = 1; $i -le 10; $i++) {
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
-    try { Invoke-RestMethod -Uri "$base/feed/timeline?size=20" -Headers $headers | Out-Null } catch {}
+    try { Invoke-RestMethod -Uri "$base/feed/timeline?size=20" -Headers $headers | Out-Null } catch { Write-Host "  请求失败: $($_.Exception.Message)" -ForegroundColor Red }
     $sw.Stop()
     $times += $sw.ElapsedMilliseconds
     Write-Host "  第${i}次: $($sw.ElapsedMilliseconds)ms" -ForegroundColor DarkGray
@@ -43,8 +45,9 @@ for ($page = 1; $page -le 5; $page++) {
         $cursor = $resp.data.cursor
         $hasMore = $resp.data.hasMore
         Write-Host "  第${page}页: postIds=[$($ids -join ',')] hasMore=$hasMore" -ForegroundColor DarkGray
+        if (-not $hasMore) { break }
     } catch {
-        Write-Host "  第${page}页: 请求失败" -ForegroundColor Red
+        Write-Host "  第${page}页: 请求失败 - $($_.Exception.Message)" -ForegroundColor Red
     }
 }
 $dups = $allIds | Group-Object | Where-Object { $_.Count -gt 1 }
@@ -54,28 +57,52 @@ if ($dups) {
     Write-Host "  分页验证: 通过 (无重复)" -ForegroundColor Green
 }
 
-# 3. Fanout 延迟
+# 3. Fanout 延迟（真实MQ推送：发布者发帖，粉丝查feed）
 Write-Host ""
 Write-Host "===== 3. Fanout 延迟 (目标秒级) =====" -ForegroundColor Cyan
-$publishBody = @{ title = "Fanout延迟测试"; content = "测试Fanout延迟"; shopName = "测试店铺"; address = "测试地址"; imageUrls = @() } | ConvertTo-Json -Depth 5 -Compress
+
+# 登录一个粉丝账号
+$followerLogin = @{ phone = "13800000009"; password = "12345678" } | ConvertTo-Json -Compress
+$followerBytes = [System.Text.Encoding]::UTF8.GetBytes($followerLogin)
+$followerResp = Invoke-RestMethod -Uri "http://localhost:8081/user/login" -Method POST -ContentType "application/json; charset=utf-8" -Body $followerBytes
+$followerId = $followerResp.data.userId
+$followerToken = $followerResp.data.token
+$followerHeaders = @{ "Authorization" = "Bearer $followerToken"; "X-User-Id" = "$followerId" }
+Write-Host "  发布者: $($loginResp.data.username) (userId=$userId)" -ForegroundColor White
+Write-Host "  粉丝: $($followerResp.data.username) (userId=$followerId)" -ForegroundColor White
+
+# 先取关再关注，确保关注关系正确 (POST /api/user/follow/{targetUserId})
+try {
+    Invoke-RestMethod -Uri "$base/user/follow/$userId" -Method POST -Headers $followerHeaders | Out-Null
+    Write-Host "  已确保粉丝关注了发布者" -ForegroundColor DarkGray
+} catch { Write-Host "  关注失败: $($_.Exception.Message)" -ForegroundColor Red }
+
+$testTitle = "Fanout延迟测试"
+$publishBody = @{ title = $testTitle; content = "测试Fanout延迟"; shopName = "测试店铺"; address = "测试地址"; imageUrls = @() } | ConvertTo-Json -Depth 5 -Compress
 $publishBytes = [System.Text.Encoding]::UTF8.GetBytes($publishBody)
 $publishTime = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()
 Write-Host "  发布时间: $publishTime" -ForegroundColor DarkGray
-try { Invoke-RestMethod -Uri "$base/post/publish" -Method POST -Headers $headers -ContentType "application/json; charset=utf-8" -Body $publishBytes | Out-Null } catch {}
+try {
+    $pubResp = Invoke-RestMethod -Uri "$base/post/publish" -Method POST -Headers $headers -ContentType "application/json; charset=utf-8" -Body $publishBytes
+    $newNoteId = $pubResp.data.postId
+    Write-Host "  发布成功, postId=$newNoteId" -ForegroundColor Green
+} catch { Write-Host "  发布失败: $($_.Exception.Message)" -ForegroundColor Red }
 
 $found = $false
 for ($i = 1; $i -le 20; $i++) {
     Start-Sleep -Milliseconds 500
     try {
-        $feedResp = Invoke-RestMethod -Uri "$base/feed/timeline?size=50" -Headers $headers
-        $match = $feedResp.data.list | Where-Object { $_.title -like "*Fanout延迟测试*" }
+        $feedResp = Invoke-RestMethod -Uri "$base/feed/timeline?size=50" -Headers $followerHeaders
+        $topIds = ($feedResp.data.list | Select-Object -First 3).postId -join ","
+        Write-Host "  第${i}次: top3=[$topIds] listCount=$($feedResp.data.list.Count)" -ForegroundColor DarkGray
+        $match = $feedResp.data.list | Where-Object { $_.postId -eq $newNoteId }
         if ($match) {
             $delay = $i * 500
-            Write-Host "  Fanout 延迟: ${delay}ms" -ForegroundColor Green
+            Write-Host "  Fanout 延迟: ${delay}ms (postId=$newNoteId 已出现在粉丝feed)" -ForegroundColor Green
             $found = $true
             break
         }
-    } catch {}
+    } catch { Write-Host "  轮询请求失败: $($_.Exception.Message)" -ForegroundColor Red }
 }
 if (-not $found) {
     Write-Host "  Fanout 延迟: 超过 10s" -ForegroundColor Yellow
@@ -101,8 +128,6 @@ foreach ($bvid in $bigVs -split "`n") {
 }
 
 Write-Host ""
-Write-Host "===== JMeter 压测 =====" -ForegroundColor Cyan
-Write-Host '运行: & "D:\from_browser\apache-jmeter-5.6.3\bin\jmeter.bat" -n -t jmeter\feed-service-test.jmx -l jmeter\feed-result.jtl -e -o jmeter\feedservice-report' -ForegroundColor White
-
-Write-Host ""
 Write-Host "===== 完成 =====" -ForegroundColor Cyan
+Stop-Transcript | Out-Null
+Write-Host "测试结果已保存: $transcriptFile" -ForegroundColor Green

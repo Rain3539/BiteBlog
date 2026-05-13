@@ -1,37 +1,66 @@
-PS D:\桌面\whu_cs\大三下\分布式（期末考试开卷）\大作业\BiteBlog> .\测试脚本\feed-test-verify.ps1        
+﻿**********************
+Windows PowerShell 脚本开始
+开始时间: 20260513195809
+用户名: LAPTOP-0SABB5A1\丁欣雨
+RunAs 用户: LAPTOP-0SABB5A1\丁欣雨
+配置名称: 
+计算机: LAPTOP-0SABB5A1 (Microsoft Windows NT 10.0.26200.0)
+主机应用程序: C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe -noexit -command try { . "d:\VSCode\Microsoft VS Code\8b640eef5a\resources\app\out\vs\workbench\contrib\terminal\common\scripts\shellIntegration.ps1" } catch {}
+进程 ID: 45768
+PSVersion: 5.1.26100.8115
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.8115
+BuildVersion: 10.0.26100.8115
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
 ===== Feed Service 非功能验证 =====
 用户: user_bbq (userId=7)
 
 ===== 1. Feed 流响应时间 (目标 < 300ms) =====
-  第1次: 24ms
-  第2次: 20ms
-  第3次: 15ms
-  第4次: 14ms
-  第5次: 14ms
-  第6次: 14ms
-  第7次: 13ms
-  第8次: 14ms
-  第9次: 23ms
-  第10次: 21ms
-  平均: 17ms (目标 <300ms)
+  第1次: 20ms
+  第2次: 14ms
+  第3次: 14ms
+  第4次: 15ms
+  第5次: 16ms
+  第6次: 13ms
+  第7次: 15ms
+  第8次: 15ms
+  第9次: 15ms
+  第10次: 15ms
+  平均: 15ms (目标 <300ms)
 
 ===== 2. 游标分页一致性 =====
-  第1页: postIds=[65,64,54] hasMore=True
-  第2页: postIds=[54,53,52] hasMore=True
-  第3页: postIds=[54,53,52] hasMore=True
-  第4页: postIds=[54,53,52] hasMore=True
-  第5页: postIds=[54,53,52] hasMore=True
-  分页验证: 失败 (有重复: 54,53,52)
+  第1页: postIds=[96,95,94] hasMore=True
+  第2页: postIds=[93,92,91] hasMore=True
+  第3页: postIds=[90,89,88] hasMore=True
+  第4页: postIds=[87,86,85] hasMore=True
+  第5页: postIds=[83,82,81] hasMore=True
+  分页验证: 通过 (无重复)
 
 ===== 3. Fanout 延迟 (目标秒级) =====
-  发布时间: 1778602176397
-  Fanout 延迟: 超过 10s
+  发布者: user_bbq (userId=7)
+  粉丝: user_nightfood (userId=10)
+  已确保粉丝关注了发布者
+  发布时间: 1778673489725
+  发布成功, postId=97
+  第1次: top3=[97,54,55] listCount=9
+  Fanout 延迟: 500ms (postId=97 已出现在粉丝feed)
 
 ===== 4. Redis inbox 空间验证 =====
-  inbox:7 条数: 2 (建议上限 500)
+  inbox:7 条数: 25 (建议上限 500)
 
 ===== 5. 大V inbox 验证 =====
   feed:bigv: 4 12 13
   inbox:4 条数: 2
   inbox:12 条数: 3
   inbox:13 条数: 3
+
+
+===== 完成 =====
+**********************
+Windows PowerShell 脚本结束
+结束时间: 20260513195810
+**********************
