@@ -8,6 +8,7 @@
       <div class="header-nav">
         <router-link to="/" class="nav-link" :class="{ active: route.path === '/' }">关注</router-link>
         <router-link to="/discover" class="nav-link" :class="{ active: route.path.startsWith('/discover') }">发现</router-link>
+        <router-link to="/rank" class="nav-link" :class="{ active: route.path.startsWith('/rank') }">热榜</router-link>
         <router-link to="/nearby" class="nav-link" :class="{ active: route.path.startsWith('/nearby') }">附近</router-link>
       </div>
       <div class="header-right">

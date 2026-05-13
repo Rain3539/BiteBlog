@@ -8,11 +8,7 @@ spring:
   cloud:
     nacos:
       discovery:
-        enabled: false
         server-addr: localhost:8848
-    service-registry:
-      auto-registration:
-        enabled: false
 
   datasource:
     url: jdbc:mysql://localhost:3306/biteblog?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
@@ -33,9 +29,9 @@ spring:
     password: guest
     listener:
       simple:
-        auto-startup: false
+        auto-startup: true
       direct:
-        auto-startup: false
+        auto-startup: true
 
   elasticsearch:
     uris: http://localhost:9200

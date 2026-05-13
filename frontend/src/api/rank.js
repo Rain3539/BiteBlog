@@ -7,3 +7,7 @@ export function getTop10(type = 'daily') {
 export function getRankList(params) {
   return request.get('/rank/list', { params })
 }
+
+export function rebuildRank(type = 'daily') {
+  return request.post('/rank/rebuild', null, { params: { type } })
+}

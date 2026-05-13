@@ -1,121 +1,136 @@
-﻿
-$ErrorActionPreference = "SilentlyContinue"
-$baseUrl = "http://localhost:8081"
+$ErrorActionPreference = "Continue"
 
-Write-Host "===== Init 60 Users =====" -ForegroundColor Cyan
+$userBase = "http://localhost:8081"
+$password = "12345678"
 
-$users = @()
-$bigVNames = @("bigv_foodking", "bigv_cheflife", "bigv_tastehunter")
-for ($i = 0; $i -lt 3; $i++) {
-    $users += @{ phone = "138000000$(($i+1).ToString('D2'))"; password = "12345678"; username = $bigVNames[$i]; isBigV = $true }
-}
-$foodTypes = @("hotpot","bbq","dessert","tea","sushi","noodle","steak","pizza","dumpling","seafood",
-               "snack","cake","salad","ramen","taco","burger","dimsum","curry","friedrice","wonton",
-               "tofu","porridge","kebab","pancake","icecream","latte","sashimi","paella","risotto","croissant",
-               "bagel","mochi","bingsu","tiramisu","fondue","churros","pretzel","falafel","gyoza","bibimbap",
-               "pho","ceviche","bruschetta","gnocchi","poutine","baklava","tempura","edamame","tikka","schnitzel",
-               "waffle","macaron","cannoli","focaccia","naan","hummus","tandoori","kimchi","bao","teriyaki",
-               "poke","jambalaya")
-for ($i = 3; $i -lt 60; $i++) {
-    $idx = $i - 3
-    $users += @{
-        phone = "138000000$(($i+1).ToString('D2'))"
-        password = "12345678"
-        username = "user_$($foodTypes[$idx])"
-        isBigV = $false
+Write-Host "===== Init BiteBlog Base Users =====" -ForegroundColor Cyan
+Write-Host "User service: $userBase"
+
+function New-UserSeed($index) {
+    $phone = "138000000{0:D2}" -f $index
+    $role = if ($index -le 3) { "bigv" } else { "user" }
+    return @{
+        phone = $phone
+        password = $password
+        username = "bb_${role}_{0:D2}" -f $index
     }
 }
 
-$tokens = @()
+function Invoke-Json($uri, $method, $body, $headers = $null) {
+    $json = $body | ConvertTo-Json -Depth 8 -Compress
+    $bytes = [System.Text.Encoding]::UTF8.GetBytes($json)
+    if ($headers) {
+        return Invoke-RestMethod -Uri $uri -Method $method -Headers $headers -ContentType "application/json; charset=utf-8" -Body $bytes -ErrorAction Stop
+    }
+    return Invoke-RestMethod -Uri $uri -Method $method -ContentType "application/json; charset=utf-8" -Body $bytes -ErrorAction Stop
+}
 
-foreach ($u in $users) {
-    $regJson = @{ phone = $u.phone; password = $u.password; username = $u.username } | ConvertTo-Json -Compress
-    $regBytes = [System.Text.Encoding]::UTF8.GetBytes($regJson)
-    $loginJson = @{ phone = $u.phone; password = $u.password } | ConvertTo-Json -Compress
-    $loginBytes = [System.Text.Encoding]::UTF8.GetBytes($loginJson)
+function Login-SeedUser($seed) {
+    $body = @{ phone = $seed.phone; password = $seed.password }
+    $resp = Invoke-Json "$userBase/user/login" "POST" $body
+    if ($resp.code -ne 200) {
+        throw "Login failed: $($seed.phone), $($resp.msg)"
+    }
+    return @{
+        phone = $seed.phone
+        username = $resp.data.username
+        userId = [long]$resp.data.userId
+        token = $resp.data.token
+    }
+}
 
-    $registered = $false
+function Register-Or-Login($seed) {
     try {
-        $resp = Invoke-RestMethod -Uri "$baseUrl/user/register" -Method POST -ContentType "application/json; charset=utf-8" -Body $regBytes
+        $resp = Invoke-Json "$userBase/user/register" "POST" $seed
         if ($resp.code -eq 200) {
-            Write-Host "[OK] $($u.username) 注册成功, userId=$($resp.data.userId)" -ForegroundColor Green
-            $tokens += @{ userId = $resp.data.userId; token = $resp.data.token; username = $u.username; isBigV = $u.isBigV }
-            $registered = $true
+            Write-Host "[OK] registered $($seed.phone), userId=$($resp.data.userId)" -ForegroundColor Green
+            return @{
+                phone = $seed.phone
+                username = $seed.username
+                userId = [long]$resp.data.userId
+                token = $resp.data.token
+            }
+        }
+        Write-Host "[SKIP] $($seed.phone): $($resp.msg)" -ForegroundColor Yellow
+    } catch {
+        Write-Host "[SKIP] $($seed.phone) already exists or register failed, login instead" -ForegroundColor Yellow
+    }
+
+    try {
+        $account = Login-SeedUser $seed
+        Write-Host "[OK] login $($seed.phone), userId=$($account.userId)" -ForegroundColor Green
+        return $account
+    } catch {
+        Write-Host "[ERR] cannot prepare $($seed.phone): $($_.Exception.Message)" -ForegroundColor Red
+        return $null
+    }
+}
+
+function Ensure-Follow($follower, $target) {
+    if (!$follower -or !$target -or $follower.userId -eq $target.userId) {
+        return
+    }
+
+    $headers = @{
+        "Authorization" = "Bearer $($follower.token)"
+        "X-User-Id" = "$($follower.userId)"
+    }
+
+    try {
+        $resp = Invoke-RestMethod -Uri "$userBase/user/follow/$($target.userId)" -Method POST -Headers $headers -ErrorAction Stop
+        if ($resp.code -eq 200 -and $resp.data.followed -eq $false) {
+            $resp = Invoke-RestMethod -Uri "$userBase/user/follow/$($target.userId)" -Method POST -Headers $headers -ErrorAction Stop
+        }
+        if ($resp.code -eq 200 -and $resp.data.followed -eq $true) {
+            Write-Host "[Follow] $($follower.phone) -> $($target.phone)"
+        } else {
+            Write-Host "[WARN] follow uncertain: $($follower.phone) -> $($target.phone)" -ForegroundColor Yellow
         }
     } catch {
-        Write-Host "[WARN] $($u.username) 注册失败，尝试登录" -ForegroundColor DarkYellow
+        Write-Host "[ERR] follow failed: $($follower.phone) -> $($target.phone), $($_.Exception.Message)" -ForegroundColor Red
     }
+}
 
-    if (-not $registered) {
-        try {
-            $loginResp = Invoke-RestMethod -Uri "$baseUrl/user/login" -Method POST -ContentType "application/json; charset=utf-8" -Body $loginBytes
-            if ($loginResp.code -eq 200) {
-                Write-Host "[LOGIN] $($u.username) 登录成功, userId=$($loginResp.data.userId)" -ForegroundColor Yellow
-                $tokens += @{ userId = $loginResp.data.userId; token = $loginResp.data.token; username = $u.username; isBigV = $u.isBigV }
-            } else {
-                Write-Host "[FAIL] $($u.username): code=$($loginResp.code) msg=$($loginResp.msg)" -ForegroundColor Red
-            }
-        } catch {
-            Write-Host "[ERR] $($u.username): 登录失败" -ForegroundColor Red
-        }
+$seeds = 1..60 | ForEach-Object { New-UserSeed $_ }
+$accounts = @()
+
+foreach ($seed in $seeds) {
+    $account = Register-Or-Login $seed
+    if ($account) {
+        $accounts += $account
+    }
+}
+
+if ($accounts.Count -lt 60) {
+    Write-Host "[WARN] only prepared $($accounts.Count)/60 users. Please check user-service and database state." -ForegroundColor Yellow
+}
+
+$byPhone = @{}
+foreach ($account in $accounts) {
+    $byPhone[$account.phone] = $account
+}
+
+Write-Host ""
+Write-Host "===== Build Big-V Follow Relations =====" -ForegroundColor Cyan
+Write-Host "Targets: 13800000001 ~ 13800000003, followers: 13800000004 ~ 13800000060"
+
+$bigVTargets = @("13800000001", "13800000002", "13800000003")
+$followerPhones = 4..60 | ForEach-Object { "138000000{0:D2}" -f $_ }
+
+foreach ($targetPhone in $bigVTargets) {
+    foreach ($followerPhone in $followerPhones) {
+        Ensure-Follow $byPhone[$followerPhone] $byPhone[$targetPhone]
     }
 }
 
 Write-Host ""
-Write-Host "===== 建立关注关系（大V保证 + 随机） =====" -ForegroundColor Cyan
-
-if ($tokens.Count -ge 60) {
-    $bigVIndices = @(0, 1, 2)
-    $normalIndices = @(3..59)
-
-    $followCount = 0
-    foreach ($ni in $normalIndices) {
-        $normalUser = $tokens[$ni]
-        $h = @{ "Authorization" = "Bearer $($normalUser.token)"; "X-User-Id" = "$($normalUser.userId)" }
-
-        foreach ($bvi in $bigVIndices) {
-            $target = $tokens[$bvi]
-            try {
-                $resp = Invoke-RestMethod -Uri "$baseUrl/user/follow/$($target.userId)" -Method POST -Headers $h
-                if ($resp.data.followed) { $followCount++ }
-            } catch {}
-        }
-
-        $extraCount = Get-Random -Minimum 2 -Maximum 8
-        $candidates = $normalIndices | Where-Object { $_ -ne $ni }
-        $shuffled = $candidates | Sort-Object { Get-Random }
-        $picks = $shuffled | Select-Object -First $extraCount
-
-        foreach ($pi in $picks) {
-            $target = $tokens[$pi]
-            try {
-                $resp = Invoke-RestMethod -Uri "$baseUrl/user/follow/$($target.userId)" -Method POST -Headers $h
-                if ($resp.data.followed) { $followCount++ }
-            } catch {}
-        }
-
-        Write-Host "[关注] $($normalUser.username) -> $($bigVIndices.Count + $picks.Count) 个用户" -ForegroundColor DarkGray
-    }
-
-    Write-Host ""
-    Write-Host "关注操作总数: $followCount" -ForegroundColor Green
-
-    Write-Host ""
-    Write-Host "===== 验证大V粉丝数 =====" -ForegroundColor Cyan
-    foreach ($bvi in $bigVIndices) {
-        $bv = $tokens[$bvi]
-        try {
-            $info = Invoke-RestMethod -Uri "$baseUrl/user/$($bv.userId)" -Method GET -Headers @{ "Authorization" = "Bearer $($bv.token)" }
-            $fc = $info.data.followerCount
-            $mark = if ($fc -ge 50) { "大V" } else { "非大V" }
-            Write-Host "  $($bv.username): $fc 粉丝 [$mark]" -ForegroundColor $(if ($fc -ge 50) { "Green" } else { "Yellow" })
-        } catch {
-            Write-Host "  $($bv.username): 查询失败" -ForegroundColor Red
-        }
-    }
-}
+Write-Host "===== Build Small Follow Graph =====" -ForegroundColor Cyan
+Ensure-Follow $byPhone["13800000001"] $byPhone["13800000004"]
+Ensure-Follow $byPhone["13800000004"] $byPhone["13800000005"]
+Ensure-Follow $byPhone["13800000005"] $byPhone["13800000001"]
 
 Write-Host ""
-Write-Host "===== 完成 =====" -ForegroundColor Cyan
-Write-Host "60 个用户: 13800000001 ~ 13800000060, 密码 12345678" -ForegroundColor White
-Write-Host "大V: bigv_foodking, bigv_cheflife, bigv_tastehunter (>= 50 粉丝)" -ForegroundColor White
+Write-Host "===== Done =====" -ForegroundColor Cyan
+Write-Host "Users: 13800000001 ~ 13800000060"
+Write-Host "Password: $password"
+Write-Host "Big-V users: 13800000001 ~ 13800000003, each has more than 50 followers after this script."

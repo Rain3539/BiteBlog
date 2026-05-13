@@ -14,6 +14,7 @@ const routes = [
     children: [
       { path: '', name: 'Home', component: () => import('../views/HomeView.vue') },
       { path: 'discover', name: 'Discover', component: () => import('../views/DiscoverView.vue') },
+      { path: 'rank', name: 'Rank', component: () => import('../views/RankView.vue') },
       { path: 'publish', name: 'Publish', component: () => import('../views/PublishView.vue') },
       { path: 'post/:id', name: 'PostDetail', component: () => import('../views/PostDetailView.vue') },
       { path: 'nearby', name: 'Nearby', component: () => import('../views/NearbyView.vue') },
