@@ -1,6 +1,7 @@
 package com.biteblog.post.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.biteblog.common.exception.BusinessException;
 import com.biteblog.common.result.ErrorCode;
@@ -171,6 +172,34 @@ public class PostService extends ServiceImpl<NoteMapper, Note> {
         }
 
         eventPublisher.publishNoteDeleted(postId);
+    }
+
+    // ==================== 用户笔记列表 ====================
+
+    public Map<String, Object> getUserPosts(Long userId, int page, int size) {
+        Page<Note> notePage = noteMapper.selectPage(
+                new Page<>(page, size),
+                new LambdaQueryWrapper<Note>()
+                        .eq(Note::getAuthorId, userId)
+                        .eq(Note::getStatus, 1)
+                        .orderByDesc(Note::getCreatedAt));
+
+        List<Map<String, Object>> list = notePage.getRecords().stream().map(note -> {
+            Map<String, Object> map = new HashMap<>();
+            map.put("postId", note.getId());
+            map.put("title", note.getTitle());
+            map.put("shopName", note.getShopName());
+            map.put("likeCount", note.getLikeCount());
+            map.put("collectCount", note.getCollectCount());
+            map.put("commentCount", note.getCommentCount());
+            map.put("createdAt", note.getCreatedAt());
+            return map;
+        }).collect(Collectors.toList());
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("list", list);
+        result.put("total", notePage.getTotal());
+        return result;
     }
 
     // ==================== ES 全文搜索 ====================

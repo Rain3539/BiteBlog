@@ -1,0 +1,37 @@
+PS D:\桌面\whu_cs\大三下\分布式（期末考试开卷）\大作业\BiteBlog> .\测试脚本\feed-test-verify.ps1        
+===== Feed Service 非功能验证 =====
+用户: user_bbq (userId=7)
+
+===== 1. Feed 流响应时间 (目标 < 300ms) =====
+  第1次: 24ms
+  第2次: 20ms
+  第3次: 15ms
+  第4次: 14ms
+  第5次: 14ms
+  第6次: 14ms
+  第7次: 13ms
+  第8次: 14ms
+  第9次: 23ms
+  第10次: 21ms
+  平均: 17ms (目标 <300ms)
+
+===== 2. 游标分页一致性 =====
+  第1页: postIds=[65,64,54] hasMore=True
+  第2页: postIds=[54,53,52] hasMore=True
+  第3页: postIds=[54,53,52] hasMore=True
+  第4页: postIds=[54,53,52] hasMore=True
+  第5页: postIds=[54,53,52] hasMore=True
+  分页验证: 失败 (有重复: 54,53,52)
+
+===== 3. Fanout 延迟 (目标秒级) =====
+  发布时间: 1778602176397
+  Fanout 延迟: 超过 10s
+
+===== 4. Redis inbox 空间验证 =====
+  inbox:7 条数: 2 (建议上限 500)
+
+===== 5. 大V inbox 验证 =====
+  feed:bigv: 4 12 13
+  inbox:4 条数: 2
+  inbox:12 条数: 3
+  inbox:13 条数: 3

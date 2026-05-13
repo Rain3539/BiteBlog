@@ -6,7 +6,7 @@
         <h2 class="logo" @click="$router.push('/')">BiteBlog</h2>
       </div>
       <div class="header-nav">
-        <router-link to="/" class="nav-link" :class="{ active: route.path === '/' }">首页</router-link>
+        <router-link to="/" class="nav-link" :class="{ active: route.path === '/' }">关注</router-link>
         <router-link to="/discover" class="nav-link" :class="{ active: route.path.startsWith('/discover') }">发现</router-link>
         <router-link to="/nearby" class="nav-link" :class="{ active: route.path.startsWith('/nearby') }">附近</router-link>
       </div>

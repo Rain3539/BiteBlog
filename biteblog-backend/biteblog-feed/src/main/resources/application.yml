@@ -23,6 +23,11 @@ spring:
     port: 5672
     username: guest
     password: guest
+    listener:
+      simple:
+        deserialization:
+          trust:
+            all: true
   elasticsearch:
     uris: http://localhost:9200
 

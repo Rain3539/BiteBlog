@@ -93,4 +93,12 @@ public class PostController {
                                               @RequestParam(defaultValue = "20") int size) {
         return Result.success(postService.search(keyword, page, size));
     }
+
+    /** 用户笔记列表 GET /post/user/{userId} */
+    @GetMapping("/user/{userId}")
+    public Result<Map<String, Object>> getUserPosts(@PathVariable Long userId,
+                                                     @RequestParam(defaultValue = "1") int page,
+                                                     @RequestParam(defaultValue = "20") int size) {
+        return Result.success(postService.getUserPosts(userId, page, size));
+    }
 }

@@ -49,3 +49,7 @@ export function getPostComments(id, params) {
 export function searchPosts(params) {
   return request.get('/post/search', { params })
 }
+
+export function getUserPosts(userId, params) {
+  return request.get(`/post/user/${userId}`, { params })
+}
