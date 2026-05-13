@@ -134,9 +134,19 @@ mvn clean install -DskipTests
 
 ### 启动后端服务
 
-每个微服务独立启动，开多个终端窗口分别运行。**启动顺序建议：先 Gateway，再业务服务。**
+**方式一：一键启动（推荐）**
 
-**方式一：命令行启动（推荐调试用）**
+```powershell
+# 编译所有模块并启动 8 个微服务（每个服务自动打开独立终端窗口）
+.\start-all.ps1
+
+# 仅编译不启动
+.\start-all.ps1 compile
+```
+
+脚本会按顺序启动：gateway → user → post → feed → recommend → location → rank → notify，端口 8080~8087。
+
+**方式二：命令行手动启动（调试用）**
 
 ```bash
 # 终端 1 - 启动网关（端口 8080）
@@ -147,44 +157,7 @@ mvn spring-boot:run
 cd biteblog-backend/biteblog-user
 mvn spring-boot:run
 
-# 终端 3 - 启动笔记服务（端口 8082）
-cd biteblog-backend/biteblog-post
-mvn spring-boot:run
-
-# 终端 4 - 启动 Feed 服务（端口 8083）
-cd biteblog-backend/biteblog-feed
-mvn spring-boot:run
-
-# 终端 5 - 启动推荐服务（端口 8084）
-cd biteblog-backend/biteblog-recommend
-mvn spring-boot:run
-
-# 终端 6 - 启动位置服务（端口 8085）
-cd biteblog-backend/biteblog-location
-mvn spring-boot:run
-
-# 终端 7 - 启动排行服务（端口 8086）
-cd biteblog-backend/biteblog-rank
-mvn spring-boot:run
-
-# 终端 8 - 启动通知服务（端口 8087）
-cd biteblog-backend/biteblog-notify
-mvn spring-boot:run
-```
-
-**方式二：编译 JAR 后后台运行**
-
-```bash
-# 编译打包
-cd biteblog-backend
-mvn clean package -DskipTests
-
-# 后台启动（示例：user-service）
-cd biteblog-user/target
-nohup java -jar biteblog-user-1.0.0.jar > user.log 2>&1 &
-
-# 查看日志
-tail -f user.log
+# ... 其他服务同理，参见 start-all.ps1 中的服务列表
 ```
 
 **方式三：IntelliJ IDEA 启动**
@@ -269,26 +242,32 @@ curl http://localhost:8080/api/rank/top10
 
 ### 初始化测试数据
 
-后端服务启动后，执行以下命令创建 10 个测试用户并建立关注关系：
+后端服务启动后，按模块需要执行对应的数据初始化脚本：
 
 ```powershell
-# 在 PowerShell 中执行
+# 基础测试数据（10 个用户 + 关注关系），所有模块通用
 .\sql\init-data.ps1
+
+# 各模块专用测试数据（根据需要执行）
+.\sql\init-feed-data.ps1        # Feed 服务测试数据
+.\sql\init-rank-data.ps1        # Rank 排行服务测试数据
+.\sql\init-location-data.ps1    # Location 位置服务测试数据
+.\sql\init-notify-data.ps1      # Notify 通知服务测试数据
+.\sql\init-recommend-data.ps1   # Recommend 推荐服务测试数据
 ```
 
-测试账号：`13800000001` ~ `13800000010`，密码统一 `12345678`。
+基础测试账号：`13800000001` ~ `13800000010`，密码统一 `12345678`。
 
 ### 启动顺序总结
 
 ```
-1. docker compose up -d          （等所有容器 healthy）
-2. bash elasticsearch/init-indices.sh
-3. cd biteblog-backend && mvn clean install -DskipTests
-4. 启动 gateway-service（8080）
-5. 启动其他业务服务（8081~8087，顺序不限）
-6. .\sql\init-data.ps1             （创建测试用户）
-7. cd frontend && npm install && npm run dev
-8. 浏览器打开 http://localhost:3000
+1. docker compose up -d                       （等所有容器 healthy）
+2. bash elasticsearch/init-indices.sh         （创建 ES 索引）
+3. .\start-all.ps1                            （编译 + 一键启动 8 个微服务）
+4. .\sql\init-data.ps1                        （初始化基础测试数据）
+5. .\sql\init-feed-data.ps1                   （按需执行各模块测试数据）
+6. cd frontend && npm install && npm run dev  （启动前端）
+7. 浏览器打开 http://localhost:3000
 ```
 
 ## 项目结构
