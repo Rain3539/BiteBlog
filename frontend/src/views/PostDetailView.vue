@@ -53,6 +53,12 @@
       </div>
       <div class="shop-addr" v-if="post.address">
         <el-icon><Location /></el-icon> {{ post.address }}
+        <a
+          v-if="post.longitude && post.latitude"
+          :href="`https://uri.amap.com/marker?position=${post.longitude},${post.latitude}&name=${encodeURIComponent(post.shopName || '探店位置')}`"
+          target="_blank"
+          class="map-link"
+        >在地图上看</a>
       </div>
     </div>
 
@@ -177,6 +183,8 @@ const post = reactive({
   content: '',
   shopName: '',
   address: '',
+  longitude: null,
+  latitude: null,
   imageUrls: [],
   scoreColor: 0,
   scoreSmell: 0,
@@ -413,6 +421,18 @@ watch(postId, (newId) => {
   align-items: center;
   gap: 6px;
   margin-top: 6px;
+}
+
+.map-link {
+  font-size: 12px;
+  color: #409eff;
+  text-decoration: none;
+  margin-left: 8px;
+  white-space: nowrap;
+}
+
+.map-link:hover {
+  text-decoration: underline;
 }
 
 /* 互动栏 */

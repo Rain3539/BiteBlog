@@ -4,7 +4,7 @@
 
     <el-form ref="formRef" :model="form" :rules="rules" label-position="top" class="publish-form">
       <!-- 图片上传 -->
-      <el-form-item label="图片" prop="imageUrls">
+      <el-form-item label="图片">
         <div class="upload-area">
           <div v-for="(url, i) in form.imageUrls" :key="i" class="upload-item">
             <img :src="url" class="upload-preview" />
@@ -41,19 +41,31 @@
         />
       </el-form-item>
 
-      <!-- 店铺信息 -->
-      <el-row :gutter="20">
-        <el-col :span="12">
-          <el-form-item label="店铺名称">
-            <el-input v-model="form.shopName" placeholder="如：老王烧烤" />
-          </el-form-item>
-        </el-col>
-        <el-col :span="12">
-          <el-form-item label="店铺地址">
-            <el-input v-model="form.address" placeholder="如：武汉市洪山区珞喻路1037号" />
-          </el-form-item>
-        </el-col>
-      </el-row>
+      <!-- 店铺搜索（接入高德 POI） -->
+      <el-form-item label="探店店铺">
+        <el-autocomplete
+          v-model="poiKeyword"
+          :fetch-suggestions="searchPoi"
+          :trigger-on-focus="false"
+          placeholder="搜索店铺名称，如：老王烧烤"
+          clearable
+          style="width: 100%"
+          @select="onPoiSelect"
+          :debounce="false"
+        >
+          <template #default="{ item }">
+            <div class="poi-option">
+              <div class="poi-name">{{ item.value }}</div>
+              <div class="poi-addr"><el-icon><Location /></el-icon> {{ item.address }}</div>
+            </div>
+          </template>
+        </el-autocomplete>
+      </el-form-item>
+
+      <!-- 地址（POI 搜索后自动回填，可手动修改） -->
+      <el-form-item label="详细地址">
+        <el-input v-model="form.address" placeholder="搜索店铺后自动填写，也可手动输入" />
+      </el-form-item>
 
       <!-- 评分 -->
       <el-form-item label="评分">
@@ -87,18 +99,22 @@
 import { ref, reactive } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
-import { Plus, CircleClose } from '@element-plus/icons-vue'
+import { Plus, CircleClose, Location } from '@element-plus/icons-vue'
 import { uploadImage, publishPost } from '../api/post'
+import { searchPoi as fetchPoi } from '../api/location'
 
 const router = useRouter()
 const formRef = ref(null)
 const publishing = ref(false)
+const poiKeyword = ref('')
 
 const form = reactive({
   title: '',
   content: '',
   shopName: '',
   address: '',
+  longitude: null,
+  latitude: null,
   scoreColor: 0,
   scoreSmell: 0,
   scoreTaste: 0,
@@ -115,6 +131,8 @@ const rules = {
   ]
 }
 
+// ==================== 图片上传 ====================
+
 async function handleImageChange(file) {
   try {
     const res = await uploadImage(file.raw)
@@ -128,6 +146,41 @@ function removeImage(index) {
   form.imageUrls.splice(index, 1)
 }
 
+// ==================== 高德 POI 搜索 ====================
+
+let poiTimer = null
+
+function searchPoi(keyword, callback) {
+  if (!keyword || keyword.length < 1) {
+    callback([])
+    return
+  }
+  clearTimeout(poiTimer)
+  poiTimer = setTimeout(async () => {
+    try {
+      const res = await fetchPoi({ keyword })
+      const list = (res.data?.list || []).map(item => ({
+        value: item.name,
+        address: item.address,
+        longitude: item.longitude,
+        latitude: item.latitude
+      }))
+      callback(list)
+    } catch {
+      callback([])
+    }
+  }, 300)
+}
+
+function onPoiSelect(item) {
+  form.shopName = item.value
+  form.address = item.address
+  form.longitude = item.longitude
+  form.latitude = item.latitude
+}
+
+// ==================== 发布 ====================
+
 async function handlePublish() {
   const valid = await formRef.value.validate().catch(() => false)
   if (!valid) return
@@ -139,8 +192,8 @@ async function handlePublish() {
       content: form.content,
       shopName: form.shopName || null,
       address: form.address || null,
-      longitude: null,
-      latitude: null,
+      longitude: form.longitude,
+      latitude: form.latitude,
       scoreColor: form.scoreColor || 0,
       scoreSmell: form.scoreSmell || 0,
       scoreTaste: form.scoreTaste || 0,
@@ -234,6 +287,26 @@ h3 {
 
 .upload-trigger:hover {
   border-color: #409eff;
+}
+
+/* POI 搜索 */
+.poi-option {
+  padding: 4px 0;
+}
+
+.poi-name {
+  font-size: 14px;
+  color: #303133;
+  font-weight: 500;
+}
+
+.poi-addr {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 2px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .scores {
