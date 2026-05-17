@@ -10,6 +10,11 @@ spring:
     nacos:
       discovery:
         server-addr: localhost:8848
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: redis123456
   datasource:
     url: jdbc:mysql://localhost:3306/biteblog?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai
     username: root
@@ -22,8 +27,9 @@ spring:
     password: guest
     listener:
       simple:
-        # 本地未起 RabbitMQ 时可设为 false，避免启动失败（与 Rank 文档思路一致）
         auto-startup: true
+        # 手动 ack：业务成功才 ack，异常时 nack 转投 DLQ，避免无限重投或静默丢失
+        acknowledge-mode: manual
 
 mybatis-plus:
   configuration:
@@ -31,6 +37,5 @@ mybatis-plus:
     map-underscore-to-camel-case: true
   global-config:
     db-config:
-      logic-delete-field: status
-      logic-delete-value: 0
-      logic-not-delete-value: 1
+      # notification 表无 status 字段，不在此处配置全局逻辑删除，避免 MP 自动拼 WHERE status=1 出错
+      id-type: auto

@@ -2,34 +2,47 @@
 <jmeterTestPlan version="1.2" properties="5.0" jmeter="5.6.3">
   <hashTree>
     <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="Notify Service Test Plan" enabled="true">
-      <stringProp name="TestPlan.comments">Notify Service 压测：经网关登录后压测 /api/notify/health、list、unread-count。默认账号与 sql/init-notify-data.ps1 作者一致（13900004001）。</stringProp>
+      <stringProp name="TestPlan.comments">
+        Notify Service 压测：经网关登录后压测 /api/notify/health、list、unread-count。
+        前置：运行 sql/init-notify-data.ps1 创建测试账号（13900004001 / 12345678）。
+        执行：jmeter -n -t jmeter/notify-service-test.jmx -l jmeter/notify-service-result.jtl -e -o jmeter/notifyservice-report
+      </stringProp>
       <boolProp name="TestPlan.functional_mode">false</boolProp>
       <boolProp name="TestPlan.tearDown_on_shutdown">true</boolProp>
       <boolProp name="TestPlan.serialize_threadgroups">false</boolProp>
       <elementProp name="TestPlan.user_defined_variables" elementType="Arguments" guiclass="ArgumentsPanel" testclass="Arguments" testname="User Defined Variables" enabled="true">
         <collectionProp name="Arguments.arguments">
-          <elementProp name="host" elementType="Argument"><stringProp name="Argument.name">host</stringProp><stringProp name="Argument.value">localhost</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>
-          <elementProp name="port" elementType="Argument"><stringProp name="Argument.name">port</stringProp><stringProp name="Argument.value">8080</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>
-          <elementProp name="PHONE" elementType="Argument"><stringProp name="Argument.name">PHONE</stringProp><stringProp name="Argument.value">13900004001</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>
+          <elementProp name="HOST"     elementType="Argument"><stringProp name="Argument.name">HOST</stringProp><stringProp name="Argument.value">localhost</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>
+          <elementProp name="PORT"     elementType="Argument"><stringProp name="Argument.name">PORT</stringProp><stringProp name="Argument.value">8080</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>
+          <elementProp name="PHONE"    elementType="Argument"><stringProp name="Argument.name">PHONE</stringProp><stringProp name="Argument.value">13900004001</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>
           <elementProp name="PASSWORD" elementType="Argument"><stringProp name="Argument.name">PASSWORD</stringProp><stringProp name="Argument.value">12345678</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>
         </collectionProp>
       </elementProp>
     </TestPlan>
     <hashTree>
-      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Notify Service Users" enabled="true">
-        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+
+      <!-- ======================================================
+           setUp Thread Group: Login ONCE, store token as property
+           This runs before the main test and shares the token
+           across all threads via JMeter properties (__setProperty).
+           ====================================================== -->
+      <SetupThreadGroup guiclass="SetupThreadGroupGui" testclass="SetupThreadGroup"
+          testname="setUp: Login and extract token" enabled="true">
+        <stringProp name="ThreadGroup.on_sample_error">stoptest</stringProp>
         <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller" enabled="true">
           <boolProp name="LoopController.continue_forever">false</boolProp>
-          <stringProp name="LoopController.loops">10</stringProp>
+          <stringProp name="LoopController.loops">1</stringProp>
         </elementProp>
-        <stringProp name="ThreadGroup.num_threads">10</stringProp>
-        <stringProp name="ThreadGroup.ramp_time">5</stringProp>
+        <stringProp name="ThreadGroup.num_threads">1</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">0</stringProp>
         <boolProp name="ThreadGroup.scheduler">false</boolProp>
-      </ThreadGroup>
+      </SetupThreadGroup>
       <hashTree>
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="POST /api/user/login" enabled="true">
-          <stringProp name="HTTPSampler.domain">${host}</stringProp>
-          <stringProp name="HTTPSampler.port">${port}</stringProp>
+        <!-- Login Request -->
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy"
+            testname="setUp: POST /api/user/login" enabled="true">
+          <stringProp name="HTTPSampler.domain">${HOST}</stringProp>
+          <stringProp name="HTTPSampler.port">${PORT}</stringProp>
           <stringProp name="HTTPSampler.protocol">http</stringProp>
           <stringProp name="HTTPSampler.path">/api/user/login</stringProp>
           <stringProp name="HTTPSampler.method">POST</stringProp>
@@ -37,52 +50,127 @@
           <elementProp name="HTTPsampler.Arguments" elementType="Arguments">
             <collectionProp name="Arguments.arguments">
               <elementProp name="" elementType="HTTPArgument">
-                <stringProp name="Argument.value">{&quot;phone&quot;:&quot;${PHONE}&quot;,&quot;password&quot;:&quot;${PASSWORD}&quot;}</stringProp>
+                <stringProp name="Argument.value">{"phone":"${PHONE}","password":"${PASSWORD}"}</stringProp>
                 <stringProp name="Argument.metadata">=</stringProp>
               </elementProp>
             </collectionProp>
           </elementProp>
-          <stringProp name="HTTPSampler.content_type">application/json</stringProp>
           <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
           <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
         </HTTPSamplerProxy>
         <hashTree>
-          <JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="提取 token" enabled="true">
-            <stringProp name="JSONPostProcessor.referenceNames">token</stringProp>
-            <stringProp name="JSONPostProcessor.jsonPathExprs">$.data.token</stringProp>
-            <stringProp name="JSONPostProcessor.match_numbers">1</stringProp>
-          </JSONPostProcessor>
+          <!-- Content-Type header for login -->
+          <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager"
+              testname="login Content-Type" enabled="true">
+            <collectionProp name="HeaderManager.headers">
+              <elementProp name="" elementType="Header">
+                <stringProp name="Header.name">Content-Type</stringProp>
+                <stringProp name="Header.value">application/json; charset=utf-8</stringProp>
+              </elementProp>
+            </collectionProp>
+          </HeaderManager>
           <hashTree/>
-          <JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor" testname="提取 userId" enabled="true">
-            <stringProp name="JSONPostProcessor.referenceNames">userId</stringProp>
-            <stringProp name="JSONPostProcessor.jsonPathExprs">$.data.userId</stringProp>
-            <stringProp name="JSONPostProcessor.match_numbers">1</stringProp>
-          </JSONPostProcessor>
-          <hashTree/>
-          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Assert login 200" enabled="true">
+
+          <!-- Assert HTTP 200 -->
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion"
+              testname="Assert HTTP 200" enabled="true">
             <collectionProp name="Asserion.test_strings"><stringProp name="49586">200</stringProp></collectionProp>
             <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
             <boolProp name="Assertion.assume_success">false</boolProp>
             <intProp name="Assertion.test_type">8</intProp>
           </ResponseAssertion>
           <hashTree/>
+
+          <!-- Assert business code = 200 (catches user-not-found / wrong-password returning HTTP 200 with code!=200) -->
+          <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion"
+              testname="Assert business code=200 (account must exist)" enabled="true">
+            <stringProp name="JSON_PATH">$.code</stringProp>
+            <stringProp name="EXPECTED_VALUE">200</stringProp>
+            <boolProp name="JSONVALIDATION">true</boolProp>
+            <boolProp name="EXPECT_NULL">false</boolProp>
+            <boolProp name="INVERT">false</boolProp>
+            <boolProp name="ISREGEX">false</boolProp>
+          </JSONPathAssertion>
+          <hashTree/>
+
+          <!-- Extract token into thread variable, then store as JMeter property for sharing -->
+          <JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor"
+              testname="Extract token" enabled="true">
+            <stringProp name="JSONPostProcessor.referenceNames">token</stringProp>
+            <stringProp name="JSONPostProcessor.jsonPathExprs">$.data.token</stringProp>
+            <stringProp name="JSONPostProcessor.match_numbers">1</stringProp>
+            <stringProp name="JSONPostProcessor.defaultValues">TOKEN_NOT_FOUND</stringProp>
+          </JSONPostProcessor>
+          <hashTree/>
+
+          <JSONPostProcessor guiclass="JSONPostProcessorGui" testclass="JSONPostProcessor"
+              testname="Extract userId" enabled="true">
+            <stringProp name="JSONPostProcessor.referenceNames">userId</stringProp>
+            <stringProp name="JSONPostProcessor.jsonPathExprs">$.data.userId</stringProp>
+            <stringProp name="JSONPostProcessor.match_numbers">1</stringProp>
+            <stringProp name="JSONPostProcessor.defaultValues">0</stringProp>
+          </JSONPostProcessor>
+          <hashTree/>
+
+          <!-- Store token as JMeter property so all threads can read it -->
+          <JSR223PostProcessor guiclass="TestBeanGUI" testclass="JSR223PostProcessor"
+              testname="Share token to all threads via property" enabled="true">
+            <stringProp name="scriptLanguage">groovy</stringProp>
+            <stringProp name="script">
+String token  = vars.get("token")
+String userId = vars.get("userId")
+props.put("SHARED_TOKEN",   token)
+props.put("SHARED_USER_ID", userId)
+log.info("setUp login: userId=" + userId + " token=" + (token ? token.substring(0, Math.min(20, token.length())) + "..." : "NULL"))
+if (token == null || token == "TOKEN_NOT_FOUND") {
+    log.error("Token extraction failed! Run sql/init-notify-data.ps1 first.")
+    SampleResult.setSuccessful(false)
+    SampleResult.setResponseMessage("Token not extracted - check account exists")
+}
+            </stringProp>
+          </JSR223PostProcessor>
+          <hashTree/>
         </hashTree>
-        <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="Authorization + X-User-Id" enabled="true">
+      </hashTree>
+
+      <!-- ======================================================
+           Main Thread Group: pressure test
+           10 threads x 20 loops = 200 samples per endpoint
+           ====================================================== -->
+      <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup"
+          testname="Notify Service Load Test (10 threads x 20 loops)" enabled="true">
+        <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
+        <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller" enabled="true">
+          <boolProp name="LoopController.continue_forever">false</boolProp>
+          <stringProp name="LoopController.loops">20</stringProp>
+        </elementProp>
+        <stringProp name="ThreadGroup.num_threads">10</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">5</stringProp>
+        <boolProp name="ThreadGroup.scheduler">false</boolProp>
+      </ThreadGroup>
+      <hashTree>
+
+        <!-- Global Authorization header using token from setUp (property) -->
+        <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager"
+            testname="Authorization Header (token from setUp login)" enabled="true">
           <collectionProp name="HeaderManager.headers">
             <elementProp name="" elementType="Header">
               <stringProp name="Header.name">Authorization</stringProp>
-              <stringProp name="Header.value">Bearer ${token}</stringProp>
+              <stringProp name="Header.value">Bearer ${__P(SHARED_TOKEN)}</stringProp>
             </elementProp>
             <elementProp name="" elementType="Header">
               <stringProp name="Header.name">X-User-Id</stringProp>
-              <stringProp name="Header.value">${userId}</stringProp>
+              <stringProp name="Header.value">${__P(SHARED_USER_ID)}</stringProp>
             </elementProp>
           </collectionProp>
         </HeaderManager>
         <hashTree/>
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /api/notify/health" enabled="true">
-          <stringProp name="HTTPSampler.domain">${host}</stringProp>
-          <stringProp name="HTTPSampler.port">${port}</stringProp>
+
+        <!-- ===== 1. Health (no auth required at notify side, but gateway needs JWT) ===== -->
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy"
+            testname="GET /api/notify/health" enabled="true">
+          <stringProp name="HTTPSampler.domain">${HOST}</stringProp>
+          <stringProp name="HTTPSampler.port">${PORT}</stringProp>
           <stringProp name="HTTPSampler.protocol">http</stringProp>
           <stringProp name="HTTPSampler.path">/api/notify/health</stringProp>
           <stringProp name="HTTPSampler.method">GET</stringProp>
@@ -90,17 +178,31 @@
           <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
         </HTTPSamplerProxy>
         <hashTree>
-          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Assert health HTTP 200" enabled="true">
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion"
+              testname="Assert HTTP 200" enabled="true">
             <collectionProp name="Asserion.test_strings"><stringProp name="49586">200</stringProp></collectionProp>
             <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
             <boolProp name="Assertion.assume_success">false</boolProp>
             <intProp name="Assertion.test_type">8</intProp>
           </ResponseAssertion>
           <hashTree/>
+          <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion"
+              testname="Assert status=UP" enabled="true">
+            <stringProp name="JSON_PATH">$.data.status</stringProp>
+            <stringProp name="EXPECTED_VALUE">UP</stringProp>
+            <boolProp name="JSONVALIDATION">true</boolProp>
+            <boolProp name="EXPECT_NULL">false</boolProp>
+            <boolProp name="INVERT">false</boolProp>
+            <boolProp name="ISREGEX">false</boolProp>
+          </JSONPathAssertion>
+          <hashTree/>
         </hashTree>
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /api/notify/list" enabled="true">
-          <stringProp name="HTTPSampler.domain">${host}</stringProp>
-          <stringProp name="HTTPSampler.port">${port}</stringProp>
+
+        <!-- ===== 2. Notify List (main read path) ===== -->
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy"
+            testname="GET /api/notify/list" enabled="true">
+          <stringProp name="HTTPSampler.domain">${HOST}</stringProp>
+          <stringProp name="HTTPSampler.port">${PORT}</stringProp>
           <stringProp name="HTTPSampler.protocol">http</stringProp>
           <stringProp name="HTTPSampler.path">/api/notify/list?page=1&amp;size=20</stringProp>
           <stringProp name="HTTPSampler.method">GET</stringProp>
@@ -108,24 +210,41 @@
           <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
         </HTTPSamplerProxy>
         <hashTree>
-          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Assert list HTTP 200" enabled="true">
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion"
+              testname="Assert HTTP 200" enabled="true">
             <collectionProp name="Asserion.test_strings"><stringProp name="49586">200</stringProp></collectionProp>
             <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
             <boolProp name="Assertion.assume_success">false</boolProp>
             <intProp name="Assertion.test_type">8</intProp>
           </ResponseAssertion>
           <hashTree/>
-          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Assert list has list" enabled="true">
-            <collectionProp name="Asserion.test_strings"><stringProp name="3322014">list</stringProp></collectionProp>
-            <stringProp name="Assertion.test_field">Assertion.response_data</stringProp>
-            <boolProp name="Assertion.assume_success">false</boolProp>
-            <intProp name="Assertion.test_type">2</intProp>
-          </ResponseAssertion>
+          <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion"
+              testname="Assert response has list field" enabled="true">
+            <stringProp name="JSON_PATH">$.data.list</stringProp>
+            <stringProp name="EXPECTED_VALUE"></stringProp>
+            <boolProp name="JSONVALIDATION">false</boolProp>
+            <boolProp name="EXPECT_NULL">false</boolProp>
+            <boolProp name="INVERT">false</boolProp>
+            <boolProp name="ISREGEX">false</boolProp>
+          </JSONPathAssertion>
+          <hashTree/>
+          <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion"
+              testname="Assert business code=200" enabled="true">
+            <stringProp name="JSON_PATH">$.code</stringProp>
+            <stringProp name="EXPECTED_VALUE">200</stringProp>
+            <boolProp name="JSONVALIDATION">true</boolProp>
+            <boolProp name="EXPECT_NULL">false</boolProp>
+            <boolProp name="INVERT">false</boolProp>
+            <boolProp name="ISREGEX">false</boolProp>
+          </JSONPathAssertion>
           <hashTree/>
         </hashTree>
-        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="GET /api/notify/unread-count" enabled="true">
-          <stringProp name="HTTPSampler.domain">${host}</stringProp>
-          <stringProp name="HTTPSampler.port">${port}</stringProp>
+
+        <!-- ===== 3. Unread Count (Redis hot path, key target metric) ===== -->
+        <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy"
+            testname="GET /api/notify/unread-count" enabled="true">
+          <stringProp name="HTTPSampler.domain">${HOST}</stringProp>
+          <stringProp name="HTTPSampler.port">${PORT}</stringProp>
           <stringProp name="HTTPSampler.protocol">http</stringProp>
           <stringProp name="HTTPSampler.path">/api/notify/unread-count</stringProp>
           <stringProp name="HTTPSampler.method">GET</stringProp>
@@ -133,27 +252,64 @@
           <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
         </HTTPSamplerProxy>
         <hashTree>
-          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Assert unread HTTP 200" enabled="true">
+          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion"
+              testname="Assert HTTP 200" enabled="true">
             <collectionProp name="Asserion.test_strings"><stringProp name="49586">200</stringProp></collectionProp>
             <stringProp name="Assertion.test_field">Assertion.response_code</stringProp>
             <boolProp name="Assertion.assume_success">false</boolProp>
             <intProp name="Assertion.test_type">8</intProp>
           </ResponseAssertion>
           <hashTree/>
-          <ResponseAssertion guiclass="AssertionGui" testclass="ResponseAssertion" testname="Assert unreadCount field" enabled="true">
-            <collectionProp name="Asserion.test_strings"><stringProp name="3322014">unreadCount</stringProp></collectionProp>
-            <stringProp name="Assertion.test_field">Assertion.response_data</stringProp>
-            <boolProp name="Assertion.assume_success">false</boolProp>
-            <intProp name="Assertion.test_type">2</intProp>
-          </ResponseAssertion>
+          <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion"
+              testname="Assert unreadCount field exists" enabled="true">
+            <stringProp name="JSON_PATH">$.data.unreadCount</stringProp>
+            <stringProp name="EXPECTED_VALUE"></stringProp>
+            <boolProp name="JSONVALIDATION">false</boolProp>
+            <boolProp name="EXPECT_NULL">false</boolProp>
+            <boolProp name="INVERT">false</boolProp>
+            <boolProp name="ISREGEX">false</boolProp>
+          </JSONPathAssertion>
+          <hashTree/>
+          <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion"
+              testname="Assert business code=200" enabled="true">
+            <stringProp name="JSON_PATH">$.code</stringProp>
+            <stringProp name="EXPECTED_VALUE">200</stringProp>
+            <boolProp name="JSONVALIDATION">true</boolProp>
+            <boolProp name="EXPECT_NULL">false</boolProp>
+            <boolProp name="INVERT">false</boolProp>
+            <boolProp name="ISREGEX">false</boolProp>
+          </JSONPathAssertion>
           <hashTree/>
         </hashTree>
-        <ResultCollector guiclass="SummaryReport" testclass="ResultCollector" testname="Summary Report" enabled="true">
+
+        <!-- Result Collector -->
+        <ResultCollector guiclass="SummaryReport" testclass="ResultCollector"
+            testname="Summary Report" enabled="true">
           <boolProp name="ResultCollector.error_logging">false</boolProp>
-          <objProp><name>saveConfig</name><value class="SampleSaveConfiguration"><time>true</time><latency>true</latency><timestamp>true</timestamp><success>true</success><label>true</label><code>true</code><message>true</message><threadName>true</threadName><dataType>true</dataType><encoding>false</encoding><assertions>true</assertions><subresults>true</subresults><responseData>false</responseData><samplerData>false</samplerData><xml>false</xml><fieldNames>true</fieldNames><responseHeaders>false</responseHeaders><requestHeaders>false</requestHeaders><responseDataOnError>false</responseDataOnError><saveAssertionResultsFailureMessage>true</saveAssertionResultsFailureMessage><assertionsResultsToSave>0</assertionsResultsToSave><bytes>true</bytes><sentBytes>true</sentBytes><url>true</url><threadCounts>true</threadCounts><idleTime>true</idleTime><connectTime>true</connectTime></value></objProp>
+          <objProp>
+            <name>saveConfig</name>
+            <value class="SampleSaveConfiguration">
+              <time>true</time><latency>true</latency><timestamp>true</timestamp>
+              <success>true</success><label>true</label><code>true</code>
+              <message>true</message><threadName>true</threadName>
+              <dataType>true</dataType><encoding>false</encoding>
+              <assertions>true</assertions><subresults>true</subresults>
+              <responseData>false</responseData><samplerData>false</samplerData>
+              <xml>false</xml><fieldNames>true</fieldNames>
+              <responseHeaders>false</responseHeaders>
+              <requestHeaders>false</requestHeaders>
+              <responseDataOnError>false</responseDataOnError>
+              <saveAssertionResultsFailureMessage>true</saveAssertionResultsFailureMessage>
+              <assertionsResultsToSave>0</assertionsResultsToSave>
+              <bytes>true</bytes><sentBytes>true</sentBytes><url>true</url>
+              <threadCounts>true</threadCounts><idleTime>true</idleTime>
+              <connectTime>true</connectTime>
+            </value>
+          </objProp>
           <stringProp name="filename">jmeter/notify-service-result.jtl</stringProp>
         </ResultCollector>
         <hashTree/>
+
       </hashTree>
     </hashTree>
   </hashTree>

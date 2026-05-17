@@ -2,181 +2,250 @@
 
 ## 1. 测试范围
 
-本文件记录 Notify Service 的命令行测试方法与前端联调步骤。JMeter 压测脚本单独保存在：
+本文件记录 Notify Service 的完整测试方法。对应验证脚本：
 
 ```text
-jmeter/notify-service-test.jmx
+BiteBlog/测试脚本/notify-test-verify.ps1   <- 全量验证脚本（含性能/集成/安全）
+BiteBlog/测试脚本/notify-test-result.txt   <- 脚本执行后自动生成的结果文件
+jmeter/notify-service-test.jmx             <- JMeter 并发压测脚本
+jmeter/notifyservice-report/index.html     <- JMeter HTML 报告（执行后生成）
 ```
 
 测试目标包括：
 
-1. 服务是否可以正常启动；
-2. `/notify/health` 是否返回正常；
-3. 通知列表与未读数接口是否正确返回数据；
-4. 单条已读与全部已读是否生效；
-5. RabbitMQ 互动事件（点赞/收藏/评论）是否能被消费并写入通知；
-6. WebSocket 实时推送是否正常工作；
-7. 前端通知中心与导航栏未读角标是否联动。
+1. 服务启动与健康检查
+2. HTTP：通知列表（含 type/readStatus 过滤）、未读数、已读、全部已读
+3. RabbitMQ：互动事件消费（like/collect/comment → notification 表）
+4. 幂等去重：5 分钟窗口内重复投递不产生重复通知
+5. 自操作过滤：作者操作自己笔记不产生通知
+6. Redis 未读缓存：命中率、冷热路径 RT 对比
+7. 分页 total 准确性与无重复
+8. 鉴权与越权安全验证
+9. JMeter 并发压测：TPS、响应时间 P90/P95、错误率
+
+---
 
 ## 2. 启动前准备
 
-需要先启动基础服务：MySQL、RabbitMQ、Nacos，并执行 `sql/init.sql` 初始化表结构。然后启动以下微服务：
+### 2.1 中间件（Docker）
 
 ```powershell
-cd biteblog-backend
-
-mvn -pl biteblog-user -am spring-boot:run
-mvn -pl biteblog-post -am spring-boot:run
-mvn -pl biteblog-notify -am spring-boot:run
+docker ps --format "table {{.Names}}\t{{.Status}}"
 ```
 
-如果通过网关测试，还需要启动：
+确认 `biteblog-mysql`、`biteblog-redis`、`biteblog-rabbitmq`、`biteblog-nacos` 均为 `Up`。
+
+### 2.2 数据库表结构（含归档表）
 
 ```powershell
-mvn -pl biteblog-gateway -am spring-boot:run
+Get-Content "e:\WHU\DistributedGroupWork\BiteBlog\sql\init.sql" | docker exec -i biteblog-mysql mysql -u root -proot123456 biteblog
 ```
 
-## 3. 初始化测试数据
-
-在项目 `BiteBlog/sql` 目录执行：
+验证两张通知表存在：
 
 ```powershell
-cd BiteBlog\sql
+docker exec biteblog-mysql mysql -u root -proot123456 biteblog -e "SHOW TABLES LIKE 'notification%';"
+```
+
+### 2.3 微服务启动顺序
+
+```powershell
+cd e:\WHU\DistributedGroupWork\BiteBlog\biteblog-backend
+mvn -pl biteblog-user    -am spring-boot:run   # 8081
+mvn -pl biteblog-post    -am spring-boot:run   # 8082
+mvn -pl biteblog-notify  -am spring-boot:run   # 8087
+mvn -pl biteblog-gateway -am spring-boot:run   # 8080
+```
+
+### 2.4 初始化测试数据
+
+```powershell
+cd e:\WHU\DistributedGroupWork\BiteBlog\sql
 .\init-notify-data.ps1
 ```
 
-该脚本会注册或登录两个专用账号（手机号 `13900004001` 作者 / `13900004002` 互动方，密码均为 `12345678`），由作者发布测试笔记，互动方执行点赞、收藏、评论，最后调用 Notify 接口验证通知条数与未读数。
+输出应包含 `[OK] /notify/list total>=3` 和 `[OK] /notify/unread-count unreadCount>=3`。
 
-脚本执行成功后，预期输出 `[OK] /notify/list total=3`（或更多）和 `[OK] /notify/unread-count unreadCount=3`（或更多）。
+---
 
-## 4. 命令行接口测试
+## 3. 全量验证脚本（推荐首选）
 
-### 4.1 健康检查
+### 3.1 执行方式
 
-直接访问 Notify 服务：
-
-```bash
-curl -s http://localhost:8087/notify/health
+```powershell
+cd e:\WHU\DistributedGroupWork\BiteBlog\测试脚本
+.\notify-test-verify.ps1
 ```
 
-通过网关访问（需携带 JWT）：
+结果自动保存至同目录 `notify-test-result.txt`（可截图或提交 txt）。
 
-```bash
-curl -s http://localhost:8080/api/notify/health -H "Authorization: Bearer <TOKEN>"
+### 3.2 脚本覆盖的检查项
+
+| 节 | 内容 | 关键通过标准 |
+|----|------|-------------|
+| 0 | 账号登录 | 两个账号 token 拿到 |
+| 1 | 健康检查 | 直连 8087 和经网关 8080 均 `status=UP` |
+| 2 | 发布测试笔记 | postId 返回 |
+| 3 | MQ消费（like/collect/comment） | DB 新增 >=3 条，type 分布正确 |
+| 4 | 自操作过滤 | 作者给自己点赞，DB 无新增 |
+| 5 | 幂等去重（5分钟窗口） | 同一 like 重复到达，只写 1 条 |
+| 6 | 列表接口 RT（20次采样） | P95 < 300ms |
+| 7 | 未读数接口 RT（20次采样） | P95 < 100ms（Redis 热路径） |
+| 8 | Redis 缓存冷热对比 | cold（DB COUNT） > hot（Redis GET） |
+| 9 | 全部已读 + 未读数归零 | `unreadCount=0` after `read-all` |
+| 10 | 列表过滤（type/readStatus） | 返回数据 type/readStatus 均匹配过滤参数 |
+| 11 | 分页 total 一致 + 无重复 | 两页 total 相同，id 无交集 |
+| 12 | 鉴权（无 Token 401）+ 越权拒绝 | 正确返回 401；跨用户 read 被拒 |
+| 13 | RabbitMQ 队列状态 | consumers>=1，Unacked=0，DLQ=0 |
+| 汇总 | Pass/Fail 计数 + RT 汇总表 | |
+
+### 3.3 结果示例（正常情况）
+
+```
+===== Summary =====
+  Pass  : 28
+  Fail  : 0
+  Total : 28 checks
+
+  --- Response Time Results ---
+  List        avg=45ms  P90=68ms  P95=82ms  max=130ms
+  Unread-cnt  avg=12ms  P90=18ms  P95=22ms  max=45ms
+  Cache       cold(DB)=35ms  hot(Redis)=11ms
 ```
 
-预期结果：`code=200`，`data.status=UP`。
+---
 
-### 4.2 登录获取 Token（PowerShell）
+## 4. 命令行快速验证（补充手工）
 
-**请求体必须是合法 JSON**，有以下两种正确写法：
-
-写法 A（原始 JSON 字符串）：
+### 4.1 登录获取 Token（PowerShell）
 
 ```powershell
 $body = '{"phone":"13900004001","password":"12345678"}'
-$r = Invoke-RestMethod -Uri "http://localhost:8080/api/user/login" -Method POST -Body $body -ContentType "application/json; charset=utf-8"
+$r    = Invoke-RestMethod -Uri "http://localhost:8080/api/user/login" -Method POST `
+        -Body $body -ContentType "application/json; charset=utf-8"
 $token = $r.data.token
 ```
 
-写法 B（哈希表转 JSON）：
+### 4.2 各接口验证
 
 ```powershell
-$body = @{ phone = "13900004001"; password = "12345678" } | ConvertTo-Json -Compress
-$r = Invoke-RestMethod -Uri "http://localhost:8080/api/user/login" -Method POST -Body $body -ContentType "application/json; charset=utf-8"
-$token = $r.data.token
+# 健康检查（无需 Token）
+Invoke-RestMethod -Uri "http://localhost:8087/notify/health"
+
+# 列表（全部）
+Invoke-RestMethod -Uri "http://localhost:8080/api/notify/list?page=1&size=20" `
+  -Headers @{ Authorization = "Bearer $token" }
+
+# 列表（仅未读）
+Invoke-RestMethod -Uri "http://localhost:8080/api/notify/list?page=1&size=20&readStatus=0" `
+  -Headers @{ Authorization = "Bearer $token" }
+
+# 列表（仅点赞）
+Invoke-RestMethod -Uri "http://localhost:8080/api/notify/list?page=1&size=20&type=like" `
+  -Headers @{ Authorization = "Bearer $token" }
+
+# 未读数
+Invoke-RestMethod -Uri "http://localhost:8080/api/notify/unread-count" `
+  -Headers @{ Authorization = "Bearer $token" }
+
+# 全部已读
+Invoke-RestMethod -Uri "http://localhost:8080/api/notify/read-all" -Method POST `
+  -Headers @{ Authorization = "Bearer $token" }
+
+# 直连 notify（调试，绕过网关）
+Invoke-RestMethod -Uri "http://localhost:8087/notify/list?page=1&size=20" `
+  -Headers @{ "X-User-Id" = "11" }
 ```
 
-**错误写法**：不要对已经是 JSON 字符串的变量再 `| ConvertTo-Json`，否则会生成双重转义，登录返回 401。
+---
 
-### 4.3 查询通知列表
+## 5. Redis 缓存手工验证
 
 ```powershell
-Invoke-RestMethod -Uri "http://localhost:8080/api/notify/list?page=1&size=20" -Headers @{ Authorization = "Bearer $token" }
+# 查看未读数 key
+docker exec biteblog-redis redis-cli -a redis123456 GET notify:unread:11
+
+# 删除 key 后再请求（触发冷路径 DB 回源）
+docker exec biteblog-redis redis-cli -a redis123456 DEL notify:unread:11
+Invoke-RestMethod -Uri "http://localhost:8080/api/notify/unread-count" `
+  -Headers @{ Authorization = "Bearer $token" }
+# 立刻再请求（Redis 已回填，热路径）
+Invoke-RestMethod -Uri "http://localhost:8080/api/notify/unread-count" `
+  -Headers @{ Authorization = "Bearer $token" }
 ```
 
-预期结果：`code=200`，`data.total` 大于等于 3，`data.list` 中包含 `like`、`collect`、`comment` 类型的通知，`senderUsername` 为 `notify_demo_fan`。
+---
 
-### 4.4 查询未读数
+## 6. RabbitMQ 手工检查
+
+打开浏览器 `http://localhost:15672`（guest/guest）：
+
+| 检查项 | 预期值 |
+|--------|--------|
+| 交换机 `biteblog.interaction` | 存在，durable |
+| 队列 `notify.interaction.queue` | Consumers=1，Ready≈0，Unacked≈0 |
+| 队列 `notify.dead.queue` | Ready=0（正常无死信） |
+
+---
+
+## 7. JMeter 并发压测
+
+### 7.1 执行（将 JMeter 路径换成本机实际路径）
 
 ```powershell
-Invoke-RestMethod -Uri "http://localhost:8080/api/notify/unread-count" -Headers @{ Authorization = "Bearer $token" }
+cd e:\WHU\DistributedGroupWork\BiteBlog
+& "D:\apache-jmeter-5.6.3\bin\jmeter.bat" `
+  -n -t jmeter\notify-service-test.jmx `
+  -l jmeter\notify-service-result.jtl `
+  -e -o jmeter\notifyservice-report
 ```
 
-预期结果：`data.unreadCount` 与列表中 `readStatus=0` 的条数一致。
+### 7.2 报告阅读（打开 `jmeter\notifyservice-report\index.html`）
 
-### 4.5 全部标为已读
+| 指标 | 位置 | 建议值 |
+|------|------|--------|
+| Throughput（TPS） | Statistics 页 Throughput 列 | 视本机性能，记录实测值 |
+| Average RT | Statistics → Average | < 200ms |
+| P90 / P95 | Statistics → 90% Line / 95% Line | P95 < 300ms |
+| Max RT | Statistics → Max | 记录峰值 |
+| Error % | Statistics → Error % | 0% |
+
+截图 Statistics 表格和 Response Times Over Time 图，保存至测试报告。
+
+---
+
+## 8. 归档任务验证（可选）
+
+插入一条 30 天前的已读通知：
 
 ```powershell
-Invoke-RestMethod -Uri "http://localhost:8080/api/notify/read-all" -Method POST -Headers @{ Authorization = "Bearer $token" }
+docker exec biteblog-mysql mysql -u root -proot123456 biteblog -e "
+INSERT INTO notification (receiver_id, sender_id, type, biz_id, content, read_status, created_at)
+VALUES (11, 12, 'like', 999, '30天前通知', 1, DATE_SUB(NOW(), INTERVAL 31 DAY));
+"
 ```
 
-执行后再次查询未读数，预期 `unreadCount=0`。
-
-### 4.6 直连 Notify 服务（调试用）
-
-跳过网关，直接传 `X-User-Id` 请求：
+将 `@Scheduled(cron = "0 0 3 * * ?")` 临时改为 `@Scheduled(cron = "0/1 * * * * ?")`，重启 notify 等 1 分钟，验证：
 
 ```powershell
-Invoke-RestMethod -Uri "http://localhost:8087/notify/list?page=1&size=20" -Headers @{ "X-User-Id" = "11" }
+docker exec biteblog-mysql mysql -u root -proot123456 biteblog -e "
+SELECT COUNT(*) as hot FROM notification WHERE created_at < DATE_SUB(NOW(), INTERVAL 30 DAY) AND read_status=1;
+SELECT COUNT(*) as archive FROM notification_archive;
+"
 ```
 
-将 `11` 换成作者用户的实际 `userId`（脚本执行后有显示）。
+`hot` 应为 0，`archive` 应增加对应条数。验证完毕后将 cron 改回 `0 0 3 * * ?`。
 
-## 5. RabbitMQ 检查
+---
 
-登录 RabbitMQ 管理台 `http://localhost:15672`（默认账号 guest/guest），进入 **Queues and Streams**，确认：
-
-- 队列 `notify.interaction.queue` 存在；
-- `Consumers` 为 1，表示 Notify 服务已成功连接；
-- 运行 `init-notify-data.ps1` 后，`Ready` 消息短暂出现后归 0，`Unacked` 也归 0，说明消费正常。
-
-若看到 `Unacked` 持续增加、`deliver ≈ redelivered`，说明消费端抛出异常、消息无法 ack。此时在管理台 **Purge** 该队列，重新编译启动 Notify 服务后再跑脚本。
-
-## 6. JMeter 压测
-
-JMeter 脚本路径：
-
-```text
-jmeter/notify-service-test.jmx
-```
-
-建议执行方式（将 JMeter 路径替换为本机实际路径）：
-
-```powershell
-cd BiteBlog
-& "D:\apache-jmeter-5.6.3\bin\jmeter.bat" -n -t jmeter\notify-service-test.jmx -l jmeter\notify-service-result.jtl -e -o jmeter\notifyservice-report
-```
-
-脚本默认变量：host=`localhost`，port=`8080`，登录手机 `13900004001` / 密码 `12345678`。每个线程迭代内先登录，再依次压测 `health`、`list`、`unread-count` 接口。
-
-非功能目标建议：错误率 0%，列表与未读接口平均响应时间低于 300ms。
-
-结果文件：`jmeter/notify-service-result.jtl`；HTML 报告目录：`jmeter/notifyservice-report/`。
-
-## 7. 前端联调
-
-1. 在 `frontend` 目录执行 `npm install`，确保 `@stomp/stompjs` 和 `sockjs-client` 已安装；
-2. 执行 `npm run dev` 启动前端（默认 `http://localhost:3000`）；
-3. 登录有通知的账号（`13900004001`），导航到 **通知中心** 页面；
-4. 页面右上角应显示「实时已连接」标签，表示 WebSocket 连接成功；
-5. 用另一账号（`13900004002`）对该用户笔记点赞，通知中心应实时出现新条目，导航栏铃铛角标数字增加。
-
-若 WebSocket 显示「实时未连接」，默认连接地址为 `http://localhost:8087`。如果 Notify 部署在其他主机或端口，在 `frontend` 目录下新建 `.env.development`：
-
-```env
-VITE_NOTIFY_WS_ORIGIN=http://你的主机:8087
-```
-
-修改 Vite 配置（`vite.config.js`）后需重启 `npm run dev` 才能生效。
-
-## 8. 常见问题
+## 9. 常见问题
 
 | 现象 | 处理 |
-|---|---|
-| `Unacked` 持续增加、`ack=0` | 消费端抛异常无法 ack。先在 RabbitMQ 管理台 **Purge** `notify.interaction.queue`，再重启 Notify 服务后重跑脚本。 |
-| 列表有数据但 `total=0` | `MybatisPlusConfig` 分页拦截器未加载，`Page.getTotal()` 恒为 0；确认 `config/MybatisPlusConfig.java` 存在，重新编译启动。 |
-| 列表为空、`unreadCount=0` | RabbitMQ 消费异常，通知未写入。检查 Notify 启动日志中是否有 `SecurityException: CollSer`；确认 `NotifyApplication.main()` 中有 `System.setProperty` 语句，并重启服务。 |
-| 网关返回 **401** | 检查登录 body，不要对 JSON 字符串再 `ConvertTo-Json`；参考 4.2 节写法。 |
-| JMeter 登录失败 | 先执行 `init-notify-data.ps1` 创建测试账号，或修改 JMeter 脚本中 `PHONE`/`PASSWORD` 变量。 |
-| 前端「实时未连接」 | 确认 `8087` 端口可访问；检查浏览器控制台是否有 `global is not defined`（需 Vite `define: { global: 'globalThis' }` 且重启 dev server）；检查 `VITE_NOTIFY_WS_ORIGIN` 配置。 |
+|------|------|
+| `login failed: 无法连接到远程服务器` | user-service(8081) 未启动 |
+| `[FAIL] MQ not consumed: 0 new notifications` | RabbitMQ Unacked 堆积；Purge `notify.interaction.queue` 后重跑 |
+| `[WARN] pagination: total=0` | MybatisPlusConfig 未加载；确认 `config/MybatisPlusConfig.java` 存在并重编译 |
+| `[WARN] cache cold/hot: hot > cold` | Redis 与应用同机时网络开销极小，两者差异不显著，属正常 |
+| `[WARN] DLQ: N messages` | 有消费失败；查 notify 日志排查根因 |
+| JMeter Error% > 0 | 先确保 `init-notify-data.ps1` 执行成功且 token 有效 |
+| 前端「实时未连接」 | 确认 8087 可访问；检查 `VITE_NOTIFY_WS_ORIGIN`；确认 `vite.config.js` 有 `define: { global: 'globalThis' }` 且重启 dev server |

@@ -1,0 +1,147 @@
+**********************
+PowerShell transcript start
+Start time: 20260517235248
+Username: LAPTOP-CK4JELLI\WEN
+RunAs User: LAPTOP-CK4JELLI\WEN
+Configuration Name: 
+Machine: LAPTOP-CK4JELLI (Microsoft Windows NT 10.0.26200.0)
+Host Application: C:\Program Files\PowerShell\7\pwsh.dll -noexit -command try { . "e:\Documents\cursor\resources\app\out\vs\workbench\contrib\terminal\common\scripts\shellIntegration.ps1" } catch {}
+Process ID: 22000
+PSVersion: 7.4.14
+PSEdition: Core
+GitCommitId: 7.4.14
+OS: Microsoft Windows 10.0.26200
+Platform: Win32NT
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1, 6.0, 7.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+WSManStackVersion: 3.0
+**********************
+============================================================
+  Notify Service Verification
+  2026-05-17 23:52:48
+============================================================
+
+===== 0. Account Login =====
+  [PASS] author login: userId=11 (13900004001)
+  [PASS] fan    login: userId=12 (13900004002)
+
+===== 1. Health Check =====
+  [PASS] direct notify/health: status=UP
+  [PASS] gateway -> notify/health: status=UP
+
+===== 2. Publish Test Note =====
+  [PASS] published postId=18
+  baseline total notifications: 24
+
+===== 3. MQ Consumption: interaction events -> notification =====
+  fan: liked + favorited + commented postId=18
+  waiting up to 20s for MQ -> notify consumption...
+  wait 1/40 : total=24 (need >= 27)
+  wait 2/40 : total=24 (need >= 27)
+  wait 3/40 : total=24 (need >= 27)
+  wait 4/40 : total=24 (need >= 27)
+  wait 5/40 : total=24 (need >= 27)
+  wait 6/40 : total=24 (need >= 27)
+  wait 7/40 : total=24 (need >= 27)
+  wait 8/40 : total=24 (need >= 27)
+  wait 9/40 : total=24 (need >= 27)
+  wait 10/40 : total=24 (need >= 27)
+  wait 11/40 : total=24 (need >= 27)
+  wait 12/40 : total=24 (need >= 27)
+  wait 13/40 : total=24 (need >= 27)
+  wait 14/40 : total=24 (need >= 27)
+  wait 15/40 : total=24 (need >= 27)
+  wait 16/40 : total=24 (need >= 27)
+  wait 17/40 : total=24 (need >= 27)
+  wait 18/40 : total=24 (need >= 27)
+  wait 19/40 : total=24 (need >= 27)
+  wait 20/40 : total=24 (need >= 27)
+  wait 21/40 : total=24 (need >= 27)
+  wait 22/40 : total=24 (need >= 27)
+  wait 23/40 : total=24 (need >= 27)
+  wait 24/40 : total=27 (need >= 27)
+  new notifications in API total = 3 (expected >= 3)
+  [PASS] MQ consumed: 3 notifications (like/collect/comment)
+  type=like total=9 [ok]
+  type=collect total=9 [ok]
+  type=comment total=9 [ok]
+
+===== 4. Self-interaction Filter (author likes own note) =====
+  [PASS] self-interaction filter: total unchanged (27)
+
+===== 5. Idempotency: 5-min dedup window =====
+  after 1st like: like total 9 -> 9 (delta=0)
+  after 2nd like in window: extra like notifications = 0 (expected 0)
+  [PASS] dedup: 5-min window blocked duplicate like notification
+
+===== 6. Single-read API =====
+  [PASS] single-read: notificationId=27 readStatus=1
+
+===== 7. Read-All / Unread-Count Consistency =====
+  unreadCount before read-all: 2
+  [PASS] read-all: request accepted
+  unreadCount after  read-all: 0
+  [PASS] read-all: unreadCount=0
+
+===== 8. List API Response Time (target P95 < 300ms, 20 samples) =====
+  GET http://localhost:8080/api/notify/list?page=1&size=20
+  samples=20  avg=27.6ms  min=23ms  max=34ms
+  P90=32ms   P95=34ms   (target P95 < 300ms)
+  [PASS] list P95=34ms < 300ms
+
+===== 9. Unread-count API Response Time (target P95 < 100ms Redis hot, 20 samples) =====
+  GET http://localhost:8080/api/notify/unread-count
+  samples=20  avg=9.2ms  min=8ms  max=11ms
+  P90=10ms   P95=11ms   (target P95 < 100ms)
+  [PASS] unread-count P95=11ms < 100ms (Redis hit)
+
+===== 10. Redis Cache Validation =====
+  [WARN] Redis key not found via redis-cli (may be auth/network; API still works)
+  cold (cache miss -> DB COUNT): 11ms
+  hot  (cache hit  -> Redis GET): 11ms
+  [PASS] cache cold/hot: cold=11ms hot=11ms (hot <= cold as expected)
+
+===== 11. List Filter Parameters (type / readStatus) =====
+  [PASS] type=like filter: 9 items, all correct
+  [PASS] type=collect filter: 9 items, all correct
+  [PASS] type=comment filter: 9 items, all correct
+  [PASS] readStatus=0 (unread) filter: 0 items, all correct
+  [PASS] readStatus=1 (read) filter: 27 items, all correct
+
+===== 12. Pagination: total consistency and no duplicates =====
+  page1 total=27   page2 total=27
+  [PASS] pagination: total consistent (27)
+  [PASS] pagination: no duplicate ids across page1 and page2
+
+===== 13. Auth and Privilege =====
+PS>TerminatingError(Invoke-RestMethod): "Response status code does not indicate success: 401 ()."
+  [PASS] no-token: 401 Unauthorized
+  [PASS] privilege: fan rejected by business code 403
+  [PASS] direct notify with X-User-Id: code=200
+
+===== 14. RabbitMQ Queue Status (via Management API) =====
+  notify.interaction.queue: consumers=1  ready=0  unacked=0
+  [PASS] queue consumers=1
+  [PASS] queue Unacked=0
+  notify.dead.queue: ready=0
+  [PASS] DLQ: empty (no failed messages)
+
+===== Summary =====
+
+  Pass  : 27
+  Fail  : 0
+  Total : 27 checks
+
+  --- Response Time Results ---
+  List        avg=27.6ms  P90=32ms  P95=34ms  max=34ms
+  Unread-cnt  avg=9.2ms  P90=10ms  P95=11ms  max=11ms
+  Cache       cold(DB)=11ms  hot(Redis)=11ms
+
+  All critical checks PASSED
+
+Result saved to: E:\WHU\DistributedGroupWork\BiteBlog\测试脚本\notify-test-result.txt
+**********************
+PowerShell transcript end
+End time: 20260517235312
+**********************

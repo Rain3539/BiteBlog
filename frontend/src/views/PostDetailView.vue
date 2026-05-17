@@ -206,7 +206,13 @@ async function loadDetail() {
   try {
     const res = await getPostDetail(postId.value)
     Object.assign(post, res.data)
-  } catch {
+  } catch (err) {
+    // 笔记不存在（404）或已删除时，展示提示后返回上一页而不是直接跳走
+    const status = err?.response?.status ?? err?.status
+    const code   = err?.code ?? err?.data?.code
+    if (status === 404 || code === 404) {
+      ElMessage.warning('该笔记已删除或不存在')
+    }
     router.replace('/')
   } finally {
     loading.value = false

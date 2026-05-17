@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import java.util.Map;
 
 /**
- * 拉取发送者展示信息（不修改 user-service，仅消费已有 GET /user/{id}）
+ * 拉取发送者展示信息
  */
 @FeignClient(name = "user-service", path = "/user")
 public interface UserFeignClient {

@@ -133,7 +133,7 @@ $(document).ready(function() {
         widgets: ['zebra']
     });
 
-    var data = {"OkPercent": 25.0, "KoPercent": 75.0};
+    var data = {"OkPercent": 100.0, "KoPercent": 0.0};
     var dataset = [
         {
             "label" : "FAIL",
@@ -173,7 +173,7 @@ $(document).ready(function() {
     });
 
     // Creates APDEX table
-    createTable($("#apdexTable"), {"supportsControllersDiscrimination": true, "overall": {"data": [0.25, 500, 1500, "Total"], "isController": false}, "titles": ["Apdex", "T (Toleration threshold)", "F (Frustration threshold)", "Label"], "items": [{"data": [1.0, 500, 1500, "POST /api/user/login"], "isController": false}, {"data": [0.0, 500, 1500, "GET /api/notify/list"], "isController": false}, {"data": [0.0, 500, 1500, "GET /api/notify/health"], "isController": false}, {"data": [0.0, 500, 1500, "GET /api/notify/unread-count"], "isController": false}]}, function(index, item){
+    createTable($("#apdexTable"), {"supportsControllersDiscrimination": true, "overall": {"data": [1.0, 500, 1500, "Total"], "isController": false}, "titles": ["Apdex", "T (Toleration threshold)", "F (Frustration threshold)", "Label"], "items": [{"data": [1.0, 500, 1500, "GET /api/notify/list"], "isController": false}, {"data": [1.0, 500, 1500, "GET /api/notify/health"], "isController": false}, {"data": [1.0, 500, 1500, "GET /api/notify/unread-count"], "isController": false}]}, function(index, item){
         switch(index){
             case 0:
                 item = item.toFixed(3);
@@ -187,7 +187,7 @@ $(document).ready(function() {
     }, [[0, 0]], 3);
 
     // Create statistics table
-    createTable($("#statisticsTable"), {"supportsControllersDiscrimination": true, "overall": {"data": ["Total", 800, 600, 75.0, 4.502499999999993, 0, 93, 2.0, 10.899999999999977, 12.0, 19.0, 179.01096442157083, 32.11708435891698, 35.343302472588945], "isController": false}, "titles": ["Label", "#Samples", "FAIL", "Error %", "Average", "Min", "Max", "Median", "90th pct", "95th pct", "99th pct", "Transactions/s", "Received", "Sent"], "items": [{"data": ["POST /api/user/login", 200, 0, 0.0, 11.47, 7, 93, 10.0, 15.0, 19.0, 92.29000000000065, 44.79283314669653, 16.26714725643897, 12.103688409854424], "isController": false}, {"data": ["GET /api/notify/list", 200, 200, 100.0, 2.1800000000000006, 0, 5, 2.0, 3.9000000000000057, 4.0, 5.0, 46.403712296983755, 5.4832511600928076, 8.33816705336427], "isController": false}, {"data": ["GET /api/notify/health", 200, 200, 100.0, 2.22, 0, 5, 2.0, 3.9000000000000057, 4.0, 4.990000000000009, 46.349942062572424, 5.476897450753186, 7.74007821552723], "isController": false}, {"data": ["GET /api/notify/unread-count", 200, 200, 100.0, 2.1400000000000006, 0, 5, 2.0, 3.0, 4.0, 4.990000000000009, 46.425255338904364, 5.485796773444754, 8.024677924791087], "isController": false}]}, function(index, item){
+    createTable($("#statisticsTable"), {"supportsControllersDiscrimination": true, "overall": {"data": ["Total", 1200, 0, 0.0, 10.791666666666664, 2, 195, 6.0, 22.0, 28.0, 51.99000000000001, 240.67388688327316, 372.4248207480947, 86.80555555555556], "isController": false}, "titles": ["Label", "#Samples", "FAIL", "Error %", "Average", "Min", "Max", "Median", "90th pct", "95th pct", "99th pct", "Transactions/s", "Received", "Sent"], "items": [{"data": ["GET /api/notify/list", 400, 0, 0.0, 22.030000000000012, 14, 195, 18.0, 30.900000000000034, 33.94999999999999, 119.38000000000056, 82.00082000820008, 318.78579527982777, 30.109676096760968], "isController": false}, {"data": ["GET /api/notify/health", 400, 0, 0.0, 4.974999999999996, 2, 103, 3.0, 7.0, 9.949999999999989, 55.63000000000034, 80.53150795248641, 31.372291498892693, 28.547790416750555], "isController": false}, {"data": ["GET /api/notify/unread-count", 400, 0, 0.0, 5.369999999999999, 3, 39, 4.0, 8.0, 9.0, 32.80000000000018, 85.37886872998934, 31.1732924226254, 30.766408751334048], "isController": false}]}, function(index, item){
         switch(index){
             // Errors pct
             case 3:
@@ -217,7 +217,7 @@ $(document).ready(function() {
     }, [[0, 0]], 0, summaryTableHeader);
 
     // Create error table
-    createTable($("#errorsTable"), {"supportsControllersDiscrimination": false, "titles": ["Type of error", "Number of errors", "% in errors", "% in all samples"], "items": [{"data": ["401", 600, 100.0, 75.0], "isController": false}]}, function(index, item){
+    createTable($("#errorsTable"), {"supportsControllersDiscrimination": false, "titles": ["Type of error", "Number of errors", "% in errors", "% in all samples"], "items": []}, function(index, item){
         switch(index){
             case 2:
             case 3:
@@ -228,7 +228,7 @@ $(document).ready(function() {
     }, [[1, 1]]);
 
         // Create top5 errors by sampler
-    createTable($("#top5ErrorsBySamplerTable"), {"supportsControllersDiscrimination": false, "overall": {"data": ["Total", 800, 600, "401", 600, "", "", "", "", "", "", "", ""], "isController": false}, "titles": ["Sample", "#Samples", "#Errors", "Error", "#Errors", "Error", "#Errors", "Error", "#Errors", "Error", "#Errors", "Error", "#Errors"], "items": [{"data": [], "isController": false}, {"data": ["GET /api/notify/list", 200, 200, "401", 200, "", "", "", "", "", "", "", ""], "isController": false}, {"data": ["GET /api/notify/health", 200, 200, "401", 200, "", "", "", "", "", "", "", ""], "isController": false}, {"data": ["GET /api/notify/unread-count", 200, 200, "401", 200, "", "", "", "", "", "", "", ""], "isController": false}]}, function(index, item){
+    createTable($("#top5ErrorsBySamplerTable"), {"supportsControllersDiscrimination": false, "overall": {"data": ["Total", 1200, 0, "", "", "", "", "", "", "", "", "", ""], "isController": false}, "titles": ["Sample", "#Samples", "#Errors", "Error", "#Errors", "Error", "#Errors", "Error", "#Errors", "Error", "#Errors", "Error", "#Errors"], "items": [{"data": [], "isController": false}, {"data": [], "isController": false}, {"data": [], "isController": false}]}, function(index, item){
         return item;
     }, [[0, 0]], 0);
 

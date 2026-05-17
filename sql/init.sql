@@ -135,6 +135,21 @@ CREATE TABLE IF NOT EXISTS `notification` (
     INDEX `idx_created` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='通知表';
 
+-- ==================== 通知归档表（冷数据，30天前已读通知迁移至此）====================
+CREATE TABLE IF NOT EXISTS `notification_archive` (
+    `id`           BIGINT       NOT NULL COMMENT '来自热表的原始ID，非自增',
+    `receiver_id`  BIGINT       NOT NULL COMMENT '接收者ID',
+    `sender_id`    BIGINT       NOT NULL COMMENT '发送者ID',
+    `type`         VARCHAR(20)  NOT NULL COMMENT '通知类型(like/collect/comment/follow)',
+    `biz_id`       BIGINT       DEFAULT NULL COMMENT '关联业务ID',
+    `content`      VARCHAR(200) DEFAULT NULL COMMENT '通知摘要',
+    `read_status`  TINYINT      NOT NULL DEFAULT 1 COMMENT '归档时均已读',
+    `created_at`   DATETIME     NOT NULL COMMENT '原始创建时间',
+    `archived_at`  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '归档时间',
+    PRIMARY KEY (`id`),
+    INDEX `idx_archive_receiver` (`receiver_id`, `created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='通知归档表（冷数据）';
+
 -- ==================== 管理员审核日志表 ====================
 CREATE TABLE IF NOT EXISTS `admin_audit_log` (
     `id`           BIGINT       NOT NULL AUTO_INCREMENT,

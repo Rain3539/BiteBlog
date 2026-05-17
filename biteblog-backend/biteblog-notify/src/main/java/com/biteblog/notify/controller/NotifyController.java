@@ -22,12 +22,19 @@ public class NotifyController {
         return Result.success(Map.of("service", "notify-service", "status", "UP"));
     }
 
-    /** 通知列表：传统分页 list + total（未读数请用 /notify/unread-count） */
+    /**
+     * 通知列表（传统分页）。
+     *
+     * @param type       可选，like / collect / comment，不传则返回全部类型
+     * @param readStatus 可选，0=未读 1=已读，不传则返回全部
+     */
     @GetMapping("/list")
     public Result<Map<String, Object>> list(@RequestHeader("X-User-Id") Long userId,
                                             @RequestParam(defaultValue = "1") int page,
-                                            @RequestParam(defaultValue = "20") int size) {
-        return Result.success(notifyService.pageList(userId, page, size));
+                                            @RequestParam(defaultValue = "20") int size,
+                                            @RequestParam(required = false) String type,
+                                            @RequestParam(required = false) Integer readStatus) {
+        return Result.success(notifyService.pageList(userId, page, size, type, readStatus));
     }
 
     @PostMapping("/read-all")

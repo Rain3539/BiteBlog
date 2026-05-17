@@ -23,6 +23,15 @@
       @close="wsHint = ''"
     />
 
+    <!-- 分类 Tab：全部 / 未读 / 点赞 / 收藏 / 评论 -->
+    <el-tabs v-model="activeTab" class="notify-tabs" @tab-change="onTabChange">
+      <el-tab-pane label="全部" name="all" />
+      <el-tab-pane label="未读" name="unread" />
+      <el-tab-pane label="点赞" name="like" />
+      <el-tab-pane label="收藏" name="collect" />
+      <el-tab-pane label="评论" name="comment" />
+    </el-tabs>
+
     <el-skeleton :loading="loading && !list.length" animated :rows="4" />
 
     <el-empty v-if="!loading && !list.length" description="暂无通知" />
@@ -34,7 +43,15 @@
         :timestamp="formatTime(row.createdAt)"
         placement="top"
       >
-        <el-card shadow="hover" :class="{ unread: row.readStatus === 0 }">
+        <!--
+          整行卡片可点击：点击后先标记已读，再跳转到对应笔记。
+          若 bizId 为空则不跳转；点击操作按钮时通过 @click.stop 阻止冒泡。
+        -->
+        <el-card
+          shadow="hover"
+          :class="{ unread: row.readStatus === 0, clickable: !!row.bizId }"
+          @click="handleCardClick(row)"
+        >
           <div class="row-line">
             <span class="sender">{{ row.senderUsername || '用户' + row.senderId }}</span>
             <el-tag size="small" type="info">{{ typeLabel(row.type) }}</el-tag>
@@ -42,24 +59,16 @@
           </div>
           <div class="row-actions">
             <el-button
-              v-if="row.bizId"
-              type="primary"
-              link
-              size="small"
-              @click="$router.push('/post/' + row.bizId)"
-            >
-              查看笔记
-            </el-button>
-            <el-button
               v-if="row.readStatus === 0"
               type="primary"
               link
               size="small"
               :loading="markingId === row.notificationId"
-              @click="markOne(row.notificationId)"
+              @click.stop="markOne(row.notificationId)"
             >
               标为已读
             </el-button>
+            <span v-if="!row.bizId" class="no-link-hint">（无关联笔记）</span>
           </div>
         </el-card>
       </el-timeline-item>
@@ -75,11 +84,14 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import SockJS from 'sockjs-client'
 import { Client } from '@stomp/stompjs'
 import { ElMessage } from 'element-plus'
 import { getNotifyList, getNotifyUnreadCount, markNotifyRead, markAllNotifyRead } from '../api/notify'
 import { getToken } from '../utils/auth'
+
+const router = useRouter()
 
 const loading = ref(false)
 const readAllLoading = ref(false)
@@ -90,11 +102,13 @@ const page = ref(1)
 const pageSize = 20
 const unreadCount = ref(0)
 
+/** 当前激活的 Tab：all / unread / like / collect / comment */
+const activeTab = ref('all')
+
 const wsConnected = ref(false)
 const wsHint = ref('')
 let stompClient = null
 
-/** 与 notify-service WebSocket 同源（不经 Vite /api 代理） */
 const notifyWsOrigin = import.meta.env.VITE_NOTIFY_WS_ORIGIN || 'http://localhost:8087'
 
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
@@ -106,8 +120,18 @@ function typeLabel(type) {
 
 function formatTime(t) {
   if (!t) return ''
-  const d = new Date(t)
-  return d.toLocaleString()
+  return new Date(t).toLocaleString()
+}
+
+/** 根据当前 Tab 构造过滤参数 */
+function buildFilterParams(p) {
+  const params = { page: p, size: pageSize }
+  if (activeTab.value === 'unread') {
+    params.readStatus = 0
+  } else if (activeTab.value !== 'all') {
+    params.type = activeTab.value
+  }
+  return params
 }
 
 async function refreshUnread() {
@@ -123,7 +147,7 @@ async function loadList(p) {
   page.value = p
   loading.value = true
   try {
-    const res = await getNotifyList({ page: p, size: pageSize })
+    const res = await getNotifyList(buildFilterParams(p))
     list.value = res.data?.list || []
     total.value = Number(res.data?.total ?? 0)
   } catch {
@@ -135,6 +159,28 @@ async function loadList(p) {
   await refreshUnread()
 }
 
+function onTabChange() {
+  loadList(1)
+}
+
+/**
+ * 点击整行卡片：若有 bizId，先标记已读，然后跳转到笔记详情。
+ * PostDetailView 负责处理笔记不存在（404）的情况并展示提示。
+ */
+async function handleCardClick(row) {
+  if (!row.bizId) return
+  // 标记已读（不阻塞跳转，失败静默）
+  if (row.readStatus === 0) {
+    markNotifyRead(row.notificationId)
+      .then(() => {
+        row.readStatus = 1
+        if (unreadCount.value > 0) unreadCount.value -= 1
+      })
+      .catch(() => {})
+  }
+  router.push('/post/' + row.bizId)
+}
+
 async function markOne(id) {
   markingId.value = id
   try {
@@ -142,7 +188,7 @@ async function markOne(id) {
     ElMessage.success('已标记已读')
     await loadList(page.value)
   } catch {
-    // 拦截器已提示
+    // axios 拦截器已提示
   } finally {
     markingId.value = null
   }
@@ -155,7 +201,7 @@ async function handleReadAll() {
     ElMessage.success('已全部标为已读')
     await loadList(page.value)
   } catch {
-    // 拦截器已提示
+    // axios 拦截器已提示
   } finally {
     readAllLoading.value = false
   }
@@ -180,17 +226,24 @@ function connectWs() {
         try {
           const payload = JSON.parse(message.body)
           if (payload?.notificationId) {
-            list.value.unshift({
-              notificationId: payload.notificationId,
-              senderId: payload.senderId,
-              senderUsername: payload.senderUsername,
-              type: payload.type,
-              bizId: payload.bizId,
-              content: payload.content,
-              readStatus: payload.readStatus ?? 0,
-              createdAt: payload.createdAt
-            })
-            total.value += 1
+            // 仅在"全部"或匹配当前 Tab 时插入实时条目，避免 Tab 过滤失效
+            const matchTab =
+              activeTab.value === 'all' ||
+              (activeTab.value === 'unread' && payload.readStatus === 0) ||
+              activeTab.value === payload.type
+            if (matchTab) {
+              list.value.unshift({
+                notificationId: payload.notificationId,
+                senderId: payload.senderId,
+                senderUsername: payload.senderUsername,
+                type: payload.type,
+                bizId: payload.bizId,
+                content: payload.content,
+                readStatus: payload.readStatus ?? 0,
+                createdAt: payload.createdAt
+              })
+              total.value += 1
+            }
             if (payload.readStatus === 0) {
               unreadCount.value += 1
             }
@@ -201,9 +254,7 @@ function connectWs() {
         }
       })
     },
-    onDisconnect: () => {
-      wsConnected.value = false
-    },
+    onDisconnect: () => { wsConnected.value = false },
     onStompError: (frame) => {
       console.warn('STOMP error', frame.headers['message'])
       wsConnected.value = false
@@ -211,9 +262,8 @@ function connectWs() {
     onWebSocketError: () => {
       wsConnected.value = false
       wsHint.value =
-        '无法连接通知 WebSocket（默认 ' +
-        notifyWsOrigin +
-        '）。请确认 notify-service 已启动，或在前端配置 VITE_NOTIFY_WS_ORIGIN。'
+        `无法连接通知 WebSocket（默认 ${notifyWsOrigin}）。` +
+        '请确认 notify-service 已启动，或在前端配置 VITE_NOTIFY_WS_ORIGIN。'
     }
   })
   stompClient.activate()
@@ -221,11 +271,7 @@ function connectWs() {
 
 function disconnectWs() {
   if (stompClient) {
-    try {
-      stompClient.deactivate()
-    } catch {
-      /* noop */
-    }
+    try { stompClient.deactivate() } catch { /* noop */ }
     stompClient = null
   }
   wsConnected.value = false
@@ -236,9 +282,7 @@ onMounted(async () => {
   connectWs()
 })
 
-onUnmounted(() => {
-  disconnectWs()
-})
+onUnmounted(() => { disconnectWs() })
 </script>
 
 <style scoped>
@@ -253,7 +297,7 @@ onUnmounted(() => {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 .notify-header h2 {
   margin: 0;
@@ -264,6 +308,9 @@ onUnmounted(() => {
   flex-wrap: wrap;
   align-items: center;
   gap: 10px;
+}
+.notify-tabs {
+  margin-bottom: 12px;
 }
 .unread {
   font-size: 14px;
@@ -287,8 +334,21 @@ onUnmounted(() => {
 .row-actions {
   margin-top: 8px;
 }
+/* 未读通知左侧蓝色竖线 */
 .unread.el-card {
   border-left: 3px solid var(--el-color-primary);
+}
+/* 有关联笔记时整行显示手型，提示可点击 */
+.clickable {
+  cursor: pointer;
+  transition: box-shadow 0.15s;
+}
+.clickable:hover {
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.12);
+}
+.no-link-hint {
+  font-size: 12px;
+  color: var(--el-text-color-placeholder);
 }
 .pager {
   display: flex;

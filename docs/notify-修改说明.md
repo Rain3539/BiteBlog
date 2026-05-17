@@ -176,7 +176,27 @@ cd BiteBlog\sql
 
 若通知列表 `total` 为 0 但列表和 `unreadCount` 均有数据，说明 `MybatisPlusConfig` 未加载（分页拦截器缺失）；若列表为空说明 RabbitMQ 消费异常，可在管理台 Purge `notify.interaction.queue` 后重新运行脚本。
 
-## 9. 本地接口验证结果
+## 9. 分布式工程化优化说明
+
+### 9.1 死信队列（DLQ）
+
+`NotifyRabbitConfig` 新增了 `notify.dlx`（死信交换机）和 `notify.dead.queue`（死信队列）。`notify.interaction.queue` 通过 `x-dead-letter-exchange` 参数绑定到死信交换机。
+
+`NotifyEventListener` 改为手动 ack（`ackMode = MANUAL`）：业务成功执行 `basicAck`；业务异常执行 `basicNack(requeue=false)`，消息转投死信队列而非无限重投或静默丢弃，符合分布式系统的**可靠消息**设计原则。
+
+`application.yml` 中 `acknowledge-mode: manual` 与监听器配合生效。
+
+### 9.2 未读数 Redis 缓存
+
+`countUnread` 方法采用 **Cache-Aside 模式**：优先读 `notify:unread:{userId}` 缓存（TTL 5 分钟）；缓存 miss 时查 DB 并回填；写新通知时 `INCR` 计数；标为已读时删除缓存（evict）。Redis 不可用时自动降级查 DB，接口不报错。
+
+高频的导航栏未读角标接口不再每次触发 `COUNT(*)` 全表扫描。
+
+### 9.3 Feign 移出事务
+
+`saveAndPush` 的 `@Transactional` 范围内只做 DB insert；调用 `user-service` 的 Feign 请求和 WebSocket 推送移至事务提交后执行，避免数据库连接在事务期间因等待远程 HTTP 而被长时间占用。
+
+## 10. 本地接口验证结果
 
 已完成本地联调验证。测试前启动 Docker 中间件，执行 `sql/init-notify-data.ps1`，依次启动 `user-service`、`post-service`、`notify-service`。
 
