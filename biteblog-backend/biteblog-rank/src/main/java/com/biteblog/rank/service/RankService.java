@@ -11,7 +11,9 @@ import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -22,7 +24,10 @@ public class RankService {
     private final NoteMapper noteMapper;
     private final RedisTemplate<String, Object> redisTemplate;
 
-    private static final String KEY_PREFIX = "rank:hot:";
+    private static final DateTimeFormatter DATE_KEY_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
+    private static final String DAILY_KEY_PREFIX = "rank:daily:";
+    private static final String WEEKLY_KEY = "rank:weekly";
+    private static final String ALL_KEY = "rank:all";
     private static final Set<String> TYPES = Set.of("daily", "weekly", "all");
     private static final int MAX_CACHE_SIZE = 200;
 
@@ -213,7 +218,12 @@ public class RankService {
     }
 
     private String rankKey(String type) {
-        return KEY_PREFIX + type;
+        return switch (type) {
+            case "daily" -> DAILY_KEY_PREFIX + LocalDate.now().format(DATE_KEY_FORMATTER);
+            case "weekly" -> WEEKLY_KEY;
+            case "all" -> ALL_KEY;
+            default -> DAILY_KEY_PREFIX + LocalDate.now().format(DATE_KEY_FORMATTER);
+        };
     }
 
     private int defaultZero(Integer value) {

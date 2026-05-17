@@ -8,9 +8,9 @@
 
 Rank Service 是 BiteBlog 的热度排行榜服务，服务端口为 `8086`，负责把笔记的点赞、收藏、评论、评分质量和发布时间转化为热度分数，并使用 Redis Sorted Set 维护：
 
-- 日榜：`rank:hot:daily`
-- 周榜：`rank:hot:weekly`
-- 总榜：`rank:hot:all`
+- 日榜：`rank:daily:{yyyy-MM-dd}`，例如 `rank:daily:2026-05-17`
+- 周榜：`rank:weekly`
+- 总榜：`rank:all`
 
 该服务不是独立展示模块，而是与 Post Service、Gateway、RabbitMQ、Redis、MySQL 和前端页面共同组成“热门内容发现”链路：
 
@@ -165,7 +165,9 @@ timeBoost = 24 / sqrt(hoursSinceCreated)
 使用 Redis Sorted Set：
 
 ```text
-key    = rank:hot:{type}
+daily  = rank:daily:{yyyy-MM-dd}
+weekly = rank:weekly
+all    = rank:all
 member = noteId
 score  = hotScore
 ```

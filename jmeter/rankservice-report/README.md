@@ -1,13 +1,23 @@
 # Rank Service JMeter Report
 
-运行以下命令后会在本目录生成 HTML 报告：
+JMeter requires the `-o` report directory to be empty or absent.
 
-```bash
-jmeter -n -t jmeter/rank-service-test.jmx -l jmeter/rank-service-result.jtl -e -o jmeter/rankservice-report
+PowerShell:
+
+```powershell
+if (Test-Path jmeter/rankservice-report) {
+  Remove-Item -Recurse -Force jmeter/rankservice-report
+}
+
+jmeter -n -t jmeter/rank-service-test.jmx `
+  -l jmeter/rank-service-result.jtl `
+  -e -o jmeter/rankservice-report
 ```
 
-如果目录非空，先删除旧报告：
+After the command finishes, open:
 
-```bash
-rm -rf jmeter/rankservice-report/*
+```text
+jmeter/rankservice-report/index.html
 ```
+
+Take a screenshot of the dashboard page and save it as a Rank Service test screenshot.
