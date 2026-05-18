@@ -1,0 +1,128 @@
+﻿**********************
+Windows PowerShell 脚本开始
+开始时间: 20260518212250
+用户名: LAPTOP-0SABB5A1\丁欣雨
+RunAs 用户: LAPTOP-0SABB5A1\丁欣雨
+配置名称: 
+计算机: LAPTOP-0SABB5A1 (Microsoft Windows NT 10.0.26200.0)
+主机应用程序: C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe -noexit -command try { . "d:\VSCode\Microsoft VS Code\0958016b2a\resources\app\out\vs\workbench\contrib\terminal\common\scripts\shellIntegration.ps1" } catch {}
+进程 ID: 47304
+PSVersion: 5.1.26100.8457
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.8457
+BuildVersion: 10.0.26100.8457
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+===== Rank Service Verification =====
+Redis daily key: rank:daily:2026-05-18
+Author: 13800000001 user_foodie userId=12
+Actor: 13800000004 user_hotpot userId=5
+
+===== 1. Health Check =====
+  rank-service status=UP
+
+===== 2. Rebuild daily/weekly/all =====
+  rebuild daily: rebuilt=True
+  rebuild weekly: rebuilt=True
+  rebuild all: rebuilt=True
+
+===== 3. Top10 Whitelist Latency (target < 100ms) =====
+  try 1: 599ms
+  try 2: 14ms
+  try 3: 12ms
+  try 4: 13ms
+  try 5: 20ms
+  try 6: 14ms
+  try 7: 23ms
+  try 8: 15ms
+  try 9: 15ms
+  try 10: 16ms
+  try 11: 14ms
+  try 12: 15ms
+  try 13: 12ms
+  try 14: 12ms
+  try 15: 10ms
+  try 16: 11ms
+  try 17: 11ms
+  try 18: 11ms
+  try 19: 12ms
+  try 20: 11ms
+  average: 43ms (target <100ms)
+
+===== 4. Redis ZSet Daily Key =====
+  command: ZREVRANGE rank:daily:2026-05-18 0 9 WITHSCORES
+  no Redis daily rank data found; check rebuild and Redis container
+
+===== 5. Publish Note -> Rank Event =====
+  published: postId=98 title=RankEventTest-212253
+  try 1: score=null
+  try 2: score=null
+  try 3: score=null
+  try 4: score=null
+  try 5: score=null
+  try 6: score=null
+  try 7: score=null
+  try 8: score=null
+  try 9: score=null
+  try 10: score=null
+  try 11: score=null
+  try 12: score=null
+  publish event was not observed within 6s; interaction events will still be checked
+
+===== 6. Like/Favorite/Comment -> Score Increase =====
+  like request sent
+  try 1: score=null
+  try 2: score=null
+  try 3: score=null
+  try 4: score=null
+  try 5: score=null
+  try 6: score=null
+  try 7: score=null
+  try 8: score=null
+  try 9: score=null
+  try 10: score=null
+  try 11: score=null
+  try 12: score=null
+  like did not increase score within 6s
+  favorite request sent
+  try 1: score=null
+  try 2: score=null
+  try 3: score=null
+  try 4: score=null
+  try 5: score=null
+  try 6: score=null
+  try 7: score=null
+  try 8: score=null
+  try 9: score=null
+  try 10: score=null
+  try 11: score=null
+  try 12: score=null
+  favorite did not increase score within 6s
+  comment request sent
+  try 1: score=null
+  try 2: score=null
+  try 3: score=null
+  try 4: score=null
+  try 5: score=null
+  try 6: score=null
+  try 7: score=null
+  try 8: score=null
+  try 9: score=null
+  try 10: score=null
+  try 11: score=null
+  try 12: score=null
+  comment did not increase score within 6s
+
+===== 7. Rank List API =====
+  page=1 size=10 total=1
+  #1 postId=98 hotScore=25.485281374238568 title=RankEventTest-212253
+
+===== Done =====
+Result saved to: D:\桌面\whu_cs\大三下\分布式（期末考试开卷）\大作业\BiteBlog\测试脚本\rank-test-result.txt
+**********************
+Windows PowerShell 脚本结束
+结束时间: 20260518212324
+**********************

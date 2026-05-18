@@ -1,4 +1,4 @@
-$ErrorActionPreference = "SilentlyContinue"
+﻿$ErrorActionPreference = "SilentlyContinue"
 $transcriptFile = Join-Path $PSScriptRoot "rank-test-result.txt"
 Start-Transcript -Path $transcriptFile -Force | Out-Null
 

@@ -1,4 +1,4 @@
-$ErrorActionPreference = "SilentlyContinue"
+﻿$ErrorActionPreference = "SilentlyContinue"
 $resultFile = Join-Path $PSScriptRoot "notify-init-result.txt"
 
 $gateway    = "http://localhost:8080/api"
