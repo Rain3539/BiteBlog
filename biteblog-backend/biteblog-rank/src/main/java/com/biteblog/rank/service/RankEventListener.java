@@ -9,7 +9,10 @@ import org.springframework.amqp.core.Message;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
 import org.springframework.stereotype.Component;
 
+import java.io.ByteArrayInputStream;
+import java.io.ObjectInputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 @Slf4j
@@ -38,21 +41,40 @@ public class RankEventListener {
     }
 
     @RabbitListener(queues = RankRabbitConfig.INTERACTION_QUEUE)
-    public void onInteraction(Map<String, Object> event) {
+    public void onInteraction(Message message) {
+        Map<String, Object> event = parseEvent(message, "interaction");
         Long noteId = toLong(event.get("noteId"));
         String type = String.valueOf(event.getOrDefault("type", "view"));
         rankService.increaseByInteraction(noteId, type);
-        log.info("Rank interaction event consumed: noteId={}, type={}", noteId, type);
+        log.info("Rank interaction event consumed: noteId={}, type={}, action={}",
+                noteId, type, event.getOrDefault("action", "add"));
     }
 
     private Map<String, Object> parseEvent(Message message, String eventName) {
         try {
-            String body = new String(message.getBody(), StandardCharsets.UTF_8);
-            return objectMapper.readValue(body, EVENT_TYPE);
+            byte[] body = message.getBody();
+            String text = new String(body, StandardCharsets.UTF_8).trim();
+            if (text.startsWith("{")) {
+                return objectMapper.readValue(text, EVENT_TYPE);
+            }
+            return deserializeMap(body);
         } catch (Exception e) {
             log.error("Failed to parse {} message", eventName, e);
-            throw new RuntimeException(e);
+            return Map.of();
         }
+    }
+
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> deserializeMap(byte[] body) throws Exception {
+        try (ObjectInputStream inputStream = new ObjectInputStream(new ByteArrayInputStream(body))) {
+            Object object = inputStream.readObject();
+            if (object instanceof Map<?, ?> rawMap) {
+                Map<String, Object> result = new LinkedHashMap<>();
+                rawMap.forEach((key, value) -> result.put(String.valueOf(key), value));
+                return result;
+            }
+        }
+        return Map.of();
     }
 
     private Long toLong(Object value) {

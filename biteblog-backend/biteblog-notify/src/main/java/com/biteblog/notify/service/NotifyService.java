@@ -91,9 +91,14 @@ public class NotifyService {
         Long noteId = toLong(event.get("noteId"));
         Long userId = toLong(event.get("userId"));
         Long authorId = toLong(event.get("authorId"));
+        String action = String.valueOf(event.getOrDefault("action", "add"));
 
         if (noteId == null || userId == null || authorId == null) {
             log.warn("notify skip: missing fields event={} routingKey={}", event, routingKey);
+            return;
+        }
+        if (!"add".equalsIgnoreCase(action)) {
+            log.info("notify skip: non-add interaction action={} routingKey={} noteId={}", action, routingKey, noteId);
             return;
         }
         if (authorId.equals(userId)) {

@@ -7,12 +7,13 @@ services:
       MYSQL_ROOT_PASSWORD: root123456
       MYSQL_DATABASE: biteblog
       MYSQL_CHARSET: utf8mb4
+      TZ: Asia/Shanghai
     ports:
       - "3306:3306"
     volumes:
       - mysql-data:/var/lib/mysql
       - ./sql/init.sql:/docker-entrypoint-initdb.d/init.sql
-    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci --default-time-zone=+08:00
     networks:
       - biteblog-net
     healthcheck:

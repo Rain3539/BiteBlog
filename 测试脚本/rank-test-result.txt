@@ -1,12 +1,12 @@
 ﻿**********************
-Windows PowerShell 脚本开始
-开始时间: 20260518212250
-用户名: LAPTOP-0SABB5A1\丁欣雨
-RunAs 用户: LAPTOP-0SABB5A1\丁欣雨
-配置名称: 
-计算机: LAPTOP-0SABB5A1 (Microsoft Windows NT 10.0.26200.0)
-主机应用程序: C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe -noexit -command try { . "d:\VSCode\Microsoft VS Code\0958016b2a\resources\app\out\vs\workbench\contrib\terminal\common\scripts\shellIntegration.ps1" } catch {}
-进程 ID: 47304
+Windows PowerShell transcript start
+Start time: 20260519003935
+Username: HUOHUA\18335
+RunAs User: HUOHUA\18335
+Configuration Name:
+Machine: HUOHUA (Microsoft Windows NT 10.0.26200.0)
+Host Application: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -File .\测试脚本\rank-test-verify.ps1
+Process ID: 16548
 PSVersion: 5.1.26100.8457
 PSEdition: Desktop
 PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.8457
@@ -17,112 +17,104 @@ PSRemotingProtocolVersion: 2.3
 SerializationVersion: 1.1.0.1
 **********************
 ===== Rank Service Verification =====
-Redis daily key: rank:daily:2026-05-18
-Author: 13800000001 user_foodie userId=12
-Actor: 13800000004 user_hotpot userId=5
+Expected daily key: rank:daily:2026-05-19
+
+===== 0. Container Precheck =====
+  [PASS] Redis container is running: biteblog-redis
+  [PASS] RabbitMQ container is running: biteblog-rabbitmq
+  [PASS] Author login userId=1 phone=13800000001 username=bb_bigv_01
+  [PASS] Actor login userId=4 phone=13800000004 username=bb_user_04
 
 ===== 1. Health Check =====
-  rank-service status=UP
+  [PASS] rank-service status=UP
 
 ===== 2. Rebuild daily/weekly/all =====
-  rebuild daily: rebuilt=True
-  rebuild weekly: rebuilt=True
-  rebuild all: rebuilt=True
+  [PASS] rebuild daily
+  [PASS] rebuild weekly
+  [PASS] rebuild all
 
-===== 3. Top10 Whitelist Latency (target < 100ms) =====
-  try 1: 599ms
-  try 2: 14ms
-  try 3: 12ms
-  try 4: 13ms
-  try 5: 20ms
-  try 6: 14ms
-  try 7: 23ms
-  try 8: 15ms
-  try 9: 15ms
-  try 10: 16ms
-  try 11: 14ms
-  try 12: 15ms
-  try 13: 12ms
-  try 14: 12ms
-  try 15: 10ms
-  try 16: 11ms
-  try 17: 11ms
-  try 18: 11ms
-  try 19: 12ms
-  try 20: 11ms
-  average: 43ms (target <100ms)
+===== 3. Top10 Whitelist Latency =====
+  try 1: 49ms
+  try 2: 32ms
+  try 3: 31ms
+  try 4: 31ms
+  try 5: 31ms
+  try 6: 31ms
+  try 7: 30ms
+  try 8: 28ms
+  try 9: 29ms
+  try 10: 29ms
+  try 11: 29ms
+  try 12: 29ms
+  try 13: 29ms
+  try 14: 29ms
+  try 15: 29ms
+  try 16: 29ms
+  try 17: 29ms
+  try 18: 30ms
+  try 19: 28ms
+  try 20: 27ms
+  [PASS] average latency 30.45ms (target <100ms)
 
-===== 4. Redis ZSet Daily Key =====
-  command: ZREVRANGE rank:daily:2026-05-18 0 9 WITHSCORES
-  no Redis daily rank data found; check rebuild and Redis container
+===== 4. Redis Daily ZSet Snapshot =====
+  daily keys found:
+    rank:daily:2026-05-19 count=4
+      member=4 score=41
+      member=3 score=41
+      member=2 score=25.485281374238568
+      member=1 score=25.485281374238568
 
 ===== 5. Publish Note -> Rank Event =====
-  published: postId=98 title=RankEventTest-212253
-  try 1: score=null
-  try 2: score=null
-  try 3: score=null
-  try 4: score=null
-  try 5: score=null
-  try 6: score=null
-  try 7: score=null
-  try 8: score=null
-  try 9: score=null
-  try 10: score=null
-  try 11: score=null
-  try 12: score=null
-  publish event was not observed within 6s; interaction events will still be checked
+  [PASS] published postId=5 title=RankEventTest-003939
+  try 1: key=rank:daily:2026-05-19 score=29
+  [PASS] note.published score increased: before= after=29
 
-===== 6. Like/Favorite/Comment -> Score Increase =====
-  like request sent
-  try 1: score=null
-  try 2: score=null
-  try 3: score=null
-  try 4: score=null
-  try 5: score=null
-  try 6: score=null
-  try 7: score=null
-  try 8: score=null
-  try 9: score=null
-  try 10: score=null
-  try 11: score=null
-  try 12: score=null
-  like did not increase score within 6s
-  favorite request sent
-  try 1: score=null
-  try 2: score=null
-  try 3: score=null
-  try 4: score=null
-  try 5: score=null
-  try 6: score=null
-  try 7: score=null
-  try 8: score=null
-  try 9: score=null
-  try 10: score=null
-  try 11: score=null
-  try 12: score=null
-  favorite did not increase score within 6s
-  comment request sent
-  try 1: score=null
-  try 2: score=null
-  try 3: score=null
-  try 4: score=null
-  try 5: score=null
-  try 6: score=null
-  try 7: score=null
-  try 8: score=null
-  try 9: score=null
-  try 10: score=null
-  try 11: score=null
-  try 12: score=null
-  comment did not increase score within 6s
+===== 6. Like/Favorite/Comment -> Rank Score Refresh =====
+  [PASS] like request sent
+  try 1: key=rank:daily:2026-05-19 score=32
+  [PASS] like score increased: before=29 after=32
+  [PASS] favorite request sent
+  try 1: key=rank:daily:2026-05-19 score=37
+  [PASS] favorite score increased: before=32 after=37
+  [PASS] comment request sent
+  try 1: key=rank:daily:2026-05-19 score=41
+  [PASS] comment score increased: before=37 after=41
 
 ===== 7. Rank List API =====
-  page=1 size=10 total=1
-  #1 postId=98 hotScore=25.485281374238568 title=RankEventTest-212253
+  [PASS] page=1 size=50 total=5
+  #1 postId=5 hotScore=41.0 title=RankEventTest-003939
+  #2 postId=4 hotScore=41.0 title=RankEventTest-003205
+  #3 postId=3 hotScore=41.0 title=RankEventTest-002606
+  #4 postId=2 hotScore=25.485281374238568 title=RankEventTest-002145
+  #5 postId=1 hotScore=25.485281374238568 title=RankEventTest-001228
+  [PASS] published post is present in rank list
+
+===== 8. Diagnostics =====
+  daily keys found:
+    rank:daily:2026-05-19 count=5
+      member=5 score=41
+      member=4 score=41
+      member=3 score=41
+      member=2 score=25.485281374238568
+      member=1 score=25.485281374238568
+  RabbitMQ queues:
+    name    messages_ready    messages_unacknowledged    consumers
+    rank.note.published.queue    0    0    1
+    rank.note.deleted.queue    0    0    1
+    rank.interaction.queue    0    0    1
+  RabbitMQ bindings:
+    source_name    destination_name    routing_key
+        rank.note.published.queue    rank.note.published.queue
+        rank.note.deleted.queue    rank.note.deleted.queue
+        rank.interaction.queue    rank.interaction.queue
+    biteblog.interaction    rank.interaction.queue    interaction.*
+    biteblog.post    rank.note.deleted.queue    note.deleted
+    biteblog.post    rank.note.published.queue    note.published
 
 ===== Done =====
-Result saved to: D:\桌面\whu_cs\大三下\分布式（期末考试开卷）\大作业\BiteBlog\测试脚本\rank-test-result.txt
+  [PASS] Rank verification passed
+Result saved to: C:\Users\18335\Desktop\分布式大作业\BiteBlog\测试脚本\rank-test-result.txt
 **********************
-Windows PowerShell 脚本结束
-结束时间: 20260518212324
+Windows PowerShell transcript end
+End time: 20260519003947
 **********************
