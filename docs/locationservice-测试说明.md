@@ -93,35 +93,7 @@ cd sql
 
 ### 实测输出示例
 
-```
-===== Location Service 非功能验证 =====
-发布者: bb_bigv_01 (userId=1)
-查看者: bb_user_04 (userId=4)
-
-===== 1. 健康检查 =====
-  状态: UP
-
-===== 2. 附近查询响应时间 (目标 < 300ms) =====
-  Redis GEO 已有笔记: 42 条
-  第1次: 20ms
-  第2次: 10ms
-  ...
-  第10次: 10ms
-  平均: 11ms (目标 <300ms)
-
-===== 8. 交叉功能: 发布笔记 -> MQ -> GEO -> 附近查询 =====
-  发布成功: postId=48
-  GEO 写入确认: 500ms
-  查看者验证: 找到笔记 (distance=0.0003km)
-
-===== 非功能指标汇总 =====
-  附近查询响应: avg=11ms (目标 <300ms)
-  POI 缓存加速: 50x
-  GEO 异步写入: 秒级 (RabbitMQ)
-  JMeter 压测: 20线程x50循环=5000次, 错误率0%
-```
-
-结果自动保存至 `测试脚本/location-test-result.txt`。
+![alt text](image.png)
 
 ## 6. JMeter 并发测试
 
@@ -159,6 +131,7 @@ cd sql
 | 最小响应时间 | 0ms |
 | 最大响应时间 | 52ms |
 | 吞吐量 | **910.6 req/s** |
+![1779126702842](image/locationservice-测试说明/1779126702842.png)
 
 ### 6.4 与其它服务对比
 
@@ -168,7 +141,7 @@ cd sql
 | Recommend | 20 | 10 | ~1000 | 5 | 8080 |
 | Location | **20** | **50** | **5000** | **5** | **8085** |
 
-打开 `jmeter/locationservice-report/index.html` 查看完整 HTML 仪表盘报告（Dashboard、响应时间曲线、错误统计等）。
+
 
 ## 7. 前端附近页面
 
