@@ -1,0 +1,175 @@
+﻿**********************
+Windows PowerShell 脚本开始
+开始时间: 20260519011638
+用户名: LENOVO\11012
+RunAs 用户: LENOVO\11012
+配置名称: 
+计算机: LENOVO (Microsoft Windows NT 10.0.26100.0)
+主机应用程序: C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe -noexit -command try { . "d:\MicrosoftVSCode\resources\app\out\vs\workbench\contrib\terminal\common\scripts\shellIntegration.ps1" } catch {}
+进程 ID: 5068
+PSVersion: 5.1.26100.6899
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.6899
+BuildVersion: 10.0.26100.6899
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+===== Location Service 非功能验证 =====
+PS>TerminatingError(Write-Host):“无法将参数“ForegroundColor”绑定到目标。设置“ForegroundColor”时发生异常:“由于枚举值无效，无法将 Null 转换为类型“System.ConsoleColor”。请指定以下枚举值之一，然后重试。可能的枚举值为“Black,DarkBlue,DarkGreen,DarkCyan,DarkRed,DarkMagenta,DarkYellow,Gray,DarkGray,Blue,Green,Cyan,Red,Magenta,Yellow,White”。””
+
+===== 2. 附近查询响应时间 (目标 < 300ms) =====
+  Redis GEO 已有笔记: 42 条
+  第1次: 15ms
+  第2次: 10ms
+  第3次: 10ms
+  第4次: 8ms
+  第5次: 10ms
+  第6次: 9ms
+  第7次: 8ms
+  第8次: 9ms
+  第9次: 9ms
+  第10次: 8ms
+  平均: 9.6ms (目标 <300ms)
+
+===== 3. 附近笔记结果验证 =====
+  返回: 8 条
+    noteId=43  title=æ­¦æ±æ±æ±è·¯æ¥æ  distance=0.588km
+    noteId=29  title=æ­¦æ±æ±æ±è·¯æ¥æ  distance=0.588km
+    noteId=45  title=æ­¦æ±ååºè¡å¤§ææ¡£ä½éª  distance=0.694km
+    noteId=31  title=æ­¦æ±ååºè¡å¤§ææ¡£ä½éª  distance=0.694km
+    noteId=20  title=æ­¦æ±æ·é¨å··å¿åä¸é²è±ç®  distance=0.983km
+    noteId=34  title=æ­¦æ±æ·é¨å··å¿åä¸é²è±ç®  distance=0.983km
+    noteId=33  title=æ­¦æ±å¤©å°ç½çº¢å¥¶è¶æµè¯  distance=2.422km
+    noteId=47  title=æ­¦æ±å¤©å°ç½çº¢å¥¶è¶æµè¯  distance=2.422km
+  距离排序: 通过 (升序)
+
+===== 4. 不同半径测试 =====
+  半径 1km: 6 条
+  半径 3km: 8 条
+  半径 5km: 8 条
+  半径 10km: 21 条
+  半径 20km: 23 条
+  半径验证: 通过
+
+===== 5. 坐标参数校验 =====
+  非法经度 200: code=5003 COORDINATE_INVALID
+  非法纬度 100: code=5003 COORDINATE_INVALID
+
+===== 6. POI 搜索 =====
+  关键词=火锅 城市=武汉: 20 条结果
+  首条: æµ·åºæç«é(ä¸­å¿ç¾è´§åº) | æ±æ±è·¯129å·ä¸­å¿ç¾è´§5å±
+
+===== 7. POI 缓存性能 =====
+  首次 (高德API, keyword=test1715): 267ms
+  二次 (Redis缓存): 4ms
+  缓存加速: 66.8x (4ms vs 267ms)
+
+===== 8. 交叉功能: 发布笔记 -> MQ -> GEO -> 附近查询 =====
+  发布成功: postId=0
+  等待 RabbitMQ -> LocationService -> GEOADD...
+  第1次: 尚未写入
+  第2次: 尚未写入
+  第3次: 尚未写入
+  第4次: 尚未写入
+  第5次: 尚未写入
+  第6次: 尚未写入
+  第7次: 尚未写入
+  第8次: 尚未写入
+  第9次: 尚未写入
+  第10次: 尚未写入
+  第11次: 尚未写入
+  第12次: 尚未写入
+  第13次: 尚未写入
+  第14次: 尚未写入
+  第15次: 尚未写入
+  第16次: 尚未写入
+  第17次: 尚未写入
+  第18次: 尚未写入
+  第19次: 尚未写入
+  第20次: 尚未写入
+  GEO 写入超时 (>10s)
+  查看者验证: 未找到
+
+===== 9. 删除笔记 -> GEO 清理 =====
+  删除: postId=0
+  GEO 清理: 已清理
+
+===== 10. 补充测试数据 (前端演示) =====
+  已补充发布: postId=0
+PS>TerminatingError():“管道已被停止。”
+>> TerminatingError():“管道已被停止。”
+>> TerminatingError():“管道已被停止。”
+(base)
+]633;D;1]633;A]633;P;Cwd=E:\x5cstudy\x5cProjects\x5cBiteBlogPS E:\study\Projects\BiteBlog> ]633;B
+PS>.\sql\init-location-data.ps1
+===== Init Location Service Test Data =====
+[OK] author1: bb_bigv_01 (userId=1)
+[OK] author2: bb_user_04 (userId=4)
+
+===== Publish Location Notes =====
+--- Author1 (bb_bigv_01) ---
+--- Author2 (bb_user_04) ---
+
+===== Wait for RabbitMQ GEO Write =====
+  try 1: location:notes ZCARD=42
+  try 2: location:notes ZCARD=42
+  try 3: location:notes ZCARD=42
+  try 4: location:notes ZCARD=42
+PS>TerminatingError():“管道已被停止。”
+>> TerminatingError():“管道已被停止。”
+>> TerminatingError():“管道已被停止。”
+(base)
+]633;D;1]633;A]633;P;Cwd=E:\x5cstudy\x5cProjects\x5cBiteBlogPS E:\study\Projects\BiteBlog> ]633;B
+PS>.\sql\init-location-data.ps1
+===== Init Location Service Test Data =====
+[OK] author1: bb_bigv_01 (userId=1)
+[OK] author2: bb_user_04 (userId=4)
+
+===== Publish Location Notes =====
+--- Author1 (bb_bigv_01) ---
+--- Author2 (bb_user_04) ---
+
+===== Wait for RabbitMQ GEO Write =====
+  try 1: location:notes ZCARD=42
+  try 2: location:notes ZCARD=42
+  try 3: location:notes ZCARD=42
+  try 4: location:notes ZCARD=42
+  try 5: location:notes ZCARD=42
+PS>TerminatingError():“管道已被停止。”
+>> TerminatingError():“管道已被停止。”
+>> TerminatingError():“管道已被停止。”
+(base)
+]633;D;1]633;A]633;P;Cwd=E:\x5cstudy\x5cProjects\x5cBiteBlogPS E:\study\Projects\BiteBlog> ]633;B
+PS>.\sql\init-location-data.ps1
+===== Init Location Service Test Data =====
+[OK] author1: bb_bigv_01 (userId=1)
+[OK] author2: bb_user_04 (userId=4)
+
+===== Publish Location Notes =====
+--- Author1 (bb_bigv_01) ---
+--- Author2 (bb_user_04) ---
+
+===== Wait for RabbitMQ GEO Write =====
+  try 1: location:notes ZCARD=42
+  try 2: location:notes ZCARD=42
+  try 3: location:notes ZCARD=42
+  try 4: location:notes ZCARD=42
+  try 5: location:notes ZCARD=42
+  try 6: location:notes ZCARD=42
+  try 7: location:notes ZCARD=42
+  try 8: location:notes ZCARD=42
+  try 9: location:notes ZCARD=42
+  try 10: location:notes ZCARD=42
+
+===== Redis GEO Data =====
+
+
+===== Done =====
+Published 0 notes across 2 authors
+Author1 (BigV): 13800000001 (1) — 6 notes
+Author2 (Normal): 13800000004 (4) — 6 notes
+Test center: lng=114.3, lat=30.59 (武汉中山公园)
+(base)
+]633;D;0]633;A]633;P;Cwd=E:\x5cstudy\x5cProjects\x5cBiteBlogPS E:\study\Projects\BiteBlog> ]633;B

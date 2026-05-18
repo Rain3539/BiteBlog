@@ -1,4 +1,4 @@
-$ErrorActionPreference = "SilentlyContinue"
+﻿$ErrorActionPreference = "SilentlyContinue"
 
 $userBase = "http://localhost:8081/user"
 $postBase = "http://localhost:8082/post"
