@@ -153,8 +153,14 @@ public class LocationService {
             return;
         }
         Note note = noteMapper.selectById(noteId);
+        // 重试：Post Service 事务可能尚未提交
+        for (int retry = 0; retry < 5 && note == null; retry++) {
+            try { Thread.sleep(200); } catch (InterruptedException e) { Thread.currentThread().interrupt(); return; }
+            note = noteMapper.selectById(noteId);
+            log.info("Retry {} for noteId={}", retry + 1, noteId);
+        }
         if (note == null) {
-            log.warn("Note not found for location add: noteId={}", noteId);
+            log.warn("Note not found for location add after retries: noteId={}", noteId);
             return;
         }
         if (note.getLongitude() == null || note.getLatitude() == null) {
