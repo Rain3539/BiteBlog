@@ -173,7 +173,7 @@ $(document).ready(function() {
     });
 
     // Creates APDEX table
-    createTable($("#apdexTable"), {"supportsControllersDiscrimination": true, "overall": {"data": [1.0, 500, 1500, "Total"], "isController": false}, "titles": ["Apdex", "T (Toleration threshold)", "F (Frustration threshold)", "Label"], "items": [{"data": [1.0, 500, 1500, "GET /api/location/nearby/markers"], "isController": false}, {"data": [1.0, 500, 1500, "GET /api/location/poi/search"], "isController": false}]}, function(index, item){
+    createTable($("#apdexTable"), {"supportsControllersDiscrimination": true, "overall": {"data": [1.0, 500, 1500, "Total"], "isController": false}, "titles": ["Apdex", "T (Toleration threshold)", "F (Frustration threshold)", "Label"], "items": [{"data": [1.0, 500, 1500, "GET POI 火锅 武汉"], "isController": false}, {"data": [1.0, 500, 1500, "GET POI 星巴克"], "isController": false}, {"data": [1.0, 500, 1500, "GET nearby radius=3km"], "isController": false}, {"data": [1.0, 500, 1500, "GET nearby radius=1km"], "isController": false}, {"data": [1.0, 500, 1500, "GET /location/health"], "isController": false}]}, function(index, item){
         switch(index){
             case 0:
                 item = item.toFixed(3);
@@ -187,7 +187,7 @@ $(document).ready(function() {
     }, [[0, 0]], 3);
 
     // Create statistics table
-    createTable($("#statisticsTable"), {"supportsControllersDiscrimination": true, "overall": {"data": ["Total", 400, 0, 0.0, 3.650000000000002, 1, 67, 3.0, 6.0, 8.0, 18.970000000000027, 42.50797024442083, 15.438197396386823, 11.208156216790648], "isController": false}, "titles": ["Label", "#Samples", "FAIL", "Error %", "Average", "Min", "Max", "Median", "90th pct", "95th pct", "99th pct", "Transactions/s", "Received", "Sent"], "items": [{"data": ["GET /api/location/nearby/markers", 200, 0, 0.0, 3.8850000000000007, 1, 67, 3.0, 6.0, 8.899999999999977, 27.930000000000064, 21.258503401360542, 7.720220656622025, 5.522228422619048], "isController": false}, {"data": ["GET /api/location/poi/search", 200, 0, 0.0, 3.4150000000000014, 1, 19, 3.0, 5.900000000000006, 8.0, 15.970000000000027, 21.417862497322766, 7.779139169254659, 5.730951488541444], "isController": false}]}, function(index, item){
+    createTable($("#statisticsTable"), {"supportsControllersDiscrimination": true, "overall": {"data": ["Total", 5000, 0, 0.0, 2.767000000000005, 0, 52, 2.0, 5.0, 5.0, 7.0, 939.8496240601504, 2119.3135426456765, 156.21328712406014], "isController": false}, "titles": ["Label", "#Samples", "FAIL", "Error %", "Average", "Min", "Max", "Median", "90th pct", "95th pct", "99th pct", "Transactions/s", "Received", "Sent"], "items": [{"data": ["GET POI 火锅 武汉", 1000, 0, 0.0, 2.2639999999999985, 1, 11, 2.0, 3.0, 3.0, 4.0, 190.65776930409913, 834.1080046472831, 34.817385605338416], "isController": false}, {"data": ["GET POI 星巴克", 1000, 0, 0.0, 2.1249999999999973, 1, 7, 2.0, 3.0, 3.0, 4.0, 190.7304978065993, 928.4619075433911, 32.03676330345222], "isController": false}, {"data": ["GET nearby radius=3km", 1000, 0, 0.0, 4.511999999999992, 3, 16, 4.0, 5.0, 6.0, 7.990000000000009, 190.47619047619045, 156.2295386904762, 33.482142857142854], "isController": false}, {"data": ["GET nearby radius=1km", 1000, 0, 0.0, 4.244999999999993, 3, 14, 4.0, 5.0, 6.0, 9.0, 190.22256039566292, 156.02002389670915, 33.437559444550125], "isController": false}, {"data": ["GET /location/health", 1000, 0, 0.0, 0.6890000000000001, 0, 52, 1.0, 1.0, 1.0, 2.990000000000009, 188.35938971557732, 73.74711574684498, 24.280702580523638], "isController": false}]}, function(index, item){
         switch(index){
             // Errors pct
             case 3:
@@ -228,7 +228,7 @@ $(document).ready(function() {
     }, [[1, 1]]);
 
         // Create top5 errors by sampler
-    createTable($("#top5ErrorsBySamplerTable"), {"supportsControllersDiscrimination": false, "overall": {"data": ["Total", 400, 0, "", "", "", "", "", "", "", "", "", ""], "isController": false}, "titles": ["Sample", "#Samples", "#Errors", "Error", "#Errors", "Error", "#Errors", "Error", "#Errors", "Error", "#Errors", "Error", "#Errors"], "items": [{"data": [], "isController": false}, {"data": [], "isController": false}]}, function(index, item){
+    createTable($("#top5ErrorsBySamplerTable"), {"supportsControllersDiscrimination": false, "overall": {"data": ["Total", 5000, 0, "", "", "", "", "", "", "", "", "", ""], "isController": false}, "titles": ["Sample", "#Samples", "#Errors", "Error", "#Errors", "Error", "#Errors", "Error", "#Errors", "Error", "#Errors", "Error", "#Errors"], "items": [{"data": [], "isController": false}, {"data": [], "isController": false}, {"data": [], "isController": false}, {"data": [], "isController": false}, {"data": [], "isController": false}]}, function(index, item){
         return item;
     }, [[0, 0]], 0);
 
