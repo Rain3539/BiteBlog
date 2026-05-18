@@ -2,35 +2,67 @@
 
 ## 1. 服务定位
 
-本次完成的是组员 6 负责的 `Notify Service`，服务端口为 `8087`。该服务负责 BiteBlog 平台的消息通知能力，核心目标是把其他服务产生的互动事件（点赞、收藏、评论）转化为用户可见的通知，并通过 WebSocket 向在线用户实时推送，同时提供 HTTP 查询与已读接口供前端展示未读角标和通知列表。
+本次完成的是组员 6 负责的 `Notify Service`，服务端口为 **8087**。该服务在 BiteBlog 微服务体系中承担**消息通知**职责：
 
-当前实现完整支持联调：消费 Post 服务发布到 `biteblog.interaction` 交换机的互动事件，将通知写入 MySQL `notification` 表，通过 STOMP over WebSocket（SockJS 降级）推送给在线用户。前端通知中心页面与导航栏未读角标均已接入。
+- 订阅 RabbitMQ `biteblog.interaction` 交换机，消费 Post 服务产生的点赞/收藏/评论互动事件；
+- 将通知持久化到 MySQL `notification` 表，并维护未读计数；
+- 通过 **STOMP over WebSocket（SockJS）** 向在线用户实时推送通知；
+- 提供 HTTP 查询、已读、过滤等接口，供前端通知中心页面和导航栏未读角标使用。
 
-## 2. 本次新增/修改文件
+与其他服务的协作关系：
+
+| 依赖方向 | 服务 | 协作内容 |
+|----------|------|---------|
+| 消费方 | Post Service | 订阅 `biteblog.interaction` 交换机，消费 `interaction.like/collect/comment` 事件 |
+| 调用方 | User Service | OpenFeign `GET /user/{id}` 查询发送者昵称，在列表中补全展示名 |
+| 路由方 | Gateway | 所有 HTTP 接口经 `/api/notify/**` 网关路由，JWT 由网关校验并以 `X-User-Id` 透传 |
+| 数据库 | MySQL `biteblog` | `notification`（热表）、`notification_archive`（冷归档表） |
+| 缓存 | Redis | Cache-Aside 模式维护 `notify:unread:{userId}`，降低高频未读接口的 DB 压力 |
+
+---
+
+## 2. 新增/修改文件列表
+
+### 2.1 后端（biteblog-backend/biteblog-notify）
 
 | 文件 | 说明 |
-|---|---|
-| `biteblog-backend/biteblog-notify/pom.xml` | 补充 Web、Validation、MyBatis-Plus、MySQL、Nacos、AMQP、OpenFeign、LoadBalancer、WebSocket 依赖。 |
-| `NotifyApplication.java` | Notify 服务启动类，启用 Nacos 服务发现、Feign 客户端和 Mapper 扫描；`main()` 中通过 `System.setProperty` 放开 Spring AMQP 反序列化白名单，兼容 Post 侧用 `Map.of()` 发送的 JDK 序列化消息。 |
-| `config/NotifyRabbitConfig.java` | 声明 RabbitMQ 交换机 `biteblog.interaction`、队列 `notify.interaction.queue` 和绑定关系，消费所有 `interaction.*` 路由键事件。 |
-| `config/MybatisPlusConfig.java` | 注册 MyBatis-Plus 分页拦截器（`PaginationInnerInterceptor`），使 `Page.getTotal()` 能正确返回总条数。 |
-| `config/WebSocketConfig.java` | 配置 SockJS 端点 `/ws-notify`，启用 STOMP 消息代理，设置应用目的地前缀 `/app` 和用户目的地前缀 `/user`。 |
-| `config/NotifyJwtHandshakeInterceptor.java` | WebSocket 握手拦截器，从 Query 参数 `token` 中解析 JWT 并校验，将 `userId` 存入握手属性。 |
-| `config/NotifyStompHandshakeHandler.java` | 握手处理器，将 `Principal#getName` 设为 `userId` 字符串，供 `convertAndSendToUser` 路由使用。 |
-| `entity/Notification.java` | 映射数据库 `notification` 表，包含接收者、发送者、类型、关联业务 ID、内容、已读状态和创建时间。 |
-| `mapper/NotificationMapper.java` | MyBatis-Plus Mapper，用于通知的查询、插入和更新操作。 |
-| `dto/NotificationVO.java` | 通知列表返回对象，在实体基础上增加 `notificationId` 和 `senderUsername` 字段。 |
-| `dto/NotifyPushPayload.java` | WebSocket 推送载荷，`createdAt` 使用 ISO-8601 字符串而非 `LocalDateTime`，避免 STOMP 序列化异常。 |
-| `service/NotifyService.java` | 通知核心业务逻辑，包括分页查询、未读数统计、已读标记、MQ 事件处理和 WebSocket 推送。 |
-| `service/NotifyEventListener.java` | 监听 RabbitMQ `notify.interaction.queue`，解析互动事件并写入通知；捕获所有异常保证消息能正常 ack，防止 Unacked 堆积。 |
-| `client/UserFeignClient.java` | 通过 OpenFeign 调用 `user-service` 的 `GET /user/{id}`，为通知补全发送者昵称。 |
-| `controller/NotifyController.java` | 暴露 `/notify/list`、`/notify/unread-count`、`/notify/read-all`、`/notify/{id}/read`、`/notify/health` 接口。 |
-| `frontend/src/api/notify.js` | 前端通知 API 封装，包含列表、未读数、单条已读、全部已读四个方法。 |
-| `frontend/src/views/NotifyView.vue` | 通知中心页面，展示分页通知列表、已读操作，并通过 STOMP 建立 WebSocket 实时连接。 |
-| `frontend/src/components/layout/AppLayout.vue` | 导航栏增加未读角标，路由切换时自动刷新未读数。 |
-| `frontend/vite.config.js` | 增加 `define: { global: 'globalThis' }`，解决 `sockjs-client` 在 Vite ESM 环境下 `global is not defined` 报错。 |
-| `sql/init-notify-data.ps1` | Notify 服务测试数据初始化脚本。 |
-| `jmeter/notify-service-test.jmx` | Notify 服务 JMeter 压测脚本。 |
+|------|------|
+| `pom.xml` | 引入 Web、Validation、MyBatis-Plus、MySQL、Nacos、AMQP、OpenFeign、LoadBalancer、WebSocket、Redis（通过 biteblog-common 传递）依赖 |
+| `NotifyApplication.java` | 启动类；`main()` 中 `System.setProperty("spring.amqp.deserialization.trust.all","true")` 解决 Post 侧 `Map.of()` JDK 序列化产生 `CollSer` 类被 Spring AMQP 3.x 白名单拦截的问题 |
+| `config/NotifyRabbitConfig.java` | 声明 Topic 交换机 `biteblog.interaction`、主队列 `notify.interaction.queue`（绑定 `interaction.*`）、死信交换机 `notify.dlx`、死信队列 `notify.dead.queue`，主队列通过 `x-dead-letter-exchange` 绑定死信链路 |
+| `config/MybatisPlusConfig.java` | 注册 `PaginationInnerInterceptor`（MySQL 方言），使 `Page.getTotal()` 能正确执行 `COUNT(*)` 并返回分页总数 |
+| `config/WebSocketConfig.java` | 注册 SockJS 端点 `/ws-notify`，启用 STOMP 简单消息代理，设置应用前缀 `/app`、用户前缀 `/user` |
+| `config/NotifyJwtHandshakeInterceptor.java` | WebSocket 握手拦截器：从 Query 参数 `token` 解析 JWT，鉴权失败直接拒绝握手 |
+| `config/NotifyStompHandshakeHandler.java` | 握手完成后将 `Principal.getName()` 设为 `userId` 字符串，供 `convertAndSendToUser` 精准路由 |
+| `entity/Notification.java` | 映射 `notification` 表，含 `receiverId`、`senderId`、`type`、`bizId`、`content`、`readStatus`、`createdAt` |
+| `entity/NotificationArchive.java` | 映射 `notification_archive` 冷归档表，额外包含 `archivedAt` 字段 |
+| `mapper/NotificationMapper.java` | 继承 `BaseMapper<Notification>`，无额外自定义方法 |
+| `mapper/NotificationArchiveMapper.java` | 继承 `BaseMapper`，新增 `insertIgnore()` 方法（`INSERT IGNORE`，保证归档任务幂等） |
+| `dto/NotificationVO.java` | 列表返回 VO，含 `notificationId`、`senderUsername` 等展示字段 |
+| `dto/NotifyPushPayload.java` | WebSocket 推送载荷，`createdAt` 用 ISO-8601 字符串而非 `LocalDateTime`，避免 STOMP Jackson 序列化异常 |
+| `service/NotifyService.java` | 核心业务逻辑（详见第 3 节） |
+| `service/NotifyEventListener.java` | `@RabbitListener(ackMode="MANUAL")`，业务成功 `basicAck`，业务异常 `basicNack(requeue=false)` 转死信 |
+| `client/UserFeignClient.java` | `@FeignClient(name="user-service")` 声明，调用 `GET /user/{id}` |
+
+### 2.2 前端（frontend/src）
+
+| 文件 | 说明 |
+|------|------|
+| `api/notify.js` | 封装 `getNotifyList`、`getNotifyUnreadCount`、`markNotifyRead`、`markAllNotifyRead` 四个 HTTP 方法 |
+| `views/NotifyView.vue` | 通知中心页：分页列表、类型 Tab 筛选（全部/未读/点赞/收藏/评论）、整行卡片点击跳帖、标为已读、全部已读、STOMP WebSocket 实时订阅 |
+| `components/layout/AppLayout.vue` | 导航栏铃铛角标，路由切换时自动刷新未读数 |
+| `vite.config.js` | 增加 `define: { global: 'globalThis' }`，解决 `sockjs-client` 在 Vite ESM 环境下 `global is not defined` 错误 |
+
+### 2.3 数据库与脚本
+
+| 文件 | 说明 |
+|------|------|
+| `sql/init.sql` | 新增 `notification_archive` 冷归档表 DDL（`IF NOT EXISTS`，不影响已有数据） |
+| `sql/init-notify-data.ps1` | 复用 init-data.ps1 的 `13800000001`/`13800000004`，发布笔记、执行互动、验证通知条数与未读数；结果保存至 `notify-init-result.txt` |
+| `jmeter/notify-service-test.jmx` | 压测脚本：setUp Thread Group 登录一次共享 token，主 Thread Group（10 线程 × 20 循环）压测 health/list/unread-count；加业务码断言，防止 token 提取失败导致假通过 |
+| `测试脚本/notify-test-verify.ps1` | PowerShell 全量验证脚本，27 个检查项，结果保存至 `notify-test-result.txt` |
+
+---
 
 ## 3. 接口设计
 
@@ -40,22 +72,46 @@
 GET /notify/health
 ```
 
-用于确认 Notify 服务是否已经启动成功，无需鉴权。
+返回 `{"service":"notify-service","status":"UP"}`，无需鉴权，可直连 8087 或经网关访问。
 
-### 3.2 通知列表
+### 3.2 通知列表（支持过滤）
 
 ```http
-GET /notify/list?page=1&size=20
-Authorization: Bearer <JWT>
+GET /notify/list?page=1&size=20&type=like&readStatus=0
+Authorization: Bearer <JWT>（经网关时由网关透传 X-User-Id）
 ```
 
-参数说明：
+| 参数 | 类型 | 默认值 | 说明 |
+|------|------|--------|------|
+| `page` | int | 1 | 页码 |
+| `size` | int | 20 | 每页条数，上限 50 |
+| `type` | string | 不过滤 | `like` / `collect` / `comment`；为空则返回全部类型 |
+| `readStatus` | int | 不过滤 | `0`=未读 `1`=已读；不传则返回全部 |
 
-- `page`：页码，默认 `1`；
-- `size`：每页条数，默认 `20`，最大限制为 `50`；
-- `Authorization`：直连服务时也需传入 JWT（网关透传 `X-User-Id`，直连时 Controller 直接读此 Header）。
+返回结构：
 
-返回结果包含 `list` 和 `total`。其中 `list` 中每一项包含通知 ID、发送者 ID、发送者昵称、类型（`like`/`collect`/`comment`/`follow`）、关联笔记 ID、通知内容、已读状态和创建时间。
+```json
+{
+  "code": 200,
+  "data": {
+    "list": [
+      {
+        "notificationId": 1,
+        "senderId": 2,
+        "senderUsername": "bb_user_04",
+        "type": "like",
+        "bizId": 10,
+        "content": "赞了你的笔记",
+        "readStatus": 0,
+        "createdAt": "2026-05-18T10:00:00"
+      }
+    ],
+    "total": 3
+  }
+}
+```
+
+排序规则：`created_at DESC, id DESC`（双列排序，防止批量写入时时间戳相同导致分页结果不稳定）。
 
 ### 3.3 未读数
 
@@ -64,7 +120,7 @@ GET /notify/unread-count
 Authorization: Bearer <JWT>
 ```
 
-返回 `unreadCount`，前端导航栏角标使用此接口。
+返回 `{"unreadCount": 3}`，导航栏角标轮询此接口。底层先读 Redis 缓存，miss 时查 DB 并回填（Cache-Aside，TTL 5 分钟）。
 
 ### 3.4 全部标为已读
 
@@ -73,7 +129,7 @@ POST /notify/read-all
 Authorization: Bearer <JWT>
 ```
 
-将当前用户所有未读通知标为已读。
+将当前用户所有 `read_status=0` 批量更新为 `1`，同时清除 Redis 未读缓存 key。
 
 ### 3.5 单条标为已读
 
@@ -82,139 +138,109 @@ POST /notify/{id}/read
 Authorization: Bearer <JWT>
 ```
 
-将指定通知标为已读，接口会校验该通知的 `receiverId` 是否与当前用户一致，防止越权操作。
+校验 `notification.receiver_id == 当前用户`，防止越权操作（返回业务码 403）。
 
-## 4. 核心业务逻辑
+---
 
-Notify 服务的核心处理链路如下：
+## 4. 业务功能设计
 
-```text
-Post 服务发布互动事件（点赞/收藏/评论）
--> RabbitMQ biteblog.interaction 交换机
--> notify.interaction.queue 队列
--> NotifyEventListener 消费
--> 过滤 authorId == userId（自己操作自己笔记不通知）
--> 写入 MySQL notification 表（事务）
--> WebSocket 推送给在线用户（非阻塞，失败只记日志）
+### 4.1 通知写入流程
+
+```
+Post 服务互动成功（like/collect/comment）
+  → convertAndSend("biteblog.interaction", "interaction.like", Map.of(...))
+  → RabbitMQ notify.interaction.queue
+  → NotifyEventListener.onInteraction()（手动 ack）
+      ├── 解析 noteId / userId / authorId
+      ├── 过滤：authorId == userId → 自操作，直接 ack 跳过
+      ├── 去重：5 分钟窗口内相同 receiver+sender+type+bizId → 已存在，ack 跳过（防 MQ 重投重复写）
+      └── NotifyService.saveAndPush()（@Transactional）
+              ├── DB insert（notification 表）
+              ├── Redis INCR notify:unread:{receiverId}
+              └── afterCommit 回调：Feign 查昵称 → WS 推送
+                      └── messagingTemplate.convertAndSendToUser(userId, "/queue/notify", payload)
 ```
 
-过滤自身操作的逻辑：互动事件载荷中包含 `userId`（操作者）和 `authorId`（笔记作者），两者相同时认为是自操作，跳过写入通知。
+### 4.2 自操作过滤
 
-通知类型与文案对应关系：
+互动事件载荷包含 `userId`（操作者）和 `authorId`（笔记作者），`authorId == userId` 时跳过写入，不产生通知。
 
-| 路由键 | type 字段 | 通知内容 |
-|---|---|---|
-| `interaction.like` | `like` | 赞了你的笔记 |
-| `interaction.collect` | `collect` | 收藏了你的笔记 |
-| `interaction.comment` | `comment` | 评论了你的笔记 |
+### 4.3 幂等去重（5 分钟窗口）
 
-## 5. RabbitMQ 事件消费
+消费前查询 `notification` 表：相同 `receiver_id + sender_id + type + biz_id` 且 `created_at > NOW()-5分钟` 的记录若已存在，则视为 MQ 重投导致的重复投递，跳过写入。
 
-Notify 服务监听以下事件：
+### 4.4 事务边界设计
 
-| 交换机 | 路由键 | 来源服务 | 处理逻辑 |
-|---|---|---|---|
-| `biteblog.interaction` | `interaction.like` | Post 服务 | 写入点赞通知，推送接收者 |
-| `biteblog.interaction` | `interaction.collect` | Post 服务 | 写入收藏通知，推送接收者 |
-| `biteblog.interaction` | `interaction.comment` | Post 服务 | 写入评论通知，推送接收者 |
+`handleInteractionEvent` 标注 `@Transactional`，通过 Spring AOP 代理进入时事务生效。内部 `saveAndPush` 同 Bean 调用不过代理：DB insert 在事务内，Feign HTTP（查用户名）和 WebSocket 推送通过 `TransactionSynchronizationManager.registerSynchronization(afterCommit→...)` 延迟到事务提交后执行，避免数据库连接持有期间被远程 HTTP 阻塞。
 
-**消息格式兼容说明**：Post 服务使用 `Map.of()` 构造事件载荷，经 JDK 默认序列化后生成 `java.util.CollSer`。Spring AMQP 3.x 默认白名单不包含该类，需在 `NotifyApplication.main()` 中通过 `System.setProperty("spring.amqp.deserialization.trust.all", "true")` 放开限制。此配置通过 `application.yml` 绑定无效，必须在 JVM 系统属性层面设置。
+### 4.5 冷热数据分离
 
-**关注通知**：`follow` 类型通知需由 `user-service` 在关注成功时向 `biteblog.interaction` 发送 MQ 事件，当前若 user 侧未实现则不产生关注通知。
+`notification` 表（热表）只保留近 30 天数据；每天凌晨 3 点 `@Scheduled` 任务将 **已读** 的过期记录迁移到 `notification_archive`（冷表）：
 
-## 6. WebSocket 实时推送
+1. 每批最多 500 条，分批处理，防止大事务锁表；
+2. 归档写入用 `INSERT IGNORE`，任务重启重跑保证幂等；
+3. 先写冷表再删热表，失败可重试；
+4. **未读通知不归档**，保证用户历史未读不丢失。
 
-Notify 服务基于 STOMP over SockJS 提供实时推送：
+---
 
-- 连接地址：`{notifyHost}/ws-notify?token={JWT}`（开发环境默认 `http://localhost:8087`）
-- 订阅目的地：`/user/queue/notify`
-- 推送方向：服务端 → 指定用户（通过 `convertAndSendToUser` 按 userId 路由）
+## 5. 非功能需求处理
 
-鉴权流程：握手时 `NotifyJwtHandshakeInterceptor` 从 Query 参数 `token` 解析 JWT，将 `userId` 存入握手属性；`NotifyStompHandshakeHandler` 将 `Principal` 名称设为 `userId`，STOMP 框架据此路由用户级订阅。
+### 5.1 可靠性（消息不丢失）
 
-**网关与 WebSocket 的关系**：网关当前未代理 WebSocket，实时通道需前端直连 notify 端口。HTTP 查询接口走 `/api/notify/**` 网关路由，WebSocket 连接直连 `8087`。前端通过环境变量 `VITE_NOTIFY_WS_ORIGIN` 覆盖默认 origin：
+**手动 Ack + 死信队列（DLQ）**：
 
-```env
-# frontend/.env.development（按实际部署地址修改）
-VITE_NOTIFY_WS_ORIGIN=http://你的主机:8087
-```
+- `NotifyEventListener` 使用 `ackMode = MANUAL`；
+- 业务成功 → `basicAck`，消息从队列删除；
+- 业务异常 → `basicNack(requeue=false)`，消息转投 `notify.dlx` → `notify.dead.queue`，不无限重投；
+- 死信队列供运维检查和手动补偿。
 
-## 7. 非功能需求处理
+### 5.2 性能
 
-### 7.1 性能
+**Redis Cache-Aside（未读数缓存）**：
 
-分页大小最大限制为 50，避免单次请求过大。未读数查询使用数据库复合索引 `idx_receiver(receiver_id, read_status)`，不做全表扫描。
+- 高频导航栏接口 `GET /notify/unread-count` 不每次做 `COUNT(*)` 全表扫描；
+- 命中 Redis 时 P95 响应时间 **< 15ms**（本地测试实测 P95 = 10ms）；
+- Redis 不可用时自动降级查 DB，接口不报错。
 
-### 7.2 可用性
+**Feign 并发查昵称**：
 
-WebSocket 推送失败只记录 warn 日志，不影响通知写入事务。MQ 消费端捕获所有异常并 ack，防止消息无限重投导致 Unacked 堆积、队列死锁；消费失败的通知可通过重新触发互动操作补发。
+- 列表页多个不同发送者时，串行调 N 次 Feign 时延为 N×RTT；
+- 改为 `CompletableFuture` 提交到专用线程池（核心 5 线程，最大 10 线程），并发请求 user-service，总耗时约等于最慢一次 RTT；
+- 整批设置 3 秒超时，超时的 userId 昵称降级为 null（前端显示"用户{id}"），不影响其余结果。
 
-### 7.3 一致性
+**分页稳定排序**：
 
-通知写入使用 `@Transactional` 保证数据库写入原子性，WebSocket 推送在事务提交后执行，不影响持久化结果。未读数来自实时数据库统计，与列表数据强一致。
+- 通知列表按 `created_at DESC, id DESC` 排序；
+- 次级排序 `id DESC` 保证批量写入（时间戳相同）时分页结果稳定，无跨页重复。
 
-### 7.4 安全性
+### 5.3 可用性
 
-单条已读接口校验 `receiverId == 当前用户`，防止越权修改他人通知状态。WebSocket 握手强制校验 JWT，未携带合法 token 的连接直接拒绝握手。
+- WebSocket 推送失败仅打 warn 日志，不影响事务提交和通知持久化；
+- Redis 故障自动降级 DB；
+- RabbitMQ 连接中断后 Spring AMQP 自动重连。
 
-### 7.5 可维护性
+### 5.4 数据治理
 
-通知类型与文案映射、路由键解析逻辑集中在 `NotifyService` 中，新增通知类型只需在对应位置添加分支。`UserFeignClient` 通过 Nacos 服务发现调用 `user-service`，无需硬编码地址。
+- 定时归档避免 `notification` 热表无限增长；
+- 冷表 `notification_archive` 含 `archived_at`，可用于数据审计；
+- 已读数据 30 天后归档，未读数据永久保留。
 
-## 8. 本地测试环境说明
+### 5.5 安全性
 
-本地测试依赖 MySQL、RabbitMQ 和 Nacos。Notify 服务使用 `localhost:3306` 连接数据库 `biteblog`，MySQL 密码为 `root123456`，RabbitMQ 使用默认 guest/guest。
+- HTTP 接口鉴权：JWT 由网关校验，网关写入 `X-User-Id`，下游服务信任网关；
+- 越权保护：`POST /notify/{id}/read` 校验 `receiverId == 当前用户`；
+- WebSocket 鉴权：握手时从 Query 参数 `token` 解析 JWT，校验失败拒绝连接；
+- 分页参数边界控制：`size` 上限 50。
 
-测试数据通过以下脚本初始化：
+---
 
-```powershell
-cd BiteBlog\sql
-.\init-notify-data.ps1
-```
+## 6. 联调中发现并修复的问题
 
-该脚本会注册/登录两个专用账号（手机号 `13900004001` 作者 / `13900004002` 互动方，密码均为 `12345678`），创建测试笔记，由互动方执行点赞、收藏、评论，最后调用 Notify 接口验证通知条数与未读数。
-
-若通知列表 `total` 为 0 但列表和 `unreadCount` 均有数据，说明 `MybatisPlusConfig` 未加载（分页拦截器缺失）；若列表为空说明 RabbitMQ 消费异常，可在管理台 Purge `notify.interaction.queue` 后重新运行脚本。
-
-## 9. 分布式工程化优化说明
-
-### 9.1 死信队列（DLQ）
-
-`NotifyRabbitConfig` 新增了 `notify.dlx`（死信交换机）和 `notify.dead.queue`（死信队列）。`notify.interaction.queue` 通过 `x-dead-letter-exchange` 参数绑定到死信交换机。
-
-`NotifyEventListener` 改为手动 ack（`ackMode = MANUAL`）：业务成功执行 `basicAck`；业务异常执行 `basicNack(requeue=false)`，消息转投死信队列而非无限重投或静默丢弃，符合分布式系统的**可靠消息**设计原则。
-
-`application.yml` 中 `acknowledge-mode: manual` 与监听器配合生效。
-
-### 9.2 未读数 Redis 缓存
-
-`countUnread` 方法采用 **Cache-Aside 模式**：优先读 `notify:unread:{userId}` 缓存（TTL 5 分钟）；缓存 miss 时查 DB 并回填；写新通知时 `INCR` 计数；标为已读时删除缓存（evict）。Redis 不可用时自动降级查 DB，接口不报错。
-
-高频的导航栏未读角标接口不再每次触发 `COUNT(*)` 全表扫描。
-
-### 9.3 Feign 移出事务
-
-`saveAndPush` 的 `@Transactional` 范围内只做 DB insert；调用 `user-service` 的 Feign 请求和 WebSocket 推送移至事务提交后执行，避免数据库连接在事务期间因等待远程 HTTP 而被长时间占用。
-
-## 10. 本地接口验证结果
-
-已完成本地联调验证。测试前启动 Docker 中间件，执行 `sql/init-notify-data.ps1`，依次启动 `user-service`、`post-service`、`notify-service`。
-
-测试结果如下：
-
-| 接口 | 测试结果 | 说明 |
-|---|---|---|
-| GET `/notify/health` | 通过 | 返回 `status=UP` |
-| GET `/notify/list?page=1&size=20` | 通过 | `total=9`，返回 9 条通知，含发送者昵称、类型、内容 |
-| GET `/notify/unread-count` | 通过 | 返回 `unreadCount=9` |
-| POST `/notify/read-all` | 通过 | 全部标为已读，`unreadCount` 归零 |
-| POST `/notify/{id}/read` | 通过 | 单条已读，`readStatus` 变为 1 |
-| RabbitMQ 消费 | 通过 | `notify.interaction.queue` 消费后 Ready=0、Unacked=0 |
-| WebSocket 实时推送 | 通过 | 前端通知中心页「实时已连接」，点赞后实时出现新通知条目 |
-| 导航栏未读角标 | 通过 | 登录后铃铛角标显示未读数，路由切换后自动刷新 |
-
-另外，联调过程中发现并修复了以下问题：
-
-1. Post 服务使用 `Map.of()` 发送 JDK 序列化消息，Spring AMQP 3.x 默认白名单拦截 `java.util.CollSer`，导致通知无法写入。通过在 `NotifyApplication.main()` 中设置系统属性解决，`application.yml` 中配置此项无效。
-2. 项目未在任何服务中配置 MyBatis-Plus 分页拦截器，导致 `Page.getTotal()` 恒为 0，`total` 字段始终返回 0。在 `notify-service` 中新增 `MybatisPlusConfig` 解决。
-3. `sockjs-client` v1.6 在 Vite ESM 环境中引用了 Node.js 的 `global` 变量，浏览器端报 `ReferenceError: global is not defined`。在 `vite.config.js` 中增加 `define: { global: 'globalThis' }` 解决。
+| 问题 | 根因 | 修复方式 |
+|------|------|---------|
+| MQ 消息一直 Unacked，通知写不进 DB | Post 用 `Map.of()` 发送 JDK 序列化消息，产生 `java.util.CollSer`；Spring AMQP 3.x 白名单拒绝反序列化 | `NotifyApplication.main()` 中 `System.setProperty("spring.amqp.deserialization.trust.all","true")` |
+| `/notify/list` 的 `total` 字段始终为 0 | 项目未注册 MyBatis-Plus 分页拦截器，`Page.getTotal()` 不执行 COUNT 查询 | 新增 `MybatisPlusConfig`，注册 `PaginationInnerInterceptor` |
+| 分页跨页出现重复记录 | 仅按 `created_at DESC` 排序，批量插入时时间戳相同，MySQL 排序不稳定 | 加 `.orderByDesc(Notification::getId)` 次级排序 |
+| 前端点击铃铛报 `global is not defined` | `sockjs-client` v1.6 内部使用 Node.js `global`，Vite ESM 环境不存在此变量 | `vite.config.js` 加 `define: { global: 'globalThis' }` |
+| `@Transactional` 失效，Feign 在事务内阻塞连接池 | `handleInteractionEvent` 无事务，内部同 Bean 调用 `saveAndPush` 不过代理，事务注解无效；且 Feign/WS 在同一调用栈内占用 DB 连接 | 事务标注移至外部入口；`TransactionSynchronizationManager.afterCommit` 延迟执行 Feign/WS |

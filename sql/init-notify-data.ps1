@@ -1,185 +1,164 @@
 $ErrorActionPreference = "SilentlyContinue"
+$resultFile = Join-Path $PSScriptRoot "notify-init-result.txt"
 
-$userBase = "http://localhost:8081"
-$postBase = "http://localhost:8082"
+$gateway    = "http://localhost:8080/api"
 $notifyBase = "http://localhost:8087"
+$userBase   = "http://localhost:8081"
 
-Write-Host "===== Init Notify Service Test Data =====" -ForegroundColor Cyan
-Write-Host "依赖: user(8081) post(8082) notify(8087) + RabbitMQ + MySQL(init.sql)" -ForegroundColor DarkGray
-Write-Host ""
+$authorPhone = "13800000001"   # bb_bigv_01 — 笔记作者，通知接收方
+$fanPhone    = "13800000004"   # bb_user_04 — 互动粉丝，通知触发方
+$password    = "12345678"
 
-$users = @(
-    @{ phone = "13900004001"; password = "12345678"; username = "notify_demo_author" },
-    @{ phone = "13900004002"; password = "12345678"; username = "notify_demo_fan" }
-)
-
-$accounts = @()
-
-foreach ($u in $users) {
-    $json = $u | ConvertTo-Json -Compress
-    $bytes = [System.Text.Encoding]::UTF8.GetBytes($json)
-    try {
-        $resp = Invoke-RestMethod -Uri "$userBase/user/register" -Method POST -ContentType "application/json; charset=utf-8" -Body $bytes
-        if ($resp.code -eq 200) {
-            Write-Host "[OK] registered $($u.username), userId=$($resp.data.userId)" -ForegroundColor Green
-            $accounts += @{ userId = $resp.data.userId; token = $resp.data.token; username = $u.username }
-            continue
+function Invoke-Json($uri, $method, $body = $null, $headers = $null) {
+    if ($body) {
+        $json  = $body | ConvertTo-Json -Depth 8 -Compress
+        $bytes = [System.Text.Encoding]::UTF8.GetBytes($json)
+        if ($headers) {
+            return Invoke-RestMethod -Uri $uri -Method $method -Headers $headers `
+                -ContentType "application/json; charset=utf-8" -Body $bytes -ErrorAction Stop
         }
-    } catch {}
-
-    try {
-        $loginResp = Invoke-RestMethod -Uri "$userBase/user/login" -Method POST -ContentType "application/json; charset=utf-8" -Body $bytes
-        if ($loginResp.code -eq 200) {
-            Write-Host "[OK] login $($u.username), userId=$($loginResp.data.userId)" -ForegroundColor Green
-            $accounts += @{ userId = $loginResp.data.userId; token = $loginResp.data.token; username = $u.username }
-        }
-    } catch {
-        Write-Host "[ERR] user init failed: $($u.username), $($_.Exception.Message)" -ForegroundColor Red
+        return Invoke-RestMethod -Uri $uri -Method $method `
+            -ContentType "application/json; charset=utf-8" -Body $bytes -ErrorAction Stop
     }
+    if ($headers) { return Invoke-RestMethod -Uri $uri -Method $method -Headers $headers -ErrorAction Stop }
+    return Invoke-RestMethod -Uri $uri -Method $method -ErrorAction Stop
 }
 
-if ($accounts.Count -lt 2) {
-    Write-Host "[STOP] 需要至少 2 个用户。请先启动 user-service。" -ForegroundColor Red
-    exit 1
+$output = [System.Collections.Generic.List[string]]::new()
+function Log($msg, $color = "White") {
+    Write-Host $msg -ForegroundColor $color
+    $output.Add($msg)
 }
 
-$author = $accounts[0]
-$fan = $accounts[1]
+Log "===== Notify Service Init Data =====" "Cyan"
+Log "  author : $authorPhone (bb_bigv_01)"
+Log "  fan    : $fanPhone (bb_user_04)"
+Log ""
 
-if ($author.userId -eq $fan.userId) {
-    Write-Host "[STOP] 作者与互动方 userId 相同，无法测跨用户通知。" -ForegroundColor Red
-    exit 1
-}
-
-Write-Host ""
-Write-Host "===== Publish Notify Test Note (author) =====" -ForegroundColor Cyan
-
-$note = @{
-    title       = "Notify Test 探店笔记"
-    content     = "Notify 服务联调用：由 notify_demo_fan 点赞/收藏/评论后应产生通知。"
-    shopName    = "Notify 测试店"
-    address     = "武汉市洪山区"
-    longitude   = 114.3660
-    latitude    = 30.5370
-    scoreColor  = 5
-    scoreSmell  = 4
-    scoreTaste  = 5
-    imageUrls   = @()
-}
-
-$authorHeaders = @{
-    "Authorization" = "Bearer $($author.token)"
-    "X-User-Id"     = "$($author.userId)"
-}
-
-$postId = $null
+Log "===== 1. Login =====" "Cyan"
 try {
-    $noteJson = $note | ConvertTo-Json -Depth 5 -Compress
-    $noteBytes = [System.Text.Encoding]::UTF8.GetBytes($noteJson)
-    $pub = Invoke-RestMethod -Uri "$postBase/post/publish" -Method POST -Headers $authorHeaders -ContentType "application/json; charset=utf-8" -Body $noteBytes
+    $r = Invoke-Json "$userBase/user/login" "POST" @{ phone=$authorPhone; password=$password }
+    $author = @{ userId=$r.data.userId; token=$r.data.token; username=$r.data.username }
+    Log "[OK] author: $($author.username) userId=$($author.userId)" "Green"
+} catch {
+    Log "[ERR] author login failed: $($_.Exception.Message)" "Red"
+    Log "Please run sql/init-data.ps1 first" "Yellow"
+    $output | Out-File $resultFile -Encoding utf8; exit 1
+}
+
+try {
+    $r2 = Invoke-Json "$userBase/user/login" "POST" @{ phone=$fanPhone; password=$password }
+    $fan = @{ userId=$r2.data.userId; token=$r2.data.token; username=$r2.data.username }
+    Log "[OK] fan   : $($fan.username) userId=$($fan.userId)" "Green"
+} catch {
+    Log "[ERR] fan login failed: $($_.Exception.Message)" "Red"
+    $output | Out-File $resultFile -Encoding utf8; exit 1
+}
+
+$authorHdr = @{ "Authorization" = "Bearer $($author.token)" }
+$fanHdr    = @{ "Authorization" = "Bearer $($fan.token)" }
+
+Log ""
+Log "===== 2. Publish Test Note (author) =====" "Cyan"
+$noteTitle = "Notify联调测试-$(Get-Date -Format 'MMddHHmm')"
+$noteBody  = @{
+    title      = $noteTitle
+    content    = "Notify 服务联调用笔记：由 bb_user_04 点赞/收藏/评论后应产生通知。"
+    shopName   = "通知测试店"
+    address    = "武汉市洪山区"
+    longitude  = 114.366
+    latitude   = 30.537
+    scoreColor = 5; scoreSmell = 4; scoreTaste = 5
+    imageUrls  = @()
+}
+try {
+    $pub = Invoke-Json "$gateway/post/publish" "POST" $noteBody $authorHdr
     if ($pub.code -eq 200) {
-        $postId = $pub.data.postId
-        Write-Host "[OK] published postId=$postId (receiver for notify = author userId=$($author.userId))" -ForegroundColor Green
+        $postId = [long]$pub.data.postId
+        Log "[OK] published postId=$postId title=$noteTitle" "Green"
     } else {
-        Write-Host "[ERR] publish code=$($pub.code) msg=$($pub.msg)" -ForegroundColor Red
+        Log "[ERR] publish failed: code=$($pub.code) msg=$($pub.msg)" "Red"
+        $output | Out-File $resultFile -Encoding utf8; exit 1
     }
 } catch {
-    Write-Host "[ERR] publish failed: $($_.Exception.Message)" -ForegroundColor Red
+    Log "[ERR] publish exception: $($_.Exception.Message)" "Red"
+    $output | Out-File $resultFile -Encoding utf8; exit 1
 }
 
-if (-not $postId) {
-    Write-Host "[STOP] 未拿到 postId。请先启动 post-service。" -ForegroundColor Red
-    exit 1
-}
-
-Write-Host ""
-Write-Host "===== Interactions (fan -> author note) -> MQ -> Notify =====" -ForegroundColor Cyan
-
-$fanHeaders = @{
-    "Authorization" = "Bearer $($fan.token)"
-    "X-User-Id"     = "$($fan.userId)"
-}
+Log ""
+Log "===== 3. Fan Interactions -> MQ -> Notify =====" "Cyan"
 
 try {
-    $likeResp = Invoke-RestMethod -Uri "$postBase/post/$postId/like" -Method POST -Headers $fanHeaders
-    Write-Host "[OK] like liked=$($likeResp.data.liked)" -ForegroundColor Green
-} catch {
-    Write-Host "[ERR] like: $($_.Exception.Message)" -ForegroundColor Red
-}
+    $lr = Invoke-Json "$gateway/post/$postId/like" "POST" $null $fanHdr
+    Log "[OK] like     liked=$($lr.data.liked)" "Green"
+} catch { Log "[WARN] like: $($_.Exception.Message)" "Yellow" }
 
 try {
-    $favResp = Invoke-RestMethod -Uri "$postBase/post/$postId/favorite" -Method POST -Headers $fanHeaders
-    Write-Host "[OK] favorite favorited=$($favResp.data.favorited)" -ForegroundColor Green
-} catch {
-    Write-Host "[ERR] favorite: $($_.Exception.Message)" -ForegroundColor Red
-}
-
-$commentBody = @{ content = "notify 初始化评论 from $($fan.username)"; parentId = $null } | ConvertTo-Json -Compress
-$commentBytes = [System.Text.Encoding]::UTF8.GetBytes($commentBody)
-try {
-    Invoke-RestMethod -Uri "$postBase/post/$postId/comment" -Method POST -Headers $fanHeaders -ContentType "application/json; charset=utf-8" -Body $commentBytes | Out-Null
-    Write-Host "[OK] comment posted" -ForegroundColor Green
-} catch {
-    Write-Host "[ERR] comment: $($_.Exception.Message)" -ForegroundColor Red
-}
-
-Write-Host ""
-Write-Host "===== Self-interaction (author likes own note) =====" -ForegroundColor Cyan
-try {
-    Invoke-RestMethod -Uri "$postBase/post/$postId/like" -Method POST -Headers $authorHeaders | Out-Null
-    Write-Host "[OK] author liked own note (Post 会发 MQ；Notify 因 authorId=userId 不写 notification，不应增加「他人通知」条数)" -ForegroundColor DarkGray
-} catch {
-    Write-Host "[WARN] author self-like: $($_.Exception.Message)" -ForegroundColor Yellow
-}
-
-Start-Sleep -Seconds 2
-
-Write-Host ""
-Write-Host "===== Verify Notify API (notify-service :8087) =====" -ForegroundColor Cyan
-
-$notifyHeaders = @{
-    "X-User-Id" = "$($author.userId)"
-}
+    $fr = Invoke-Json "$gateway/post/$postId/favorite" "POST" $null $fanHdr
+    Log "[OK] favorite favorited=$($fr.data.favorited)" "Green"
+} catch { Log "[WARN] favorite: $($_.Exception.Message)" "Yellow" }
 
 try {
-    $list = Invoke-RestMethod -Uri "$notifyBase/notify/list?page=1&size=20" -Method GET -Headers $notifyHeaders
-    if ($list.code -eq 200) {
-        $total = $list.data.total
-        Write-Host "[OK] /notify/list total=$total" -ForegroundColor Green
-        if ($list.data.list -and $list.data.list.Count -gt 0) {
-            $list.data.list | Select-Object -First 8 notificationId, senderId, senderUsername, type, content, readStatus | Format-Table -AutoSize
-        }
-        if ($total -lt 3) {
-            Write-Host "[WARN] 期望至少 3 条（赞/藏/评）。若为 0：查 RabbitMQ 队列 notify.interaction.queue 与 notify 日志。" -ForegroundColor Yellow
-        }
+    Invoke-Json "$gateway/post/$postId/comment" "POST" `
+        @{ content="Notify联调测试评论 from $($fan.username)"; parentId=$null } $fanHdr | Out-Null
+    Log "[OK] comment  posted" "Green"
+} catch { Log "[WARN] comment: $($_.Exception.Message)" "Yellow" }
+
+Log ""
+Log "===== 4. Self-interaction (author likes own note) =====" "Cyan"
+try {
+    Invoke-Json "$gateway/post/$postId/like" "POST" $null $authorHdr | Out-Null
+    Log "[OK] author liked own note (Notify 应过滤，不写通知)" "DarkGray"
+} catch { Log "[WARN] self-like: $($_.Exception.Message)" "Yellow" }
+
+Log ""
+Log "===== 5. Waiting for MQ consumption (up to 10s)... =====" "Cyan"
+$waited = 0
+$found  = $false
+while ($waited -lt 20) {
+    Start-Sleep -Milliseconds 500
+    $waited++
+    try {
+        $uc = Invoke-Json "$notifyBase/notify/unread-count" "GET" $null @{ "X-User-Id"="$($author.userId)" }
+        if ($uc.data.unreadCount -ge 3) { $found = $true; break }
+    } catch {}
+}
+if ($found) { Log "  MQ consumed: unreadCount=$($uc.data.unreadCount)" "Green" }
+else        { Log "  [WARN] MQ may not have consumed within 10s; check RabbitMQ Unacked" "Yellow" }
+
+Log ""
+Log "===== 6. Verify Notify API (direct :8087) =====" "Cyan"
+$directHdr = @{ "X-User-Id" = "$($author.userId)" }
+
+try {
+    $list = Invoke-Json "$notifyBase/notify/list?page=1&size=20" "GET" $null $directHdr
+    $total = $list.data.total
+    if ($total -ge 3) {
+        Log "[OK] /notify/list  total=$total" "Green"
+        $list.data.list | Select-Object -First 6 notificationId, senderId, senderUsername, type, content, readStatus |
+            Format-Table -AutoSize | Out-String | ForEach-Object { Log $_ }
     } else {
-        Write-Host "[ERR] list code=$($list.code) msg=$($list.msg)" -ForegroundColor Red
+        Log "[WARN] /notify/list total=$total (expected >= 3; check RabbitMQ and notify logs)" "Yellow"
     }
-} catch {
-    Write-Host "[ERR] notify list: $($_.Exception.Message)" -ForegroundColor Red
-    Write-Host "      请确认 notify-service 已启动且端口 8087 可访问。" -ForegroundColor Yellow
-}
+} catch { Log "[ERR] list: $($_.Exception.Message)" "Red" }
 
 try {
-    $uc = Invoke-RestMethod -Uri "$notifyBase/notify/unread-count" -Method GET -Headers $notifyHeaders
-    if ($uc.code -eq 200) {
-        Write-Host "[OK] /notify/unread-count unreadCount=$($uc.data.unreadCount)" -ForegroundColor Green
-    }
-} catch {
-    Write-Host "[ERR] unread-count: $($_.Exception.Message)" -ForegroundColor Red
-}
+    $uc2 = Invoke-Json "$notifyBase/notify/unread-count" "GET" $null $directHdr
+    Log "[OK] /notify/unread-count unreadCount=$($uc2.data.unreadCount)" "Green"
+} catch { Log "[ERR] unread-count: $($_.Exception.Message)" "Red" }
 
-Write-Host ""
-Write-Host "===== 登录信息（网关 /api 联调可用）=====" -ForegroundColor Cyan
-Write-Host "  作者 notify_demo_author : 13900004001 / 12345678" -ForegroundColor White
-Write-Host "  粉丝 notify_demo_fan   : 13900004002 / 12345678" -ForegroundColor White
-Write-Host ""
-Write-Host "===== 经网关验证 notify（PowerShell 正确写法）=====" -ForegroundColor Cyan
-Write-Host '  登录：$body = ''{"phone":"13900004001","password":"12345678"}''' -ForegroundColor DarkGray
-Write-Host '        $r = Invoke-RestMethod -Uri "http://localhost:8080/api/user/login" -Method POST -Body $body -ContentType "application/json; charset=utf-8"' -ForegroundColor DarkGray
-Write-Host '        $token = $r.data.token' -ForegroundColor DarkGray
-Write-Host '  列表：Invoke-RestMethod -Uri "http://localhost:8080/api/notify/list?page=1&size=20" -Headers @{ Authorization = "Bearer $token" }' -ForegroundColor DarkGray
-Write-Host '  未读：Invoke-RestMethod -Uri "http://localhost:8080/api/notify/unread-count" -Headers @{ Authorization = "Bearer $token" }' -ForegroundColor DarkGray
-Write-Host "  说明：code=200 且 total=0 表示鉴权已通过，但库中无通知（请查 RabbitMQ 与 notify 消费）。" -ForegroundColor DarkGray
-Write-Host ""
-Write-Host "===== Done =====" -ForegroundColor Cyan
+Log ""
+Log "===== 7. Gateway verify tips =====" "Cyan"
+Log '  $body = "{\"phone\":\"13800000001\",\"password\":\"12345678\"}"'
+Log '  $r = Invoke-RestMethod -Uri "http://localhost:8080/api/user/login" -Method POST -Body $body -ContentType "application/json; charset=utf-8"'
+Log '  $token = $r.data.token'
+Log '  Invoke-RestMethod -Uri "http://localhost:8080/api/notify/list?page=1&size=20" -Headers @{ Authorization="Bearer $token" }'
+Log '  Invoke-RestMethod -Uri "http://localhost:8080/api/notify/unread-count" -Headers @{ Authorization="Bearer $token" }'
+
+Log ""
+Log "===== Done =====" "Cyan"
+Log "  author : 13800000001 / 12345678"
+Log "  fan    : 13800000004 / 12345678"
+
+$output | Out-File $resultFile -Encoding utf8
+Write-Host "Result saved to: $resultFile" -ForegroundColor Cyan
