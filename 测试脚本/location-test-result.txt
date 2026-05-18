@@ -1,12 +1,12 @@
 ﻿**********************
 Windows PowerShell 脚本开始
-开始时间: 20260519011416
+开始时间: 20260519023200
 用户名: LENOVO\11012
 RunAs 用户: LENOVO\11012
 配置名称: 
 计算机: LENOVO (Microsoft Windows NT 10.0.26100.0)
 主机应用程序: C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe -noexit -command try { . "d:\MicrosoftVSCode\resources\app\out\vs\workbench\contrib\terminal\common\scripts\shellIntegration.ps1" } catch {}
-进程 ID: 5068
+进程 ID: 24144
 PSVersion: 5.1.26100.6899
 PSEdition: Desktop
 PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.6899
@@ -24,18 +24,18 @@ SerializationVersion: 1.1.0.1
   状态: UP
 
 ===== 2. 附近查询响应时间 (目标 < 300ms) =====
-  Redis GEO 已有笔记: 41 条
-  第1次: 12ms
-  第2次: 13ms
-  第3次: 10ms
-  第4次: 9ms
-  第5次: 11ms
+  Redis GEO 已有笔记: 43 条
+  第1次: 21ms
+  第2次: 15ms
+  第3次: 20ms
+  第4次: 17ms
+  第5次: 16ms
   第6次: 10ms
   第7次: 10ms
-  第8次: 11ms
+  第8次: 12ms
   第9次: 10ms
-  第10次: 17ms
-  平均: 11.3ms (目标 <300ms)
+  第10次: 11ms
+  平均: 14.2ms (目标 <300ms)
 
 ===== 3. 附近笔记结果验证 =====
   返回: 8 条
@@ -53,8 +53,8 @@ SerializationVersion: 1.1.0.1
   半径 1km: 6 条
   半径 3km: 8 条
   半径 5km: 8 条
-  半径 10km: 20 条
-  半径 20km: 22 条
+  半径 10km: 22 条
+  半径 20km: 24 条
   半径验证: 通过
 
 ===== 5. 坐标参数校验 =====
@@ -66,31 +66,31 @@ SerializationVersion: 1.1.0.1
   首条: æµ·åºæç«é(ä¸­å¿ç¾è´§åº) | æ±æ±è·¯129å·ä¸­å¿ç¾è´§5å±
 
 ===== 7. POI 缓存性能 =====
-  首次 (高德API, keyword=test3198): 195ms
-  二次 (Redis缓存): 10ms
-  缓存加速: 19.5x (10ms vs 195ms)
+  首次 (高德API, keyword=test6586): 148ms
+  二次 (Redis缓存): 3ms
+  缓存加速: 49.3x (3ms vs 148ms)
 
 ===== 8. 交叉功能: 发布笔记 -> MQ -> GEO -> 附近查询 =====
-  发布成功: postId=52
+  发布成功: postId=56
   等待 RabbitMQ -> LocationService -> GEOADD...
   GEO 写入确认: 500ms
   查看者验证: 找到笔记 (distance=0.0003km)
 
 ===== 9. 删除笔记 -> GEO 清理 =====
-  删除: postId=52
+  删除: postId=56
   GEO 清理: 已清理
 
 ===== 10. 补充测试数据 (前端演示) =====
-  已补充发布: postId=53
+  已补充发布: postId=57
 
 ===== 非功能指标汇总 =====
-  附近查询响应: avg=11.3ms (目标 <300ms)
-  POI 缓存加速: 19.5x
+  附近查询响应: avg=14.2ms (目标 <300ms)
+  POI 缓存加速: 49.3x
   GEO 异步写入: 秒级 (RabbitMQ)
   JMeter 压测: 20线程x50循环=5000次, 错误率0%
 
 ===== 完成 =====
 **********************
 Windows PowerShell 脚本结束
-结束时间: 20260519011426
+结束时间: 20260519023211
 **********************

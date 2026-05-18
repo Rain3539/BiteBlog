@@ -12,7 +12,27 @@ Write-Host "===== Location Service 非功能验证 =====" -ForegroundColor Cyan
 $loginJson = @{ phone = "13800000001"; password = "12345678" } | ConvertTo-Json -Compress
 $loginBytes = [System.Text.Encoding]::UTF8.GetBytes($loginJson)
 $authorResp = Invoke-RestMethod -Uri "http://localhost:8081/user/login" -Method POST -ContentType "application/json; charset=utf-8" -Body $loginBytes
-$authorToslor = if ($health.data.status -eq "UP") { "Green" } else { "Red" }
+$authorToken = $authorResp.data.token
+$authorId = $authorResp.data.userId
+$authorName = $authorResp.data.username
+$authHeaders = @{ "Authorization" = "Bearer $authorToken"; "X-User-Id" = "$authorId" }
+
+$viewerJson = @{ phone = "13800000004"; password = "12345678" } | ConvertTo-Json -Compress
+$viewerBytes = [System.Text.Encoding]::UTF8.GetBytes($viewerJson)
+$viewerResp = Invoke-RestMethod -Uri "http://localhost:8081/user/login" -Method POST -ContentType "application/json; charset=utf-8" -Body $viewerBytes
+$viewerToken = $viewerResp.data.token
+$viewerId = $viewerResp.data.userId
+$viewerName = $viewerResp.data.username
+$viewHeaders = @{ "Authorization" = "Bearer $viewerToken"; "X-User-Id" = "$viewerId" }
+
+Write-Host "发布者: $authorName (userId=$authorId)"
+Write-Host "查看者: $viewerName (userId=$viewerId)"
+
+# ===== 2. 健康检查 =====
+Write-Host ""
+Write-Host "===== 1. 健康检查 =====" -ForegroundColor Cyan
+$health = Invoke-RestMethod -Uri "$locBase/health"
+$color = if ($health.data.status -eq "UP") { "Green" } else { "Red" }
 Write-Host "  状态: $($health.data.status)" -ForegroundColor $color
 
 # ===== 3. 附近查询响应时间 (目标 < 300ms) =====
