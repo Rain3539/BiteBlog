@@ -173,3 +173,590 @@ Author2 (Normal): 13800000004 (4) — 6 notes
 Test center: lng=114.3, lat=30.59 (武汉中山公园)
 (base)
 ]633;D;0]633;A]633;P;Cwd=E:\x5cstudy\x5cProjects\x5cBiteBlogPS E:\study\Projects\BiteBlog> ]633;B
+PS>git add .
+
+(base)
+]633;D;0]633;A]633;P;Cwd=E:\x5cstudy\x5cProjects\x5cBiteBlogPS E:\study\Projects\BiteBlog> ]633;B
+PS>git status
+
+(base)
+]633;D;0]633;A]633;P;Cwd=E:\x5cstudy\x5cProjects\x5cBiteBlogPS E:\study\Projects\BiteBlog> ]633;B
+PS>.\sql\init-notify-data.ps1
+所在位置 E:\study\Projects\BiteBlog\sql\init-notify-data.ps1:65 字符: 19
++     shopName   = "閫氱煡娴嬭瘯搴?
++                   ~~~~~~~~
+表达式或语句中包含意外的标记“閫氱煡娴嬭瘯搴?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-notify-data.ps1:65 字符: 19
++     shopName   = "閫氱煡娴嬭瘯搴?
++                   ~
+哈希文本不完整。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-notify-data.ps1:71 字符: 1
++ }
++ ~
+表达式或语句中包含意外的标记“}”。
+    + CategoryInfo          : ParserError: (:) [], ParseException
+    + FullyQualifiedErrorId : UnexpectedToken
+所在位置 E:\study\Projects\BiteBlog\sql\init-notify-data.ps1:65 字符: 19
++     shopName   = "閫氱煡娴嬭瘯搴?
++                   ~~~~~~~~
+表达式或语句中包含意外的标记“閫氱煡娴嬭瘯搴?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-notify-data.ps1:65 字符: 19
++     shopName   = "閫氱煡娴嬭瘯搴?
++                   ~
+哈希文本不完整。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-notify-data.ps1:71 字符: 1
++ }
++ ~
+表达式或语句中包含意外的标记“}”。
+    + CategoryInfo          : ParserError: (:) [], ParseException
+    + FullyQualifiedErrorId : UnexpectedToken
+
+(base)
+]633;D;1]633;A]633;P;Cwd=E:\x5cstudy\x5cProjects\x5cBiteBlogPS E:\study\Projects\BiteBlog> ]633;B
+PS>TerminatingError(TabExpansion2):“无法将参数绑定到参数“inputScript”，因为该参数为空字符串。”
+PS>.\sql\init-rank-data.ps1
+所在位置 E:\study\Projects\BiteBlog\sql\init-rank-data.ps1:148 字符: 24
++             content = "鐢ㄤ簬 Rank Service 鐑害鎺掑簭楠岃瘉銆傝绗旇鐢卞ぇV鐢ㄦ埛鍙戝竷锛屽苟娉 ...
++                        ~~~
+表达式或语句中包含意外的标记“鐢ㄤ簬”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-rank-data.ps1:148 字符: 24
++             content = "鐢ㄤ簬 Rank Service 鐑害鎺掑簭楠岃瘉銆傝绗旇鐢卞ぇV鐢ㄦ埛鍙戝竷锛屽苟娉 ...
++                        ~
+哈希文本不完整。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-rank-data.ps1:148 字符: 23
++             content = "鐢ㄤ簬 Rank Service 鐑害鎺掑簭楠岃瘉銆傝绗旇鐢卞ぇV鐢ㄦ埛鍙戝竷锛屽苟娉 ...
++                       ~
+哈希文本不完整。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-rank-data.ps1:157 字符: 9
++         }
++         ~
+子表达式中缺少右“)”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-rank-data.ps1:157 字符: 9
++         }
++         ~
+表达式或语句中包含意外的标记“}”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-rank-data.ps1:158 字符: 5
++     },
++     ~
+表达式或语句中包含意外的标记“}”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-rank-data.ps1:167 字符: 25
++             shopName = "鑰佸箍鑼舵ゼ"
++                         ~~~~~~~
+表达式或语句中包含意外的标记“鑰佸箍鑼舵ゼ"
+            address = "骞垮窞甯傚ぉ娌冲尯浣撹偛瑗胯矾"
+            longitude = 113.3245000
+            latitude = 23.1291000
+            scoreColor = 4
+            scoreSmell = 5
+            scoreTaste = 5
+            imageUrls = @()
+        }
+    },
+    @{
+        author = $authorBigV
+        likeCount = 36
+        collectCount = 22
+        commentCount = 12
+        note = @{
+            title = "鐑鏍蜂緥03”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-rank-data.ps1:167 字符: 25
++             shopName = "鑰佸箍鑼舵ゼ"
++                         ~
+哈希文本不完整。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-rank-data.ps1:167 字符: 24
++             shopName = "鑰佸箍鑼舵ゼ"
++                        ~
+哈希文本不完整。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-rank-data.ps1:265 字符: 9
++         }
++         ~
+表达式或语句中包含意外的标记“}”。
+
+并未报告所有分析错误。请更正报告的错误并重试。
+    + CategoryInfo          : ParserError: (:) [], ParseException
+    + FullyQualifiedErrorId : UnexpectedToken
+所在位置 E:\study\Projects\BiteBlog\sql\init-rank-data.ps1:148 字符: 24
++             content = "鐢ㄤ簬 Rank Service 鐑害鎺掑簭楠岃瘉銆傝绗旇鐢卞ぇV鐢ㄦ埛鍙戝竷锛屽苟娉 ...
++                        ~~~
+表达式或语句中包含意外的标记“鐢ㄤ簬”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-rank-data.ps1:148 字符: 24
++             content = "鐢ㄤ簬 Rank Service 鐑害鎺掑簭楠岃瘉銆傝绗旇鐢卞ぇV鐢ㄦ埛鍙戝竷锛屽苟娉 ...
++                        ~
+哈希文本不完整。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-rank-data.ps1:148 字符: 23
++             content = "鐢ㄤ簬 Rank Service 鐑害鎺掑簭楠岃瘉銆傝绗旇鐢卞ぇV鐢ㄦ埛鍙戝竷锛屽苟娉 ...
++                       ~
+哈希文本不完整。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-rank-data.ps1:157 字符: 9
++         }
++         ~
+子表达式中缺少右“)”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-rank-data.ps1:157 字符: 9
++         }
++         ~
+表达式或语句中包含意外的标记“}”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-rank-data.ps1:158 字符: 5
++     },
++     ~
+表达式或语句中包含意外的标记“}”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-rank-data.ps1:167 字符: 25
++             shopName = "鑰佸箍鑼舵ゼ"
++                         ~~~~~~~
+表达式或语句中包含意外的标记“鑰佸箍鑼舵ゼ"
+            address = "骞垮窞甯傚ぉ娌冲尯浣撹偛瑗胯矾"
+            longitude = 113.3245000
+            latitude = 23.1291000
+            scoreColor = 4
+            scoreSmell = 5
+            scoreTaste = 5
+            imageUrls = @()
+        }
+    },
+    @{
+        author = $authorBigV
+        likeCount = 36
+        collectCount = 22
+        commentCount = 12
+        note = @{
+            title = "鐑鏍蜂緥03”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-rank-data.ps1:167 字符: 25
++             shopName = "鑰佸箍鑼舵ゼ"
++                         ~
+哈希文本不完整。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-rank-data.ps1:167 字符: 24
++             shopName = "鑰佸箍鑼舵ゼ"
++                        ~
+哈希文本不完整。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-rank-data.ps1:265 字符: 9
++         }
++         ~
+表达式或语句中包含意外的标记“}”。
+
+并未报告所有分析错误。请更正报告的错误并重试。
+    + CategoryInfo          : ParserError: (:) [], ParseException
+    + FullyQualifiedErrorId : UnexpectedToken
+
+(base)
+]633;D;1]633;A]633;P;Cwd=E:\x5cstudy\x5cProjects\x5cBiteBlogPS E:\study\Projects\BiteBlog> ]633;B
+PS>.\sql\init-location-data.ps1
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:43 字符: 124
++ ... 叡娴撻儊" "鑰佹姹夌儹骞查潰" "姝︽眽甯傛睙姹夊尯涓北澶ч亾100鍙? 114.305 30.593) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:45 字符: 114
++ ... ｅ皬榫欒櫨" "宸村帢榫欒櫨" "姝︽眽甯傛睙宀稿尯姹熸眽璺琛岃88鍙? 114.298 30.595) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:54 字符: 119
++ ... 杩樻湁" "闈掑北鑰佸懆楹昏荆鐑? "姝︽眽甯傞潚灞卞尯寤鸿涓€璺?3鍙? 114.386 30.628) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:70 字符: 42
++ Write-Host "Author2 (Normal): 13800000004"
++                                          ~
+字符串缺少终止符: "。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:71 字符: 1
++ 
+表达式中缺少右“)”。
+    + CategoryInfo          : ParserError: (:) [], ParseException
+    + FullyQualifiedErrorId : UnexpectedToken
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:43 字符: 124
++ ... 叡娴撻儊" "鑰佹姹夌儹骞查潰" "姝︽眽甯傛睙姹夊尯涓北澶ч亾100鍙? 114.305 30.593) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:45 字符: 114
++ ... ｅ皬榫欒櫨" "宸村帢榫欒櫨" "姝︽眽甯傛睙宀稿尯姹熸眽璺琛岃88鍙? 114.298 30.595) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:54 字符: 119
++ ... 杩樻湁" "闈掑北鑰佸懆楹昏荆鐑? "姝︽眽甯傞潚灞卞尯寤鸿涓€璺?3鍙? 114.386 30.628) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:70 字符: 42
++ Write-Host "Author2 (Normal): 13800000004"
++                                          ~
+字符串缺少终止符: "。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:71 字符: 1
++
+表达式中缺少右“)”。
+    + CategoryInfo          : ParserError: (:) [], ParseException
+    + FullyQualifiedErrorId : UnexpectedToken
+
+(base)
+]633;D;1]633;A]633;P;Cwd=E:\x5cstudy\x5cProjects\x5cBiteBlogPS E:\study\Projects\BiteBlog> ]633;B
+PS>.\sql\init-location-data.ps1
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:43 字符: 105
++ ... 大道百年老店，芝麻酱浓郁" "老武汉热干面" "武汉市江汉区中山大道100号" 114.305 30.593) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:44 字符: 101
++ ... "户部巷必吃，豆皮金黄酥脆" "户部巷三鲜豆皮" "武汉市武昌区户部巷15号" 114.310 30.588) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:45 字符: 98
++ ... " "夏天必吃，麻辣小龙虾" "巴厘龙虾" "武汉市江岸区江汉路步行街88号" 114.298 30.595) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:46 字符: 97
++ ... " "洪湖莲藕炖排骨，汤浓藕粉" "黄鹤楼酒家" "武汉市武昌区黄鹤楼路1号" 114.308 30.547) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:47 字符: 97
++ ... 昌鱼" "清蒸武昌鱼，鲜嫩不腥" "楚河食府" "武汉市武昌区楚河汉街56号" 114.352 30.563) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:48 字符: 102
++ ... 深夜食堂，炭火烤肉烟火气十足" "吉庆街大排档" "武汉市江岸区吉庆街22号" 114.302 30.596) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:51 字符: 100
++ ... 甜辣风味鸭脖，武汉城市名片" "周黑鸭光谷总店" "武汉市洪山区光谷广场B1" 114.398 30.507) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:52 字符: 102
++ ... 大樱花季限定，粉色奶茶颜值在线" "樱花茶社" "武汉市武昌区珞珈山路16号" 114.367 30.540) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:53 字符: 102
++ ... 牛骨熬汤，手工面条筋道弹牙" "汉阳肖记牛肉面" "武汉市汉阳区钟家村45号" 114.265 30.551) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:54 字符: 102
++ ... 特色，便宜好吃，深夜还有" "青山老周麻辣烫" "武汉市青山区建设一路33号" 114.386 30.628) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+并未报告所有分析错误。请更正报告的错误并重试。
+    + CategoryInfo          : ParserError: (:) [], ParseException
+    + FullyQualifiedErrorId : UnexpectedToken
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:43 字符: 105
++ ... 大道百年老店，芝麻酱浓郁" "老武汉热干面" "武汉市江汉区中山大道100号" 114.305 30.593) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:44 字符: 101
++ ... "户部巷必吃，豆皮金黄酥脆" "户部巷三鲜豆皮" "武汉市武昌区户部巷15号" 114.310 30.588) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:45 字符: 98
++ ... " "夏天必吃，麻辣小龙虾" "巴厘龙虾" "武汉市江岸区江汉路步行街88号" 114.298 30.595) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:46 字符: 97
++ ... " "洪湖莲藕炖排骨，汤浓藕粉" "黄鹤楼酒家" "武汉市武昌区黄鹤楼路1号" 114.308 30.547) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:47 字符: 97
++ ... 昌鱼" "清蒸武昌鱼，鲜嫩不腥" "楚河食府" "武汉市武昌区楚河汉街56号" 114.352 30.563) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:48 字符: 102
++ ... 深夜食堂，炭火烤肉烟火气十足" "吉庆街大排档" "武汉市江岸区吉庆街22号" 114.302 30.596) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:51 字符: 100
++ ... 甜辣风味鸭脖，武汉城市名片" "周黑鸭光谷总店" "武汉市洪山区光谷广场B1" 114.398 30.507) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:52 字符: 102
++ ... 大樱花季限定，粉色奶茶颜值在线" "樱花茶社" "武汉市武昌区珞珈山路16号" 114.367 30.540) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:53 字符: 102
++ ... 牛骨熬汤，手工面条筋道弹牙" "汉阳肖记牛肉面" "武汉市汉阳区钟家村45号" 114.265 30.551) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:54 字符: 102
++ ... 特色，便宜好吃，深夜还有" "青山老周麻辣烫" "武汉市青山区建设一路33号" 114.386 30.628) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+并未报告所有分析错误。请更正报告的错误并重试。
+    + CategoryInfo          : ParserError: (:) [], ParseException
+    + FullyQualifiedErrorId : UnexpectedToken
+
+(base)
+]633;D;1]633;A]633;P;Cwd=E:\x5cstudy\x5cProjects\x5cBiteBlogPS E:\study\Projects\BiteBlog> ]633;B
+PS>.\sql\init-location-data.ps1
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:43 字符: 105
++ ... 大道百年老店，芝麻酱浓郁" "老武汉热干面" "武汉市江汉区中山大道100号" 114.305 30.593) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:44 字符: 101
++ ... "户部巷必吃，豆皮金黄酥脆" "户部巷三鲜豆皮" "武汉市武昌区户部巷15号" 114.310 30.588) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:45 字符: 98
++ ... " "夏天必吃，麻辣小龙虾" "巴厘龙虾" "武汉市江岸区江汉路步行街88号" 114.298 30.595) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:46 字符: 97
++ ... " "洪湖莲藕炖排骨，汤浓藕粉" "黄鹤楼酒家" "武汉市武昌区黄鹤楼路1号" 114.308 30.547) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:47 字符: 97
++ ... 昌鱼" "清蒸武昌鱼，鲜嫩不腥" "楚河食府" "武汉市武昌区楚河汉街56号" 114.352 30.563) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:48 字符: 102
++ ... 深夜食堂，炭火烤肉烟火气十足" "吉庆街大排档" "武汉市江岸区吉庆街22号" 114.302 30.596) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:51 字符: 100
++ ... 甜辣风味鸭脖，武汉城市名片" "周黑鸭光谷总店" "武汉市洪山区光谷广场B1" 114.398 30.507) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:52 字符: 102
++ ... 大樱花季限定，粉色奶茶颜值在线" "樱花茶社" "武汉市武昌区珞珈山路16号" 114.367 30.540) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:53 字符: 102
++ ... 牛骨熬汤，手工面条筋道弹牙" "汉阳肖记牛肉面" "武汉市汉阳区钟家村45号" 114.265 30.551) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:54 字符: 102
++ ... 特色，便宜好吃，深夜还有" "青山老周麻辣烫" "武汉市青山区建设一路33号" 114.386 30.628) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+并未报告所有分析错误。请更正报告的错误并重试。
+    + CategoryInfo          : ParserError: (:) [], ParseException
+    + FullyQualifiedErrorId : UnexpectedToken
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:43 字符: 105
++ ... 大道百年老店，芝麻酱浓郁" "老武汉热干面" "武汉市江汉区中山大道100号" 114.305 30.593) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:44 字符: 101
++ ... "户部巷必吃，豆皮金黄酥脆" "户部巷三鲜豆皮" "武汉市武昌区户部巷15号" 114.310 30.588) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:45 字符: 98
++ ... " "夏天必吃，麻辣小龙虾" "巴厘龙虾" "武汉市江岸区江汉路步行街88号" 114.298 30.595) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:46 字符: 97
++ ... " "洪湖莲藕炖排骨，汤浓藕粉" "黄鹤楼酒家" "武汉市武昌区黄鹤楼路1号" 114.308 30.547) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:47 字符: 97
++ ... 昌鱼" "清蒸武昌鱼，鲜嫩不腥" "楚河食府" "武汉市武昌区楚河汉街56号" 114.352 30.563) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:48 字符: 102
++ ... 深夜食堂，炭火烤肉烟火气十足" "吉庆街大排档" "武汉市江岸区吉庆街22号" 114.302 30.596) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:51 字符: 100
++ ... 甜辣风味鸭脖，武汉城市名片" "周黑鸭光谷总店" "武汉市洪山区光谷广场B1" 114.398 30.507) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:52 字符: 102
++ ... 大樱花季限定，粉色奶茶颜值在线" "樱花茶社" "武汉市武昌区珞珈山路16号" 114.367 30.540) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:53 字符: 102
++ ... 牛骨熬汤，手工面条筋道弹牙" "汉阳肖记牛肉面" "武汉市汉阳区钟家村45号" 114.265 30.551) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:54 字符: 102
++ ... 特色，便宜好吃，深夜还有" "青山老周麻辣烫" "武汉市青山区建设一路33号" 114.386 30.628) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+并未报告所有分析错误。请更正报告的错误并重试。
+    + CategoryInfo          : ParserError: (:) [], ParseException
+    + FullyQualifiedErrorId : UnexpectedToken
+
+(base)
+]633;D;1]633;A]633;P;Cwd=E:\x5cstudy\x5cProjects\x5cBiteBlogPS E:\study\Projects\BiteBlog> ]633;B
+PS>.\sql\init-location-data.ps1
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:43 字符: 105
++ ... 大道百年老店，芝麻酱浓郁" "老武汉热干面" "武汉市江汉区中山大道100号" 114.305 30.593) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:44 字符: 101
++ ... "户部巷必吃，豆皮金黄酥脆" "户部巷三鲜豆皮" "武汉市武昌区户部巷15号" 114.310 30.588) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:45 字符: 98
++ ... " "夏天必吃，麻辣小龙虾" "巴厘龙虾" "武汉市江岸区江汉路步行街88号" 114.298 30.595) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:46 字符: 97
++ ... " "洪湖莲藕炖排骨，汤浓藕粉" "黄鹤楼酒家" "武汉市武昌区黄鹤楼路1号" 114.308 30.547) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:47 字符: 97
++ ... 昌鱼" "清蒸武昌鱼，鲜嫩不腥" "楚河食府" "武汉市武昌区楚河汉街56号" 114.352 30.563) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:48 字符: 102
++ ... 深夜食堂，炭火烤肉烟火气十足" "吉庆街大排档" "武汉市江岸区吉庆街22号" 114.302 30.596) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:51 字符: 100
++ ... 甜辣风味鸭脖，武汉城市名片" "周黑鸭光谷总店" "武汉市洪山区光谷广场B1" 114.398 30.507) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:52 字符: 102
++ ... 大樱花季限定，粉色奶茶颜值在线" "樱花茶社" "武汉市武昌区珞珈山路16号" 114.367 30.540) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:53 字符: 102
++ ... 牛骨熬汤，手工面条筋道弹牙" "汉阳肖记牛肉面" "武汉市汉阳区钟家村45号" 114.265 30.551) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:54 字符: 102
++ ... 特色，便宜好吃，深夜还有" "青山老周麻辣烫" "武汉市青山区建设一路33号" 114.386 30.628) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+并未报告所有分析错误。请更正报告的错误并重试。
+    + CategoryInfo          : ParserError: (:) [], ParseException
+    + FullyQualifiedErrorId : UnexpectedToken
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:43 字符: 105
++ ... 大道百年老店，芝麻酱浓郁" "老武汉热干面" "武汉市江汉区中山大道100号" 114.305 30.593) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:44 字符: 101
++ ... "户部巷必吃，豆皮金黄酥脆" "户部巷三鲜豆皮" "武汉市武昌区户部巷15号" 114.310 30.588) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:45 字符: 98
++ ... " "夏天必吃，麻辣小龙虾" "巴厘龙虾" "武汉市江岸区江汉路步行街88号" 114.298 30.595) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:46 字符: 97
++ ... " "洪湖莲藕炖排骨，汤浓藕粉" "黄鹤楼酒家" "武汉市武昌区黄鹤楼路1号" 114.308 30.547) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:47 字符: 97
++ ... 昌鱼" "清蒸武昌鱼，鲜嫩不腥" "楚河食府" "武汉市武昌区楚河汉街56号" 114.352 30.563) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:48 字符: 102
++ ... 深夜食堂，炭火烤肉烟火气十足" "吉庆街大排档" "武汉市江岸区吉庆街22号" 114.302 30.596) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:51 字符: 100
++ ... 甜辣风味鸭脖，武汉城市名片" "周黑鸭光谷总店" "武汉市洪山区光谷广场B1" 114.398 30.507) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:52 字符: 102
++ ... 大樱花季限定，粉色奶茶颜值在线" "樱花茶社" "武汉市武昌区珞珈山路16号" 114.367 30.540) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:53 字符: 102
++ ... 牛骨熬汤，手工面条筋道弹牙" "汉阳肖记牛肉面" "武汉市汉阳区钟家村45号" 114.265 30.551) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+所在位置 E:\study\Projects\BiteBlog\sql\init-location-data.ps1:54 字符: 102
++ ... 特色，便宜好吃，深夜还有" "青山老周麻辣烫" "武汉市青山区建设一路33号" 114.386 30.628) -gt 0 ? 1 : 0
++                                                                   ~
+表达式或语句中包含意外的标记“?”。
+
+并未报告所有分析错误。请更正报告的错误并重试。
+    + CategoryInfo          : ParserError: (:) [], ParseException
+    + FullyQualifiedErrorId : UnexpectedToken
+
+(base)
+]633;D;1]633;A]633;P;Cwd=E:\x5cstudy\x5cProjects\x5cBiteBlogPS E:\study\Projects\BiteBlog> ]633;B
+PS>git commit -m "测试脚本完成，结果已保存"
+
+(base)
+]633;D;0]633;A]633;P;Cwd=E:\x5cstudy\x5cProjects\x5cBiteBlogPS E:\study\Projects\BiteBlog> ]633;B
+PS>git push
+
+(base)
+]633;D;0]633;A]633;P;Cwd=E:\x5cstudy\x5cProjects\x5cBiteBlogPS E:\study\Projects\BiteBlog> ]633;B
+PS>git status
+
+(base)
+]633;D;0]633;A]633;P;Cwd=E:\x5cstudy\x5cProjects\x5cBiteBlogPS E:\study\Projects\BiteBlog> ]633;B
+PS>git status
+
+(base)
+]633;D;0]633;A]633;P;Cwd=E:\x5cstudy\x5cProjects\x5cBiteBlogPS E:\study\Projects\BiteBlog> ]633;B
