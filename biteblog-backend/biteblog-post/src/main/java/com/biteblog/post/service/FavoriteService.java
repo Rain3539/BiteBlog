@@ -9,12 +9,11 @@ import com.biteblog.post.entity.NoteFavorite;
 import com.biteblog.post.mapper.NoteFavoriteMapper;
 import com.biteblog.post.mapper.NoteMapper;
 import lombok.RequiredArgsConstructor;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Map;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -22,7 +21,7 @@ public class FavoriteService {
 
     private final NoteFavoriteMapper favoriteMapper;
     private final NoteMapper noteMapper;
-    private final RabbitTemplate rabbitTemplate;
+    private final PostEventPublisher eventPublisher;
 
     @Transactional
     public boolean toggleFavorite(Long noteId, Long userId) {
@@ -38,34 +37,31 @@ public class FavoriteService {
         );
 
         if (existing != null) {
-            // 取消收藏
             favoriteMapper.deleteById(existing.getId());
             noteMapper.update(null,
                     new LambdaUpdateWrapper<Note>()
                             .eq(Note::getId, noteId)
+                            .set(Note::getUpdatedAt, LocalDateTime.now())
                             .setSql("collect_count = collect_count - 1"));
+            eventPublisher.publishInteraction(noteId, userId, note.getAuthorId(), "collect", "remove");
             return false;
-        } else {
-            NoteFavorite favorite = new NoteFavorite();
-            favorite.setNoteId(noteId);
-            favorite.setUserId(userId);
-            try {
-                favoriteMapper.insert(favorite);
-            } catch (DuplicateKeyException e) {
-                return true;
-            }
-            noteMapper.update(null,
-                    new LambdaUpdateWrapper<Note>()
-                            .eq(Note::getId, noteId)
-                            .setSql("collect_count = collect_count + 1"));
-            Map<String, Object> event = Map.of(
-                    "noteId", noteId,
-                    "userId", userId,
-                    "authorId", note.getAuthorId(),
-                    "type", "collect"
-            );
-            rabbitTemplate.convertAndSend("biteblog.interaction", "interaction.collect", event);
+        }
+
+        NoteFavorite favorite = new NoteFavorite();
+        favorite.setNoteId(noteId);
+        favorite.setUserId(userId);
+        favorite.setCreatedAt(LocalDateTime.now());
+        try {
+            favoriteMapper.insert(favorite);
+        } catch (DuplicateKeyException e) {
             return true;
         }
+        noteMapper.update(null,
+                new LambdaUpdateWrapper<Note>()
+                        .eq(Note::getId, noteId)
+                        .set(Note::getUpdatedAt, LocalDateTime.now())
+                        .setSql("collect_count = collect_count + 1"));
+        eventPublisher.publishInteraction(noteId, userId, note.getAuthorId(), "collect", "add");
+        return true;
     }
 }

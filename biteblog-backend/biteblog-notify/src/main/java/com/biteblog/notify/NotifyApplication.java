@@ -15,8 +15,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 public class NotifyApplication {
 
     public static void main(String[] args) {
-        // Post 用 Map.of() 发 MQ，JDK 序列化后为 java.util.CollSer。
-        // Spring AMQP 3.x 的白名单检查走 System.getProperty()，application.yml 无效，必须在此设置。
+        // Keep compatibility with old Java-serialized Map messages that may still be in RabbitMQ.
         System.setProperty("spring.amqp.deserialization.trust.all", "true");
         SpringApplication.run(NotifyApplication.class, args);
     }

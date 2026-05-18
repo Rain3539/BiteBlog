@@ -1,4 +1,4 @@
-$ErrorActionPreference = "SilentlyContinue"
+$ErrorActionPreference = "Continue"
 $transcriptFile = Join-Path $PSScriptRoot "rank-test-result.txt"
 Start-Transcript -Path $transcriptFile -Force | Out-Null
 
@@ -6,10 +6,35 @@ $gateway = "http://localhost:8080/api"
 $rankBase = "http://localhost:8086/rank"
 $userBase = "http://localhost:8081/user"
 $redisContainer = "biteblog-redis"
+$rabbitContainer = "biteblog-rabbitmq"
 $redisPassword = "redis123456"
 $password = "12345678"
 $today = Get-Date -Format "yyyy-MM-dd"
-$dailyKey = "rank:daily:$today"
+$script:dailyKey = "rank:daily:$today"
+$script:failures = 0
+$script:dockerAvailable = $null
+
+function Write-Section {
+    param([string]$Title)
+    Write-Host ""
+    Write-Host "===== $Title =====" -ForegroundColor Cyan
+}
+
+function Pass {
+    param([string]$Message)
+    Write-Host "  [PASS] $Message" -ForegroundColor Green
+}
+
+function Warn {
+    param([string]$Message)
+    Write-Host "  [WARN] $Message" -ForegroundColor Yellow
+}
+
+function Fail {
+    param([string]$Message)
+    $script:failures++
+    Write-Host "  [FAIL] $Message" -ForegroundColor Red
+}
 
 function Invoke-JsonRequest {
     param(
@@ -28,6 +53,128 @@ function Invoke-JsonRequest {
     return Invoke-RestMethod -Uri $Uri -Method $Method -Headers $Headers -ErrorAction Stop
 }
 
+function Test-ContainerRunning {
+    param([string]$Name)
+    if ($null -eq $script:dockerAvailable) {
+        $script:dockerAvailable = $null -ne (Get-Command docker -ErrorAction SilentlyContinue)
+    }
+    if (-not $script:dockerAvailable) {
+        return $false
+    }
+    $names = & docker ps --format "{{.Names}}" 2>$null
+    return @($names) -contains $Name
+}
+
+function Invoke-Redis {
+    param([string[]]$RedisArgs)
+    if (-not (Test-ContainerRunning $redisContainer)) {
+        return @()
+    }
+    $dockerArgs = @("exec", "-e", "REDISCLI_AUTH=$redisPassword", $redisContainer, "redis-cli", "--raw") + $RedisArgs
+    $output = & docker $dockerArgs 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        return @()
+    }
+    return @($output | Where-Object { $null -ne $_ -and $_.ToString().Trim().Length -gt 0 })
+}
+
+function Get-DailyKeys {
+    $keys = Invoke-Redis @("KEYS", "rank:daily:*")
+    if ($keys.Count -eq 0) {
+        return @($script:dailyKey)
+    }
+    return @($keys | Sort-Object -Descending)
+}
+
+function Get-RedisScore {
+    param([long]$PostId)
+
+    foreach ($key in (Get-DailyKeys)) {
+        $raw = Invoke-Redis @("ZSCORE", $key, "$PostId")
+        $scoreText = ($raw | Select-Object -First 1)
+        if (-not [string]::IsNullOrWhiteSpace($scoreText)) {
+            try {
+                return [pscustomobject]@{
+                    Key = $key
+                    Score = [double]$scoreText
+                }
+            } catch {
+                Warn "Redis score is not numeric. key=$key postId=$PostId raw=$scoreText"
+            }
+        }
+    }
+    return $null
+}
+
+function Wait-ScoreChange {
+    param(
+        [long]$PostId,
+        [Nullable[Double]]$Before,
+        [string]$ActionName
+    )
+
+    for ($i = 1; $i -le 16; $i++) {
+        Start-Sleep -Milliseconds 500
+        $probe = Get-RedisScore $PostId
+        if ($null -eq $probe) {
+            Write-Host "  try ${i}: score=null" -ForegroundColor DarkGray
+            continue
+        }
+
+        $script:dailyKey = $probe.Key
+        Write-Host "  try ${i}: key=$($probe.Key) score=$($probe.Score)" -ForegroundColor DarkGray
+        if ($null -eq $Before -or $probe.Score -gt $Before) {
+            Pass "$ActionName score increased: before=$Before after=$($probe.Score)"
+            return $probe.Score
+        }
+    }
+
+    Fail "$ActionName did not increase score within 8s"
+    $last = Get-RedisScore $PostId
+    if ($null -ne $last) {
+        return $last.Score
+    }
+    return $Before
+}
+
+function Show-RedisDailyTop {
+    Write-Host "  daily keys found:" -ForegroundColor White
+    foreach ($key in (Get-DailyKeys | Select-Object -First 5)) {
+        $count = (Invoke-Redis @("ZCARD", $key) | Select-Object -First 1)
+        if ([string]::IsNullOrWhiteSpace($count)) {
+            $count = "0"
+        }
+        Write-Host "    $key count=$count" -ForegroundColor White
+        $rows = Invoke-Redis @("ZREVRANGE", $key, "0", "9", "WITHSCORES")
+        if ($rows.Count -eq 0) {
+            Write-Host "      <empty>" -ForegroundColor DarkGray
+            continue
+        }
+        for ($i = 0; $i -lt $rows.Count; $i += 2) {
+            $member = $rows[$i]
+            $score = if ($i + 1 -lt $rows.Count) { $rows[$i + 1] } else { "" }
+            Write-Host "      member=$member score=$score" -ForegroundColor DarkGray
+        }
+    }
+}
+
+function Show-RabbitDiagnostics {
+    if (-not (Test-ContainerRunning $rabbitContainer)) {
+        Warn "RabbitMQ container $rabbitContainer is not running"
+        return
+    }
+
+    Write-Host "  RabbitMQ queues:" -ForegroundColor White
+    $queues = & docker exec $rabbitContainer rabbitmqctl list_queues name messages_ready messages_unacknowledged consumers 2>$null
+    @($queues | Where-Object { $_ -match "rank|interaction|note|name" }) |
+        ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray }
+
+    Write-Host "  RabbitMQ bindings:" -ForegroundColor White
+    $bindings = & docker exec $rabbitContainer rabbitmqctl list_bindings source_name destination_name routing_key 2>$null
+    @($bindings | Where-Object { $_ -match "biteblog|rank|interaction|note|source_name" }) |
+        ForEach-Object { Write-Host "    $_" -ForegroundColor DarkGray }
+}
+
 function Login-TestUser {
     param([string]$Phone)
 
@@ -40,77 +187,61 @@ function Login-TestUser {
     }
 }
 
-function Get-RedisScore {
-    param([long]$PostId)
-
-    $raw = docker exec $redisContainer redis-cli -a $redisPassword ZSCORE $dailyKey "$PostId" 2>$null
-    $scoreText = ($raw | Select-Object -First 1)
-    if ([string]::IsNullOrWhiteSpace($scoreText)) {
-        return $null
-    }
-    return [double]$scoreText
-}
-
-function Wait-ScoreChange {
-    param(
-        [long]$PostId,
-        [Nullable[Double]]$Before,
-        [string]$ActionName
-    )
-
-    for ($i = 1; $i -le 12; $i++) {
-        Start-Sleep -Milliseconds 500
-        $score = Get-RedisScore $PostId
-        $scoreText = if ($null -eq $score) { "null" } else { $score }
-        Write-Host "  try ${i}: score=$scoreText" -ForegroundColor DarkGray
-        if ($null -ne $score -and ($null -eq $Before -or $score -gt $Before)) {
-            Write-Host "  $ActionName score increased: before=$Before after=$score" -ForegroundColor Green
-            return $score
-        }
-    }
-
-    Write-Host "  $ActionName did not increase score within 6s" -ForegroundColor Yellow
-    return Get-RedisScore $PostId
-}
-
 Write-Host "===== Rank Service Verification =====" -ForegroundColor Cyan
-Write-Host "Redis daily key: $dailyKey" -ForegroundColor White
+Write-Host "Expected daily key: $script:dailyKey" -ForegroundColor White
+
+Write-Section "0. Container Precheck"
+if (Test-ContainerRunning $redisContainer) {
+    Pass "Redis container is running: $redisContainer"
+} else {
+    Fail "Redis container is not running: $redisContainer"
+}
+if (Test-ContainerRunning $rabbitContainer) {
+    Pass "RabbitMQ container is running: $rabbitContainer"
+} else {
+    Warn "RabbitMQ container is not running: $rabbitContainer"
+}
 
 try {
     $author = Login-TestUser "13800000001"
     $actor = Login-TestUser "13800000004"
     $authorHeaders = @{ "Authorization" = "Bearer $($author.token)" }
     $actorHeaders = @{ "Authorization" = "Bearer $($actor.token)" }
-    Write-Host "Author: $($author.phone) $($author.username) userId=$($author.userId)" -ForegroundColor White
-    Write-Host "Actor: $($actor.phone) $($actor.username) userId=$($actor.userId)" -ForegroundColor White
+    Pass "Author login userId=$($author.userId) phone=$($author.phone) username=$($author.username)"
+    Pass "Actor login userId=$($actor.userId) phone=$($actor.phone) username=$($actor.username)"
 } catch {
-    Write-Host "Login failed. Run sql/init-data.ps1 and start User/Gateway services first: $($_.Exception.Message)" -ForegroundColor Red
+    Fail "Login failed. Run sql/init-data.ps1 and start User/Gateway services first: $($_.Exception.Message)"
     Stop-Transcript | Out-Null
     exit 1
 }
 
-Write-Host ""
-Write-Host "===== 1. Health Check =====" -ForegroundColor Cyan
+Write-Section "1. Health Check"
 try {
     $health = Invoke-JsonRequest -Uri "$rankBase/health"
-    Write-Host "  rank-service status=$($health.data.status)" -ForegroundColor Green
+    if ($health.data.status -eq "UP") {
+        Pass "rank-service status=UP"
+    } else {
+        Fail "rank-service returned unexpected status=$($health.data.status)"
+    }
 } catch {
-    Write-Host "  health check failed: $($_.Exception.Message)" -ForegroundColor Red
+    Fail "health check failed: $($_.Exception.Message)"
 }
 
-Write-Host ""
-Write-Host "===== 2. Rebuild daily/weekly/all =====" -ForegroundColor Cyan
+Write-Section "2. Rebuild daily/weekly/all"
 foreach ($type in @("daily", "weekly", "all")) {
     try {
         $resp = Invoke-JsonRequest -Uri "$rankBase/rebuild?type=$type" -Method POST
-        Write-Host "  rebuild ${type}: rebuilt=$($resp.data.rebuilt)" -ForegroundColor Green
+        if ($resp.data.rebuilt -eq $true) {
+            Pass "rebuild $type"
+        } else {
+            Fail "rebuild $type returned rebuilt=$($resp.data.rebuilt)"
+        }
     } catch {
-        Write-Host "  rebuild $type failed: $($_.Exception.Message)" -ForegroundColor Red
+        Fail "rebuild $type failed: $($_.Exception.Message)"
     }
 }
 
-Write-Host ""
-Write-Host "===== 3. Top10 Whitelist Latency (target < 100ms) =====" -ForegroundColor Cyan
+Write-Section "3. Top10 Whitelist Latency"
 $times = @()
 for ($i = 1; $i -le 20; $i++) {
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
@@ -121,27 +252,22 @@ for ($i = 1; $i -le 20; $i++) {
         Write-Host "  try ${i}: $($sw.ElapsedMilliseconds)ms" -ForegroundColor DarkGray
     } catch {
         $sw.Stop()
-        Write-Host "  try ${i} failed: $($_.Exception.Message)" -ForegroundColor Red
+        Fail "top10 try ${i} failed: $($_.Exception.Message)"
     }
 }
 if ($times.Count -gt 0) {
     $avg = ($times | Measure-Object -Average).Average
-    $color = if ($avg -lt 100) { "Green" } else { "Yellow" }
-    Write-Host "  average: $([math]::Round($avg, 2))ms (target <100ms)" -ForegroundColor $color
+    if ($avg -lt 100) {
+        Pass "average latency $([math]::Round($avg, 2))ms (target <100ms)"
+    } else {
+        Warn "average latency $([math]::Round($avg, 2))ms (target <100ms)"
+    }
 }
 
-Write-Host ""
-Write-Host "===== 4. Redis ZSet Daily Key =====" -ForegroundColor Cyan
-Write-Host "  command: ZREVRANGE $dailyKey 0 9 WITHSCORES" -ForegroundColor White
-$redisTop = docker exec $redisContainer redis-cli -a $redisPassword ZREVRANGE $dailyKey 0 9 WITHSCORES 2>$null
-if ($redisTop) {
-    $redisTop | ForEach-Object { Write-Host "  $_" -ForegroundColor DarkGray }
-} else {
-    Write-Host "  no Redis daily rank data found; check rebuild and Redis container" -ForegroundColor Yellow
-}
+Write-Section "4. Redis Daily ZSet Snapshot"
+Show-RedisDailyTop
 
-Write-Host ""
-Write-Host "===== 5. Publish Note -> Rank Event =====" -ForegroundColor Cyan
+Write-Section "5. Publish Note -> Rank Event"
 $testTitle = "RankEventTest-" + (Get-Date -Format "HHmmss")
 $publishBody = @{
     title = $testTitle
@@ -155,78 +281,89 @@ $publishBody = @{
     scoreTaste = 5
     imageUrls = @()
 }
+
+$postId = $null
 try {
     $pub = Invoke-JsonRequest -Uri "$gateway/post/publish" -Method POST -Headers $authorHeaders -Body $publishBody
     $postId = [long]$pub.data.postId
-    Write-Host "  published: postId=$postId title=$testTitle" -ForegroundColor Green
+    Pass "published postId=$postId title=$testTitle"
 } catch {
-    Write-Host "  publish failed: $($_.Exception.Message)" -ForegroundColor Red
-    $postId = $null
+    Fail "publish failed: $($_.Exception.Message)"
 }
 
 if ($postId) {
-    $initialScore = $null
-    for ($i = 1; $i -le 12; $i++) {
-        Start-Sleep -Milliseconds 500
-        $initialScore = Get-RedisScore $postId
-        $scoreText = if ($null -eq $initialScore) { "null" } else { $initialScore }
-        Write-Host "  try ${i}: score=$scoreText" -ForegroundColor DarkGray
-        if ($null -ne $initialScore) {
-            Write-Host "  note.published observed: postId=$postId score=$initialScore" -ForegroundColor Green
-            break
-        }
-    }
+    $initialScore = Wait-ScoreChange $postId $null "note.published"
     if ($null -eq $initialScore) {
-        Write-Host "  publish event was not observed within 6s; interaction events will still be checked" -ForegroundColor Yellow
+        Show-RabbitDiagnostics
+        Show-RedisDailyTop
     }
 }
 
 if ($postId) {
-    Write-Host ""
-    Write-Host "===== 6. Like/Favorite/Comment -> Score Increase =====" -ForegroundColor Cyan
+    Write-Section "6. Like/Favorite/Comment -> Rank Score Refresh"
 
-    $before = Get-RedisScore $postId
+    $before = $initialScore
     try {
         Invoke-JsonRequest -Uri "$gateway/post/$postId/like" -Method POST -Headers $actorHeaders | Out-Null
-        Write-Host "  like request sent" -ForegroundColor White
+        Pass "like request sent"
         $afterLike = Wait-ScoreChange $postId $before "like"
     } catch {
-        Write-Host "  like failed: $($_.Exception.Message)" -ForegroundColor Red
+        Fail "like failed: $($_.Exception.Message)"
         $afterLike = $before
     }
 
     try {
         Invoke-JsonRequest -Uri "$gateway/post/$postId/favorite" -Method POST -Headers $actorHeaders | Out-Null
-        Write-Host "  favorite request sent" -ForegroundColor White
+        Pass "favorite request sent"
         $afterFavorite = Wait-ScoreChange $postId $afterLike "favorite"
     } catch {
-        Write-Host "  favorite failed: $($_.Exception.Message)" -ForegroundColor Red
+        Fail "favorite failed: $($_.Exception.Message)"
         $afterFavorite = $afterLike
     }
 
     try {
         $commentBody = @{ content = "Rank event test comment"; parentId = $null }
         Invoke-JsonRequest -Uri "$gateway/post/$postId/comment" -Method POST -Headers $actorHeaders -Body $commentBody | Out-Null
-        Write-Host "  comment request sent" -ForegroundColor White
+        Pass "comment request sent"
         $afterComment = Wait-ScoreChange $postId $afterFavorite "comment"
     } catch {
-        Write-Host "  comment failed: $($_.Exception.Message)" -ForegroundColor Red
+        Fail "comment failed: $($_.Exception.Message)"
     }
 }
 
-Write-Host ""
-Write-Host "===== 7. Rank List API =====" -ForegroundColor Cyan
+Write-Section "7. Rank List API"
 try {
-    $list = Invoke-JsonRequest -Uri "$gateway/rank/list?type=daily&page=1&size=10" -Headers $authorHeaders
-    Write-Host "  page=$($list.data.page) size=$($list.data.size) total=$($list.data.total)" -ForegroundColor Green
+    $list = Invoke-JsonRequest -Uri "$gateway/rank/list?type=daily&page=1&size=50" -Headers $authorHeaders
+    Pass "page=$($list.data.page) size=$($list.data.size) total=$($list.data.total)"
+    $found = $false
     foreach ($item in ($list.data.list | Select-Object -First 10)) {
         Write-Host "  #$($item.rankNo) postId=$($item.postId) hotScore=$($item.hotScore) title=$($item.title)" -ForegroundColor DarkGray
+        if ($postId -and [long]$item.postId -eq $postId) {
+            $found = $true
+        }
+    }
+    if ($postId -and $found) {
+        Pass "published post is present in rank list"
+    } elseif ($postId) {
+        Warn "published postId=$postId is not in the first returned page; Redis score checks above already verified the event path"
     }
 } catch {
-    Write-Host "  rank list failed: $($_.Exception.Message)" -ForegroundColor Red
+    Fail "rank list failed: $($_.Exception.Message)"
 }
 
-Write-Host ""
-Write-Host "===== Done =====" -ForegroundColor Cyan
-Write-Host "Result saved to: $transcriptFile" -ForegroundColor Green
+Write-Section "8. Diagnostics"
+Show-RedisDailyTop
+Show-RabbitDiagnostics
+
+Write-Section "Done"
+if ($script:failures -eq 0) {
+    Pass "Rank verification passed"
+    Write-Host "Result saved to: $transcriptFile" -ForegroundColor Green
+    Stop-Transcript | Out-Null
+    exit 0
+}
+
+Write-Host "  [FAIL] Rank verification finished with $script:failures failure(s)" -ForegroundColor Red
+Write-Host "Result saved to: $transcriptFile" -ForegroundColor Yellow
 Stop-Transcript | Out-Null
+exit 1

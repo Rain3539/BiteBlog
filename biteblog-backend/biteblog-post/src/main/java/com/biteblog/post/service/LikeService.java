@@ -9,12 +9,11 @@ import com.biteblog.post.entity.NoteLike;
 import com.biteblog.post.mapper.NoteLikeMapper;
 import com.biteblog.post.mapper.NoteMapper;
 import lombok.RequiredArgsConstructor;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Map;
+import java.time.LocalDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -22,7 +21,7 @@ public class LikeService {
 
     private final NoteLikeMapper likeMapper;
     private final NoteMapper noteMapper;
-    private final RabbitTemplate rabbitTemplate;
+    private final PostEventPublisher eventPublisher;
 
     @Transactional
     public boolean toggleLike(Long noteId, Long userId) {
@@ -38,37 +37,31 @@ public class LikeService {
         );
 
         if (existing != null) {
-            // 取消点赞
             likeMapper.deleteById(existing.getId());
             noteMapper.update(null,
                     new LambdaUpdateWrapper<Note>()
                             .eq(Note::getId, noteId)
+                            .set(Note::getUpdatedAt, LocalDateTime.now())
                             .setSql("like_count = like_count - 1"));
+            eventPublisher.publishInteraction(noteId, userId, note.getAuthorId(), "like", "remove");
             return false;
-        } else {
-            // 点赞（唯一约束保证并发安全）
-            NoteLike like = new NoteLike();
-            like.setNoteId(noteId);
-            like.setUserId(userId);
-            try {
-                likeMapper.insert(like);
-            } catch (DuplicateKeyException e) {
-                // 并发重复点赞，幂等返回已赞
-                return true;
-            }
-            noteMapper.update(null,
-                    new LambdaUpdateWrapper<Note>()
-                            .eq(Note::getId, noteId)
-                            .setSql("like_count = like_count + 1"));
-            // 异步通知排行 + 通知服务
-            Map<String, Object> event = Map.of(
-                    "noteId", noteId,
-                    "userId", userId,
-                    "authorId", note.getAuthorId(),
-                    "type", "like"
-            );
-            rabbitTemplate.convertAndSend("biteblog.interaction", "interaction.like", event);
+        }
+
+        NoteLike like = new NoteLike();
+        like.setNoteId(noteId);
+        like.setUserId(userId);
+        like.setCreatedAt(LocalDateTime.now());
+        try {
+            likeMapper.insert(like);
+        } catch (DuplicateKeyException e) {
             return true;
         }
+        noteMapper.update(null,
+                new LambdaUpdateWrapper<Note>()
+                        .eq(Note::getId, noteId)
+                        .set(Note::getUpdatedAt, LocalDateTime.now())
+                        .setSql("like_count = like_count + 1"));
+        eventPublisher.publishInteraction(noteId, userId, note.getAuthorId(), "like", "add");
+        return true;
     }
 }

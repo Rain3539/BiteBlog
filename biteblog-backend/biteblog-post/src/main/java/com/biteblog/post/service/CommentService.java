@@ -11,10 +11,10 @@ import com.biteblog.post.entity.Note;
 import com.biteblog.post.mapper.CommentMapper;
 import com.biteblog.post.mapper.NoteMapper;
 import lombok.RequiredArgsConstructor;
-import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -25,7 +25,7 @@ public class CommentService {
 
     private final CommentMapper commentMapper;
     private final NoteMapper noteMapper;
-    private final RabbitTemplate rabbitTemplate;
+    private final PostEventPublisher eventPublisher;
 
     @Transactional
     public Long publishComment(Long noteId, Long userId, String content, Long parentId) {
@@ -40,21 +40,16 @@ public class CommentService {
         comment.setContent(content);
         comment.setParentId(parentId);
         comment.setStatus(1);
+        comment.setCreatedAt(LocalDateTime.now());
         commentMapper.insert(comment);
 
         noteMapper.update(null,
                 new LambdaUpdateWrapper<Note>()
                         .eq(Note::getId, noteId)
+                        .set(Note::getUpdatedAt, LocalDateTime.now())
                         .setSql("comment_count = comment_count + 1"));
 
-        Map<String, Object> event = Map.of(
-                "noteId", noteId,
-                "userId", userId,
-                "commentId", comment.getId(),
-                "authorId", note.getAuthorId(),
-                "type", "comment"
-        );
-        rabbitTemplate.convertAndSend("biteblog.interaction", "interaction.comment", event);
+        eventPublisher.publishInteraction(noteId, userId, note.getAuthorId(), "comment", "add");
 
         return comment.getId();
     }

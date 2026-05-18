@@ -6,7 +6,7 @@ import com.biteblog.rank.entity.Note;
 import com.biteblog.rank.mapper.NoteMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ZSetOperations;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
@@ -22,7 +22,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class RankService {
     private final NoteMapper noteMapper;
-    private final RedisTemplate<String, Object> redisTemplate;
+    private final StringRedisTemplate redisTemplate;
 
     private static final DateTimeFormatter DATE_KEY_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
     private static final String DAILY_KEY_PREFIX = "rank:daily:";
@@ -30,6 +30,7 @@ public class RankService {
     private static final String ALL_KEY = "rank:all";
     private static final Set<String> TYPES = Set.of("daily", "weekly", "all");
     private static final int MAX_CACHE_SIZE = 200;
+    private static final int MAX_REBUILD_CANDIDATES = 1000;
 
     public Map<String, Object> getTop10(String type) {
         return getRankList(type, 1, 10);
@@ -44,10 +45,10 @@ public class RankService {
         String key = rankKey(safeType);
         long start = (long) (safePage - 1) * safeSize;
         long end = start + safeSize - 1;
-        Set<ZSetOperations.TypedTuple<Object>> tuples = redisTemplate.opsForZSet().reverseRangeWithScores(key, start, end);
+        Set<ZSetOperations.TypedTuple<String>> tuples = redisTemplate.opsForZSet().reverseRangeWithScores(key, start, end);
         Long total = redisTemplate.opsForZSet().zCard(key);
 
-        List<RankItemVO> list = toRankItems(tuples, (int) start + 1);
+        List<RankItemVO> list = toRankItems(key, tuples, (int) start + 1);
         Map<String, Object> result = new HashMap<>();
         result.put("type", safeType);
         result.put("page", safePage);
@@ -63,18 +64,22 @@ public class RankService {
         redisTemplate.delete(key);
 
         LambdaQueryWrapper<Note> wrapper = new LambdaQueryWrapper<Note>()
-                .eq(Note::getStatus, 1)
-                .orderByDesc(Note::getLikeCount)
-                .last("LIMIT " + MAX_CACHE_SIZE);
+                .eq(Note::getStatus, 1);
         if ("daily".equals(safeType)) {
             wrapper.ge(Note::getCreatedAt, LocalDateTime.now().minusDays(1));
         } else if ("weekly".equals(safeType)) {
             wrapper.ge(Note::getCreatedAt, LocalDateTime.now().minusDays(7));
         }
+        wrapper.last("ORDER BY (" +
+                "COALESCE(like_count, 0) * 3 + " +
+                "COALESCE(collect_count, 0) * 5 + " +
+                "COALESCE(comment_count, 0) * 4 + " +
+                "(COALESCE(score_taste, 0) + COALESCE(score_smell, 0) + COALESCE(score_color, 0)) / 3" +
+                ") DESC LIMIT " + MAX_REBUILD_CANDIDATES);
 
         List<Note> notes = noteMapper.selectList(wrapper);
         for (Note note : notes) {
-            redisTemplate.opsForZSet().add(key, note.getId().toString(), calculateScore(note));
+            putScore(key, note.getId(), calculateScore(note));
         }
         trim(key);
         log.info("Rank cache rebuilt: type={}, count={}", safeType, notes.size());
@@ -88,8 +93,9 @@ public class RankService {
         double score = calculateScore(note);
         for (String type : TYPES) {
             if (shouldJoin(type, note.getCreatedAt())) {
-                redisTemplate.opsForZSet().add(rankKey(type), noteId.toString(), score);
-                trim(rankKey(type));
+                String key = rankKey(type);
+                putScore(key, noteId, score);
+                trim(key);
             }
         }
     }
@@ -99,7 +105,7 @@ public class RankService {
             return;
         }
         for (String type : TYPES) {
-            redisTemplate.opsForZSet().remove(rankKey(type), noteId.toString());
+            removeScore(rankKey(type), noteId);
         }
     }
 
@@ -107,24 +113,22 @@ public class RankService {
         if (noteId == null) {
             return;
         }
-        double delta = switch (String.valueOf(interactionType)) {
-            case "like" -> 3.0;
-            case "collect" -> 5.0;
-            case "comment" -> 4.0;
-            case "view" -> 1.0;
-            default -> 1.0;
-        };
         Note note = noteMapper.selectById(noteId);
         if (note == null || !Objects.equals(note.getStatus(), 1)) {
             removeNote(noteId);
             return;
         }
+        double score = calculateScore(note);
         for (String type : TYPES) {
+            String key = rankKey(type);
             if (shouldJoin(type, note.getCreatedAt())) {
-                redisTemplate.opsForZSet().incrementScore(rankKey(type), noteId.toString(), delta);
-                trim(rankKey(type));
+                putScore(key, noteId, score);
+                trim(key);
+            } else {
+                removeScore(key, noteId);
             }
         }
+        log.info("Rank score refreshed by interaction: noteId={}, type={}", noteId, interactionType);
     }
 
     @Scheduled(cron = "0 0/10 * * * ?")
@@ -141,21 +145,31 @@ public class RankService {
         }
     }
 
-    private List<RankItemVO> toRankItems(Set<ZSetOperations.TypedTuple<Object>> tuples, int startRank) {
+    private List<RankItemVO> toRankItems(String key, Set<ZSetOperations.TypedTuple<String>> tuples, int startRank) {
         if (tuples == null || tuples.isEmpty()) {
             return List.of();
         }
         List<Long> ids = tuples.stream()
-                .map(t -> Long.valueOf(String.valueOf(t.getValue())))
+                .map(t -> parseNoteId(t.getValue()))
+                .filter(Objects::nonNull)
+                .distinct()
                 .collect(Collectors.toList());
+        if (ids.isEmpty()) {
+            return List.of();
+        }
         Map<Long, Note> noteMap = noteMapper.selectBatchIds(ids).stream()
                 .filter(n -> Objects.equals(n.getStatus(), 1))
                 .collect(Collectors.toMap(Note::getId, n -> n));
 
         List<RankItemVO> result = new ArrayList<>();
+        Set<Long> seen = new HashSet<>();
         int rank = startRank;
-        for (ZSetOperations.TypedTuple<Object> tuple : tuples) {
-            Long id = Long.valueOf(String.valueOf(tuple.getValue()));
+        for (ZSetOperations.TypedTuple<String> tuple : tuples) {
+            Long id = parseNoteId(tuple.getValue());
+            if (id == null || !seen.add(id)) {
+                redisTemplate.opsForZSet().remove(key, tuple.getValue());
+                continue;
+            }
             Note note = noteMap.get(id);
             if (note == null) {
                 removeNote(id);
@@ -228,5 +242,36 @@ public class RankService {
 
     private int defaultZero(Integer value) {
         return value == null ? 0 : value;
+    }
+
+    private void putScore(String key, Long noteId, double score) {
+        String member = noteId.toString();
+        redisTemplate.opsForZSet().remove(key, legacyJsonStringMember(member));
+        redisTemplate.opsForZSet().add(key, member, score);
+    }
+
+    private void removeScore(String key, Long noteId) {
+        String member = noteId.toString();
+        redisTemplate.opsForZSet().remove(key, member, legacyJsonStringMember(member));
+    }
+
+    private String legacyJsonStringMember(String member) {
+        return "\"" + member + "\"";
+    }
+
+    private Long parseNoteId(String value) {
+        if (value == null) {
+            return null;
+        }
+        String text = value.trim();
+        if (text.length() >= 2 && text.startsWith("\"") && text.endsWith("\"")) {
+            text = text.substring(1, text.length() - 1);
+        }
+        try {
+            return Long.valueOf(text);
+        } catch (NumberFormatException e) {
+            log.warn("Invalid rank member found in Redis: {}", value);
+            return null;
+        }
     }
 }

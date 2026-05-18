@@ -16,6 +16,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -55,6 +56,9 @@ public class PostService extends ServiceImpl<NoteMapper, Note> {
         note.setCollectCount(0);
         note.setCommentCount(0);
         note.setStatus(1);
+        LocalDateTime now = LocalDateTime.now();
+        note.setCreatedAt(now);
+        note.setUpdatedAt(now);
         noteMapper.insert(note);
 
         if (req.getImageUrls() != null && !req.getImageUrls().isEmpty()) {
@@ -168,6 +172,7 @@ public class PostService extends ServiceImpl<NoteMapper, Note> {
         }
 
         note.setStatus(0);
+        note.setUpdatedAt(LocalDateTime.now());
         noteMapper.updateById(note);
 
         objectRedisTemplate.delete(CACHE_KEY + postId);
