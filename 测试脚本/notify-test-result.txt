@@ -1,12 +1,12 @@
 **********************
 PowerShell transcript start
-Start time: 20260517235248
+Start time: 20260519202627
 Username: LAPTOP-CK4JELLI\WEN
 RunAs User: LAPTOP-CK4JELLI\WEN
 Configuration Name: 
 Machine: LAPTOP-CK4JELLI (Microsoft Windows NT 10.0.26200.0)
 Host Application: C:\Program Files\PowerShell\7\pwsh.dll -noexit -command try { . "e:\Documents\cursor\resources\app\out\vs\workbench\contrib\terminal\common\scripts\shellIntegration.ps1" } catch {}
-Process ID: 22000
+Process ID: 27164
 PSVersion: 7.4.14
 PSEdition: Core
 GitCommitId: 7.4.14
@@ -19,64 +19,41 @@ WSManStackVersion: 3.0
 **********************
 ============================================================
   Notify Service Verification
-  2026-05-17 23:52:48
+  2026-05-19 20:26:27
 ============================================================
 
 ===== 0. Account Login =====
-  [PASS] author login: userId=11 (13900004001)
-  [PASS] fan    login: userId=12 (13900004002)
+  [PASS] author login: userId=1 (13800000001)
+  [PASS] fan    login: userId=4 (13800000004)
 
 ===== 1. Health Check =====
   [PASS] direct notify/health: status=UP
   [PASS] gateway -> notify/health: status=UP
 
 ===== 2. Publish Test Note =====
-  [PASS] published postId=18
-  baseline total notifications: 24
+  [PASS] published postId=21
+  baseline total notifications: 6
 
 ===== 3. MQ Consumption: interaction events -> notification =====
-  fan: liked + favorited + commented postId=18
+  fan: liked + favorited + commented postId=21
   waiting up to 20s for MQ -> notify consumption...
-  wait 1/40 : total=24 (need >= 27)
-  wait 2/40 : total=24 (need >= 27)
-  wait 3/40 : total=24 (need >= 27)
-  wait 4/40 : total=24 (need >= 27)
-  wait 5/40 : total=24 (need >= 27)
-  wait 6/40 : total=24 (need >= 27)
-  wait 7/40 : total=24 (need >= 27)
-  wait 8/40 : total=24 (need >= 27)
-  wait 9/40 : total=24 (need >= 27)
-  wait 10/40 : total=24 (need >= 27)
-  wait 11/40 : total=24 (need >= 27)
-  wait 12/40 : total=24 (need >= 27)
-  wait 13/40 : total=24 (need >= 27)
-  wait 14/40 : total=24 (need >= 27)
-  wait 15/40 : total=24 (need >= 27)
-  wait 16/40 : total=24 (need >= 27)
-  wait 17/40 : total=24 (need >= 27)
-  wait 18/40 : total=24 (need >= 27)
-  wait 19/40 : total=24 (need >= 27)
-  wait 20/40 : total=24 (need >= 27)
-  wait 21/40 : total=24 (need >= 27)
-  wait 22/40 : total=24 (need >= 27)
-  wait 23/40 : total=24 (need >= 27)
-  wait 24/40 : total=27 (need >= 27)
+  wait 1/40 : total=9 (need >= 9)
   new notifications in API total = 3 (expected >= 3)
   [PASS] MQ consumed: 3 notifications (like/collect/comment)
-  type=like total=9 [ok]
-  type=collect total=9 [ok]
-  type=comment total=9 [ok]
+  type=like total=3 [ok]
+  type=collect total=3 [ok]
+  type=comment total=3 [ok]
 
 ===== 4. Self-interaction Filter (author likes own note) =====
-  [PASS] self-interaction filter: total unchanged (27)
+  [PASS] self-interaction filter: total unchanged (9)
 
 ===== 5. Idempotency: 5-min dedup window =====
-  after 1st like: like total 9 -> 9 (delta=0)
+  after 1st like: like total 3 -> 3 (delta=0)
   after 2nd like in window: extra like notifications = 0 (expected 0)
   [PASS] dedup: 5-min window blocked duplicate like notification
 
 ===== 6. Single-read API =====
-  [PASS] single-read: notificationId=27 readStatus=1
+  [PASS] single-read: notificationId=36 readStatus=1
 
 ===== 7. Read-All / Unread-Count Consistency =====
   unreadCount before read-all: 2
@@ -86,32 +63,32 @@ WSManStackVersion: 3.0
 
 ===== 8. List API Response Time (target P95 < 300ms, 20 samples) =====
   GET http://localhost:8080/api/notify/list?page=1&size=20
-  samples=20  avg=27.6ms  min=23ms  max=34ms
-  P90=32ms   P95=34ms   (target P95 < 300ms)
-  [PASS] list P95=34ms < 300ms
+  samples=20  avg=25ms  min=23ms  max=30ms
+  P90=28ms   P95=30ms   (target P95 < 300ms)
+  [PASS] list P95=30ms < 300ms
 
 ===== 9. Unread-count API Response Time (target P95 < 100ms Redis hot, 20 samples) =====
   GET http://localhost:8080/api/notify/unread-count
-  samples=20  avg=9.2ms  min=8ms  max=11ms
-  P90=10ms   P95=11ms   (target P95 < 100ms)
-  [PASS] unread-count P95=11ms < 100ms (Redis hit)
+  samples=20  avg=9.2ms  min=8ms  max=15ms
+  P90=13ms   P95=15ms   (target P95 < 100ms)
+  [PASS] unread-count P95=15ms < 100ms (Redis hit)
 
 ===== 10. Redis Cache Validation =====
-  [WARN] Redis key not found via redis-cli (may be auth/network; API still works)
-  cold (cache miss -> DB COUNT): 11ms
-  hot  (cache hit  -> Redis GET): 11ms
-  [PASS] cache cold/hot: cold=11ms hot=11ms (hot <= cold as expected)
+  [PASS] unread-count API ok (0); Redis key absent after read-all (evicted, cold path still valid)
+  cold (cache miss -> DB COUNT): 10ms
+  hot  (cache hit  -> Redis GET): 8ms
+  [PASS] cache cold/hot: cold=10ms hot=8ms (hot <= cold as expected)
 
 ===== 11. List Filter Parameters (type / readStatus) =====
-  [PASS] type=like filter: 9 items, all correct
-  [PASS] type=collect filter: 9 items, all correct
-  [PASS] type=comment filter: 9 items, all correct
+  [PASS] type=like filter: 3 items, all correct
+  [PASS] type=collect filter: 3 items, all correct
+  [PASS] type=comment filter: 3 items, all correct
   [PASS] readStatus=0 (unread) filter: 0 items, all correct
-  [PASS] readStatus=1 (read) filter: 27 items, all correct
+  [PASS] readStatus=1 (read) filter: 9 items, all correct
 
 ===== 12. Pagination: total consistency and no duplicates =====
-  page1 total=27   page2 total=27
-  [PASS] pagination: total consistent (27)
+  page1 total=9   page2 total=9
+  [PASS] pagination: total consistent (9)
   [PASS] pagination: no duplicate ids across page1 and page2
 
 ===== 13. Auth and Privilege =====
@@ -129,19 +106,19 @@ PS>TerminatingError(Invoke-RestMethod): "Response status code does not indicate 
 
 ===== Summary =====
 
-  Pass  : 27
+  Pass  : 28
   Fail  : 0
-  Total : 27 checks
+  Total : 28 checks
 
   --- Response Time Results ---
-  List        avg=27.6ms  P90=32ms  P95=34ms  max=34ms
-  Unread-cnt  avg=9.2ms  P90=10ms  P95=11ms  max=11ms
-  Cache       cold(DB)=11ms  hot(Redis)=11ms
+  List        avg=25ms  P90=28ms  P95=30ms  max=30ms
+  Unread-cnt  avg=9.2ms  P90=13ms  P95=15ms  max=15ms
+  Cache       cold(DB)=10ms  hot(Redis)=8ms
 
   All critical checks PASSED
 
 Result saved to: E:\WHU\DistributedGroupWork\BiteBlog\测试脚本\notify-test-result.txt
 **********************
 PowerShell transcript end
-End time: 20260517235312
+End time: 20260519202637
 **********************

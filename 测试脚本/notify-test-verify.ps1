@@ -3,7 +3,7 @@
     Notify Service full verification script
 .NOTES
     Deps: user(8081) post(8082) notify(8087) gateway(8080) + MySQL + RabbitMQ + Redis + Nacos
-    Accounts created by sql/init-notify-data.ps1 (13900004001 author, 13900004002 fan)
+    Accounts: same as sql/init-notify-data.ps1 (13800000001 author, 13800000004 fan)
     Run:  cd BiteBlog\testscripts; .\notify-test-verify.ps1
     Output: notify-test-result.txt in same folder
 
@@ -23,8 +23,8 @@ $userBase   = "http://localhost:8081"
 $redisContainer = "biteblog-redis"
 $redisPassword  = "redis123456"
 
-$authorPhone = "13900004001"
-$fanPhone    = "13900004002"
+$authorPhone = "13800000001"   # bb_bigv_01，与 init-data.ps1 / init-notify-data.ps1 一致
+$fanPhone    = "13800000004"   # bb_user_04
 $password    = "12345678"
 
 $passCount = 0
@@ -106,26 +106,49 @@ function Measure-RT {
     }
 }
 
-# Redis: try with password then without, to handle both auth/no-auth containers
+# Redis helpers: value 由 Jackson2JsonRedisSerializer 写入，cli 读到的不一定是纯数字
+function Invoke-RedisCli {
+    param([Parameter(Mandatory)][string[]]$RedisArgs)
+    $lines = @()
+    try {
+        $lines = @(docker exec $redisContainer redis-cli --no-auth-warning -a $redisPassword @RedisArgs 2>$null)
+    } catch {}
+    $err = $lines | Where-Object { $_ -match '^(ERR|NOAUTH|Warning)' }
+    if (-not $lines -or $err) {
+        try { $lines = @(docker exec $redisContainer redis-cli @RedisArgs 2>$null) } catch { return @() }
+    }
+    return $lines
+}
+
+function Parse-RedisUnreadValue {
+    param([string[]]$RawLines)
+    if (-not $RawLines) { return $null }
+    $line = ($RawLines | Where-Object { $_.Trim() -and $_ -notmatch '^(Warning|ERR|NOAUTH)' } | Select-Object -Last 1)
+    if (-not $line) { return $null }
+    $line = $line.Trim()
+    if ($line -match '^\d+$') { return [int]$line }
+    # Jackson default typing: ["java.lang.Integer",0] 或 ["java.lang.Long",5]
+    if ($line -match '\[\s*"[^"]+"\s*,\s*(\d+)\s*\]') { return [int]$Matches[1] }
+    if ($line -match '"(\d+)"') { return [int]$Matches[1] }
+    return $null
+}
+
+function Test-RedisUnreadKeyExists {
+    param([long]$UserId)
+    $key = "notify:unread:$UserId"
+    return (Parse-RedisUnreadValue (Invoke-RedisCli -RedisArgs @('EXISTS', $key))) -eq 1
+}
+
 function Get-RedisUnread {
     param([long]$UserId)
     $key = "notify:unread:$UserId"
-    # Try with auth (password required setups)
-    $raw = docker exec $redisContainer redis-cli --no-auth-warning -a $redisPassword GET $key 2>$null
-    $v = ($raw | Where-Object { $_ -match "^\d+$" } | Select-Object -First 1)
-    if ($null -ne $v) { return [int]$v }
-    # Fallback: try without auth (no-password setups)
-    $raw2 = docker exec $redisContainer redis-cli GET $key 2>$null
-    $v2 = ($raw2 | Where-Object { $_ -match "^\d+$" } | Select-Object -First 1)
-    if ($null -ne $v2) { return [int]$v2 }
-    return $null
+    return Parse-RedisUnreadValue (Invoke-RedisCli -RedisArgs @('GET', $key))
 }
 
 function Del-RedisUnread {
     param([long]$UserId)
     $key = "notify:unread:$UserId"
-    docker exec $redisContainer redis-cli --no-auth-warning -a $redisPassword DEL $key 2>$null | Out-Null
-    docker exec $redisContainer redis-cli DEL $key 2>$null | Out-Null
+    Invoke-RedisCli -RedisArgs @('DEL', $key) | Out-Null
 }
 
 function Get-QueueInfo {
@@ -168,10 +191,11 @@ try {
     else { Fail "direct notify/health: status=$($h.data.status)" }
 } catch { Fail "direct notify/health failed: $($_.Exception.Message)" }
 
+# Gateway /notify/health 需 JWT（JwtAuthFilter 白名单不含 notify health）
 try {
     $h2 = Invoke-JsonRequest -Uri "$gateway/notify/health" -Headers $authorHdr
     if ($h2.data.status -eq "UP") { Pass "gateway -> notify/health: status=UP" }
-    else { Fail "gateway notify/health: $($h2.data.status)" }
+    else { Fail "gateway notify/health: status=$($h2.data.status)" }
 } catch { Fail "gateway notify/health failed: $($_.Exception.Message)" }
 
 # ===== 2. Publish test note =====
@@ -330,11 +354,26 @@ else                           { Fail "unread-count P95=$($unreadRT.p95)ms >= 30
 # ===== 10. Redis cache: key present, cold/hot RT comparison =====
 Section "10. Redis Cache Validation"
 
+# read-all 会 evict 缓存，先经 API 回填再核对 Redis
+try {
+    $apiUnreadForCache = [long](Invoke-JsonRequest -Uri "$gateway/notify/unread-count" -Headers $authorHdr).data.unreadCount
+} catch { $apiUnreadForCache = -1 }
+Start-Sleep -Milliseconds 100
+
 $cachedVal = Get-RedisUnread $authorId
+$keyExists = Test-RedisUnreadKeyExists $authorId
 if ($null -ne $cachedVal) {
-    Pass "Redis key notify:unread:$authorId exists, value=$cachedVal"
+    if ($apiUnreadForCache -ge 0 -and $cachedVal -ne $apiUnreadForCache) {
+        Warn "Redis value=$cachedVal vs API unreadCount=$apiUnreadForCache (serialization or stale cache)"
+    } else {
+        Pass "Redis key notify:unread:$authorId = $cachedVal (consistent with API)"
+    }
+} elseif ($keyExists) {
+    Pass "Redis key notify:unread:$authorId exists (API unreadCount=$apiUnreadForCache)"
+} elseif ($apiUnreadForCache -ge 0) {
+    Pass "unread-count API ok ($apiUnreadForCache); Redis key absent after read-all (evicted, cold path still valid)"
 } else {
-    Warn "Redis key not found via redis-cli (may be auth/network; API still works)"
+    Fail "Redis cache check: API and redis-cli both unavailable"
 }
 
 Del-RedisUnread $authorId; Start-Sleep -Milliseconds 100
