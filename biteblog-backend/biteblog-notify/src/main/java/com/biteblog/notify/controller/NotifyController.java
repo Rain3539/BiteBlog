@@ -30,10 +30,10 @@ public class NotifyController {
      */
     @GetMapping("/list")
     public Result<Map<String, Object>> list(@RequestHeader("X-User-Id") Long userId,
-                                            @RequestParam(defaultValue = "1") int page,
-                                            @RequestParam(defaultValue = "20") int size,
-                                            @RequestParam(required = false) String type,
-                                            @RequestParam(required = false) Integer readStatus) {
+                                            @RequestParam(name = "page", defaultValue = "1") int page,
+                                            @RequestParam(name = "size", defaultValue = "20") int size,
+                                            @RequestParam(name = "type", required = false) String type,
+                                            @RequestParam(name = "readStatus", required = false) Integer readStatus) {
         return Result.success(notifyService.pageList(userId, page, size, type, readStatus));
     }
 
@@ -44,7 +44,7 @@ public class NotifyController {
     }
 
     @PostMapping("/{id}/read")
-    public Result<Void> readOne(@PathVariable Long id,
+    public Result<Void> readOne(@PathVariable("id") Long id,
                                 @RequestHeader("X-User-Id") Long userId) {
         notifyService.markRead(userId, id);
         return Result.success();

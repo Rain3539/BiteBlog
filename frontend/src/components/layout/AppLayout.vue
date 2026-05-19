@@ -24,7 +24,6 @@
           <template #dropdown>
             <el-dropdown-menu>
               <el-dropdown-item command="profile">个人主页</el-dropdown-item>
-              <el-dropdown-item command="admin">管理后台</el-dropdown-item>
               <el-dropdown-item command="logout" divided>退出登录</el-dropdown-item>
             </el-dropdown-menu>
           </template>
@@ -85,8 +84,6 @@ watch(
 function handleCommand(cmd) {
   if (cmd === 'profile') {
     router.push(`/profile/${userStore.userInfo?.userId}`)
-  } else if (cmd === 'admin') {
-    router.push('/admin/dashboard')
   } else if (cmd === 'logout') {
     logout()
   }

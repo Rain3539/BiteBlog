@@ -41,7 +41,7 @@ foreach ($svc in $services) {
     Start-Process powershell -ArgumentList @(
         "-NoExit",
         "-Command",
-        "`$host.UI.RawUI.WindowTitle='$title'; Write-Host 'Starting $title...' -ForegroundColor Yellow; cd '$($svc.Path)'; mvn spring-boot:run"
+        "`$host.UI.RawUI.WindowTitle='$title'; Write-Host 'Starting $title...' -ForegroundColor Yellow; cd '$($svc.Path)'; `$env:SPRING_AMQP_DESERIALIZATION_TRUST_ALL='true'; mvn spring-boot:run"
     )
     Write-Host "  已启动: $title"
     Start-Sleep -Seconds 2

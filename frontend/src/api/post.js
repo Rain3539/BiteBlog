@@ -53,3 +53,11 @@ export function searchPosts(params) {
 export function getUserPosts(userId, params) {
   return request.get(`/post/user/${userId}`, { params })
 }
+
+export function getUserLikedPosts(userId, params) {
+  return request.get(`/post/user/${userId}/liked`, { params })
+}
+
+export function getUserFavoritedPosts(userId, params) {
+  return request.get(`/post/user/${userId}/favorited`, { params })
+}

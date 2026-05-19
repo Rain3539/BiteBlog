@@ -12,6 +12,7 @@ import com.biteblog.user.entity.User;
 import com.biteblog.user.mapper.FollowRelationMapper;
 import com.biteblog.user.mapper.UserMapper;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,7 @@ import java.util.*;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserService extends ServiceImpl<UserMapper, User> {
@@ -128,7 +130,11 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         result.put("createdAt", user.getCreatedAt());
 
         // 写入缓存
-        objectRedisTemplate.opsForValue().set(cacheKey, result, CACHE_TTL_HOURS, TimeUnit.HOURS);
+        try {
+            objectRedisTemplate.opsForValue().set(cacheKey, result, CACHE_TTL_HOURS, TimeUnit.HOURS);
+        } catch (Exception e) {
+            log.warn("Failed to cache user profile: userId={}", userId, e);
+        }
 
         return result;
     }
@@ -271,6 +277,35 @@ public class UserService extends ServiceImpl<UserMapper, User> {
         result.put("list", list);
         result.put("total", followPage.getTotal());
         return result;
+    }
+
+    // ==================== 关注检查 ====================
+
+    public boolean checkFollowing(Long userId, Long targetUserId) {
+        if (userId == null || targetUserId == null) return false;
+        Long count = followRelationMapper.selectCount(
+                new LambdaQueryWrapper<FollowRelation>()
+                        .eq(FollowRelation::getUserId, userId)
+                        .eq(FollowRelation::getTargetUserId, targetUserId));
+        return count > 0;
+    }
+
+    // ==================== 获赞数 ====================
+
+    public void incrLikeCount(Long userId) {
+        userMapper.update(null,
+                new LambdaUpdateWrapper<User>()
+                        .eq(User::getId, userId)
+                        .setSql("like_count = like_count + 1"));
+        evictUserCache(userId);
+    }
+
+    public void decrLikeCount(Long userId) {
+        userMapper.update(null,
+                new LambdaUpdateWrapper<User>()
+                        .eq(User::getId, userId)
+                        .setSql("like_count = GREATEST(like_count - 1, 0)"));
+        evictUserCache(userId);
     }
 
     // ==================== 私有方法 ====================

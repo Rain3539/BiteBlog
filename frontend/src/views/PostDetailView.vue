@@ -14,9 +14,20 @@
     <div class="post-header">
       <h2>{{ post.title }}</h2>
       <div class="author-row">
-        <el-avatar :size="36">{{ (post.authorName || '用').charAt(0) }}</el-avatar>
-        <span class="author-name">{{ post.authorName || '用户' + post.authorId }}</span>
+        <el-avatar :size="36" class="author-avatar" @click="goToProfile">{{ (post.authorName || '用').charAt(0) }}</el-avatar>
+        <span class="author-name clickable" @click="goToProfile">{{ post.authorName || '用户' + post.authorId }}</span>
         <span class="post-time">{{ formatTime(post.createdAt) }}</span>
+        <el-button
+          v-if="!isAuthor"
+          :type="following ? 'default' : 'primary'"
+          size="small"
+          plain
+          :loading="followLoading"
+          @click="toggleFollow"
+          style="margin-left: 8px"
+        >
+          {{ following ? '已关注' : '+ 关注' }}
+        </el-button>
         <el-button
           v-if="isAuthor"
           type="danger"
@@ -166,6 +177,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Star, StarFilled, Collection, ChatDotRound, Shop, Location } from '@element-plus/icons-vue'
 import { getPostDetail, likePost, favoritePost, commentPost, getPostComments, deletePost } from '../api/post'
+import { followUser, checkFollowing } from '../api/user'
 import { useUserStore } from '../stores/user'
 
 const route = useRoute()
@@ -199,6 +211,24 @@ const post = reactive({
 
 const isAuthor = computed(() => userStore.userInfo?.userId === post.authorId)
 
+// ==================== 关注作者 ====================
+
+const following = ref(false)
+const followLoading = ref(false)
+
+function goToProfile() {
+  if (post.authorId) router.push(`/profile/${post.authorId}`)
+}
+
+async function toggleFollow() {
+  followLoading.value = true
+  try {
+    const res = await followUser(post.authorId)
+    following.value = res.data.followed
+  } catch { /* ignore */ }
+  followLoading.value = false
+}
+
 // ==================== 加载详情 ====================
 
 async function loadDetail() {
@@ -206,6 +236,9 @@ async function loadDetail() {
   try {
     const res = await getPostDetail(postId.value)
     Object.assign(post, res.data)
+    if (!isAuthor.value) {
+      checkFollowing(post.authorId).then(r => { following.value = r.data.following }).catch(() => {})
+    }
   } catch (err) {
     // 笔记不存在（404）或已删除时，展示提示后返回上一页而不是直接跳走
     const status = err?.response?.status ?? err?.status
@@ -363,10 +396,27 @@ watch(postId, (newId) => {
   gap: 10px;
 }
 
+.author-avatar {
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.author-avatar:hover {
+  opacity: 0.8;
+}
+
 .author-name {
   font-size: 14px;
   color: #303133;
   font-weight: 500;
+}
+
+.author-name.clickable {
+  cursor: pointer;
+}
+
+.author-name.clickable:hover {
+  color: #409eff;
 }
 
 .post-time {

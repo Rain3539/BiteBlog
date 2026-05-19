@@ -5,6 +5,8 @@ import com.biteblog.common.exception.BusinessException;
 import com.biteblog.location.dto.NearbyMarkerVO;
 import com.biteblog.location.dto.PoiItemVO;
 import com.biteblog.location.entity.Note;
+import com.biteblog.location.entity.NoteImage;
+import com.biteblog.location.mapper.NoteImageMapper;
 import com.biteblog.location.mapper.NoteMapper;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -24,6 +26,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -35,6 +38,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class LocationService {
     private final NoteMapper noteMapper;
+    private final NoteImageMapper noteImageMapper;
     private final RedisTemplate<String, Object> redisTemplate;
     private final ObjectMapper objectMapper;
 
@@ -95,6 +99,26 @@ public class LocationService {
             vo.setDistance(result.getDistance().getValue());
             markers.add(vo);
         }
+
+        // 批量填充图片
+        if (!markers.isEmpty()) {
+            List<Long> noteIds = markers.stream().map(NearbyMarkerVO::getNoteId).collect(Collectors.toList());
+            List<NoteImage> images = noteImageMapper.selectList(
+                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<NoteImage>()
+                            .in(NoteImage::getNoteId, noteIds)
+                            .orderByAsc(NoteImage::getSortOrder));
+            Map<Long, List<String>> imgMap = new HashMap<>();
+            for (NoteImage img : images) {
+                imgMap.computeIfAbsent(img.getNoteId(), k -> new ArrayList<>()).add(img.getImageUrl());
+            }
+            for (NearbyMarkerVO vo : markers) {
+                List<String> urls = imgMap.get(vo.getNoteId());
+                if (urls != null) {
+                    vo.setImages(urls);
+                }
+            }
+        }
+
         return markers;
     }
 

@@ -1,4 +1,4 @@
-$ErrorActionPreference = "Stop"
+﻿$ErrorActionPreference = "Stop"
 
 $mysqlContainer = "biteblog-mysql"
 $redisContainer = "biteblog-redis"

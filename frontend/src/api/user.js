@@ -23,3 +23,7 @@ export function getFollowingList(id, params) {
 export function getFollowersList(id, params) {
   return request.get(`/user/${id}/followers`, { params })
 }
+
+export function checkFollowing(targetUserId) {
+  return request.get(`/user/following/check/${targetUserId}`)
+}

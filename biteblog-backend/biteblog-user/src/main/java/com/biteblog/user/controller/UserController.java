@@ -33,13 +33,13 @@ public class UserController {
 
     /** 获取用户主页 GET /user/{id} */
     @GetMapping("/{id}")
-    public Result<?> getProfile(@PathVariable Long id) {
+    public Result<?> getProfile(@PathVariable("id") Long id) {
         return Result.success(userService.getUserInfo(id));
     }
 
     /** 关注/取关 POST /user/follow/{id} */
     @PostMapping("/follow/{id}")
-    public Result<?> follow(@PathVariable Long id,
+    public Result<?> follow(@PathVariable("id") Long id,
                             @RequestHeader("X-User-Id") Long userId) {
         boolean followed = userService.follow(userId, id);
         return Result.success(Map.of("followed", followed));
@@ -47,17 +47,24 @@ public class UserController {
 
     /** 获取关注列表 GET /user/{id}/following */
     @GetMapping("/{id}/following")
-    public Result<?> getFollowing(@PathVariable Long id,
-                                  @RequestParam(defaultValue = "1") int page,
-                                  @RequestParam(defaultValue = "20") int size) {
+    public Result<?> getFollowing(@PathVariable("id") Long id,
+                                  @RequestParam(name = "page", defaultValue = "1") int page,
+                                  @RequestParam(name = "size", defaultValue = "20") int size) {
         return Result.success(userService.getFollowingList(id, page, size));
     }
 
     /** 获取粉丝列表 GET /user/{id}/followers */
     @GetMapping("/{id}/followers")
-    public Result<?> getFollowers(@PathVariable Long id,
-                                  @RequestParam(defaultValue = "1") int page,
-                                  @RequestParam(defaultValue = "20") int size) {
+    public Result<?> getFollowers(@PathVariable("id") Long id,
+                                  @RequestParam(name = "page", defaultValue = "1") int page,
+                                  @RequestParam(name = "size", defaultValue = "20") int size) {
         return Result.success(userService.getFollowersList(id, page, size));
+    }
+
+    /** 检查是否关注 GET /user/following/check/{targetUserId} */
+    @GetMapping("/following/check/{targetUserId}")
+    public Result<?> checkFollowing(@PathVariable("targetUserId") Long targetUserId,
+                                    @RequestHeader("X-User-Id") Long userId) {
+        return Result.success(Map.of("following", userService.checkFollowing(userId, targetUserId)));
     }
 }

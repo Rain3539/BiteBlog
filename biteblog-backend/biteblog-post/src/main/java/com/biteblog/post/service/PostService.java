@@ -1,6 +1,7 @@
 package com.biteblog.post.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.biteblog.common.exception.BusinessException;
@@ -9,6 +10,7 @@ import com.biteblog.post.dto.EsPostDocument;
 import com.biteblog.post.dto.PostDetailVO;
 import com.biteblog.post.dto.PublishNoteRequest;
 import com.biteblog.post.entity.*;
+import com.biteblog.post.entity.UserInfo;
 import com.biteblog.post.mapper.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -29,6 +31,7 @@ public class PostService extends ServiceImpl<NoteMapper, Note> {
     private final NoteImageMapper imageMapper;
     private final NoteLikeMapper likeMapper;
     private final NoteFavoriteMapper favoriteMapper;
+    private final UserInfoMapper userInfoMapper;
     private final RedisTemplate<String, Object> objectRedisTemplate;
     private final StringRedisTemplate stringRedisTemplate;
     private final EsSyncService esSyncService;
@@ -119,6 +122,11 @@ public class PostService extends ServiceImpl<NoteMapper, Note> {
         PostDetailVO vo = new PostDetailVO();
         vo.setPostId(note.getId());
         vo.setAuthorId(note.getAuthorId());
+        UserInfo author = userInfoMapper.selectById(note.getAuthorId());
+        if (author != null) {
+            vo.setAuthorName(author.getUsername());
+            vo.setAuthorAvatar(author.getAvatar());
+        }
         vo.setTitle(note.getTitle());
         vo.setContent(note.getContent());
         vo.setShopName(note.getShopName());
@@ -171,9 +179,11 @@ public class PostService extends ServiceImpl<NoteMapper, Note> {
             throw new BusinessException(ErrorCode.FORBIDDEN);
         }
 
-        note.setStatus(0);
-        note.setUpdatedAt(LocalDateTime.now());
-        noteMapper.updateById(note);
+        noteMapper.update(null,
+                new LambdaUpdateWrapper<Note>()
+                        .eq(Note::getId, postId)
+                        .set(Note::getStatus, 0)
+                        .set(Note::getUpdatedAt, LocalDateTime.now()));
 
         objectRedisTemplate.delete(CACHE_KEY + postId);
 
@@ -208,9 +218,103 @@ public class PostService extends ServiceImpl<NoteMapper, Note> {
             return map;
         }).collect(Collectors.toList());
 
+        fillCoverUrls(list);
+
         Map<String, Object> result = new HashMap<>();
         result.put("list", list);
         result.put("total", notePage.getTotal());
+        return result;
+    }
+
+    // ==================== 用户点赞列表 ====================
+
+    public Map<String, Object> getUserLikedPosts(Long userId, int page, int size) {
+        Page<NoteLike> likePage = likeMapper.selectPage(
+                new Page<>(page, size),
+                new LambdaQueryWrapper<NoteLike>()
+                        .eq(NoteLike::getUserId, userId)
+                        .orderByDesc(NoteLike::getCreatedAt));
+
+        List<NoteLike> likes = likePage.getRecords();
+        if (likes.isEmpty()) {
+            Map<String, Object> result = new HashMap<>();
+            result.put("list", List.of());
+            result.put("total", 0L);
+            return result;
+        }
+
+        List<Long> noteIds = likes.stream().map(NoteLike::getNoteId).collect(Collectors.toList());
+        List<Note> notes = noteMapper.selectBatchIds(noteIds);
+        Map<Long, Note> noteMap = notes.stream()
+                .filter(n -> n.getStatus() == 1)
+                .collect(Collectors.toMap(Note::getId, n -> n));
+
+        List<Map<String, Object>> list = noteIds.stream()
+                .filter(noteMap::containsKey)
+                .map(id -> {
+                    Note note = noteMap.get(id);
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("postId", note.getId());
+                    map.put("title", note.getTitle());
+                    map.put("shopName", note.getShopName());
+                    map.put("likeCount", note.getLikeCount());
+                    map.put("collectCount", note.getCollectCount());
+                    map.put("commentCount", note.getCommentCount());
+                    map.put("createdAt", note.getCreatedAt());
+                    return map;
+                }).collect(Collectors.toList());
+
+        fillCoverUrls(list);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("list", list);
+        result.put("total", likePage.getTotal());
+        return result;
+    }
+
+    // ==================== 用户收藏列表 ====================
+
+    public Map<String, Object> getUserFavoritedPosts(Long userId, int page, int size) {
+        Page<NoteFavorite> favPage = favoriteMapper.selectPage(
+                new Page<>(page, size),
+                new LambdaQueryWrapper<NoteFavorite>()
+                        .eq(NoteFavorite::getUserId, userId)
+                        .orderByDesc(NoteFavorite::getCreatedAt));
+
+        List<NoteFavorite> favs = favPage.getRecords();
+        if (favs.isEmpty()) {
+            Map<String, Object> result = new HashMap<>();
+            result.put("list", List.of());
+            result.put("total", 0L);
+            return result;
+        }
+
+        List<Long> noteIds = favs.stream().map(NoteFavorite::getNoteId).collect(Collectors.toList());
+        List<Note> notes = noteMapper.selectBatchIds(noteIds);
+        Map<Long, Note> noteMap = notes.stream()
+                .filter(n -> n.getStatus() == 1)
+                .collect(Collectors.toMap(Note::getId, n -> n));
+
+        List<Map<String, Object>> list = noteIds.stream()
+                .filter(noteMap::containsKey)
+                .map(id -> {
+                    Note note = noteMap.get(id);
+                    Map<String, Object> map = new HashMap<>();
+                    map.put("postId", note.getId());
+                    map.put("title", note.getTitle());
+                    map.put("shopName", note.getShopName());
+                    map.put("likeCount", note.getLikeCount());
+                    map.put("collectCount", note.getCollectCount());
+                    map.put("commentCount", note.getCommentCount());
+                    map.put("createdAt", note.getCreatedAt());
+                    return map;
+                }).collect(Collectors.toList());
+
+        fillCoverUrls(list);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("list", list);
+        result.put("total", favPage.getTotal());
         return result;
     }
 
@@ -243,6 +347,24 @@ public class PostService extends ServiceImpl<NoteMapper, Note> {
             result.put("list", List.of());
             result.put("total", 0L);
             return result;
+        }
+    }
+
+    private void fillCoverUrls(List<Map<String, Object>> list) {
+        if (list.isEmpty()) return;
+        List<Long> ids = list.stream().map(m -> (Long) m.get("postId")).collect(Collectors.toList());
+        List<NoteImage> images = imageMapper.selectList(
+                new LambdaQueryWrapper<NoteImage>()
+                        .in(NoteImage::getNoteId, ids)
+                        .orderByAsc(NoteImage::getSortOrder));
+        Map<Long, String> coverMap = images.stream()
+                .collect(Collectors.toMap(NoteImage::getNoteId, NoteImage::getImageUrl, (a, b) -> a));
+        for (Map<String, Object> item : list) {
+            Long pid = (Long) item.get("postId");
+            String cover = coverMap.get(pid);
+            if (cover != null) {
+                item.put("coverUrl", cover);
+            }
         }
     }
 

@@ -29,17 +29,17 @@ public class LocationController {
 
     /** POI 搜索（高德 API 代理） GET /location/poi/search */
     @GetMapping("/poi/search")
-    public Result<?> searchPoi(@RequestParam String keyword,
-                               @RequestParam(required = false) String city) {
+    public Result<?> searchPoi(@RequestParam("keyword") String keyword,
+                               @RequestParam(name = "city", required = false) String city) {
         List<PoiItemVO> list = locationService.searchPoi(keyword, city);
         return Result.success(Map.of("list", list));
     }
 
     /** 获取附近笔记坐标 GET /location/nearby/markers */
     @GetMapping("/nearby/markers")
-    public Result<?> nearbyMarkers(@RequestParam Double longitude,
-                                   @RequestParam Double latitude,
-                                   @RequestParam(defaultValue = "3") int radius) {
+    public Result<?> nearbyMarkers(@RequestParam("longitude") Double longitude,
+                                   @RequestParam("latitude") Double latitude,
+                                   @RequestParam(name = "radius", defaultValue = "3") int radius) {
         List<NearbyMarkerVO> markers = locationService.nearbyMarkers(longitude, latitude, radius);
         return Result.success(Map.of("markers", markers));
     }

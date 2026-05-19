@@ -40,14 +40,14 @@ public class PostController {
 
     /** 笔记详情 GET /post/{id} */
     @GetMapping("/{id}")
-    public Result<PostDetailVO> getDetail(@PathVariable Long id,
+    public Result<PostDetailVO> getDetail(@PathVariable("id") Long id,
                                           @RequestHeader(value = "X-User-Id", required = false) Long userId) {
         return Result.success(postService.getDetail(id, userId));
     }
 
     /** 点赞/取消点赞 POST /post/{id}/like */
     @PostMapping("/{id}/like")
-    public Result<Map<String, Object>> like(@PathVariable Long id,
+    public Result<Map<String, Object>> like(@PathVariable("id") Long id,
                                             @RequestHeader("X-User-Id") Long userId) {
         boolean liked = likeService.toggleLike(id, userId);
         return Result.success(Map.of("liked", liked));
@@ -55,7 +55,7 @@ public class PostController {
 
     /** 收藏/取消收藏 POST /post/{id}/favorite */
     @PostMapping("/{id}/favorite")
-    public Result<Map<String, Object>> favorite(@PathVariable Long id,
+    public Result<Map<String, Object>> favorite(@PathVariable("id") Long id,
                                                 @RequestHeader("X-User-Id") Long userId) {
         boolean favorited = favoriteService.toggleFavorite(id, userId);
         return Result.success(Map.of("favorited", favorited));
@@ -63,7 +63,7 @@ public class PostController {
 
     /** 发表评论 POST /post/{id}/comment */
     @PostMapping("/{id}/comment")
-    public Result<Map<String, Object>> comment(@PathVariable Long id,
+    public Result<Map<String, Object>> comment(@PathVariable("id") Long id,
                                                @Valid @RequestBody CommentRequest req,
                                                @RequestHeader("X-User-Id") Long userId) {
         Long commentId = commentService.publishComment(id, userId, req.getContent(), req.getParentId());
@@ -72,15 +72,15 @@ public class PostController {
 
     /** 获取评论列表 GET /post/{id}/comments */
     @GetMapping("/{id}/comments")
-    public Result<Map<String, Object>> getComments(@PathVariable Long id,
-                                                   @RequestParam(defaultValue = "1") int page,
-                                                   @RequestParam(defaultValue = "20") int size) {
+    public Result<Map<String, Object>> getComments(@PathVariable("id") Long id,
+                                                   @RequestParam(name = "page", defaultValue = "1") int page,
+                                                   @RequestParam(name = "size", defaultValue = "20") int size) {
         return Result.success(commentService.getComments(id, page, size));
     }
 
     /** 删除笔记 DELETE /post/{id} */
     @DeleteMapping("/{id}")
-    public Result<Void> delete(@PathVariable Long id,
+    public Result<Void> delete(@PathVariable("id") Long id,
                                @RequestHeader("X-User-Id") Long userId) {
         postService.deleteNote(id, userId);
         return Result.success();
@@ -88,17 +88,33 @@ public class PostController {
 
     /** ES 全文搜索 GET /post/search */
     @GetMapping("/search")
-    public Result<Map<String, Object>> search(@RequestParam String keyword,
-                                              @RequestParam(defaultValue = "1") int page,
-                                              @RequestParam(defaultValue = "20") int size) {
+    public Result<Map<String, Object>> search(@RequestParam("keyword") String keyword,
+                                              @RequestParam(name = "page", defaultValue = "1") int page,
+                                              @RequestParam(name = "size", defaultValue = "20") int size) {
         return Result.success(postService.search(keyword, page, size));
     }
 
     /** 用户笔记列表 GET /post/user/{userId} */
     @GetMapping("/user/{userId}")
-    public Result<Map<String, Object>> getUserPosts(@PathVariable Long userId,
-                                                     @RequestParam(defaultValue = "1") int page,
-                                                     @RequestParam(defaultValue = "20") int size) {
+    public Result<Map<String, Object>> getUserPosts(@PathVariable("userId") Long userId,
+                                                     @RequestParam(name = "page", defaultValue = "1") int page,
+                                                     @RequestParam(name = "size", defaultValue = "20") int size) {
         return Result.success(postService.getUserPosts(userId, page, size));
+    }
+
+    /** 用户点赞列表 GET /post/user/{userId}/liked */
+    @GetMapping("/user/{userId}/liked")
+    public Result<Map<String, Object>> getUserLikedPosts(@PathVariable("userId") Long userId,
+                                                          @RequestParam(name = "page", defaultValue = "1") int page,
+                                                          @RequestParam(name = "size", defaultValue = "20") int size) {
+        return Result.success(postService.getUserLikedPosts(userId, page, size));
+    }
+
+    /** 用户收藏列表 GET /post/user/{userId}/favorited */
+    @GetMapping("/user/{userId}/favorited")
+    public Result<Map<String, Object>> getUserFavoritedPosts(@PathVariable("userId") Long userId,
+                                                              @RequestParam(name = "page", defaultValue = "1") int page,
+                                                              @RequestParam(name = "size", defaultValue = "20") int size) {
+        return Result.success(postService.getUserFavoritedPosts(userId, page, size));
     }
 }

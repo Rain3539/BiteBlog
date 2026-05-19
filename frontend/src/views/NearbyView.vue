@@ -149,8 +149,13 @@ function locateMe() {
       ElMessage.success('定位成功')
       searchMarkers()
     },
-    () => {
-      ElMessage.warning('定位失败，请手动输入坐标')
+    (err) => {
+      const reasons = {
+        1: '定位权限被拒绝，请在浏览器设置中允许访问位置信息',
+        2: '无法获取位置信息，请检查系统定位服务是否已开启',
+        3: '定位请求超时，请检查网络连接后重试'
+      }
+      ElMessage.warning(reasons[err.code] || '定位失败，请手动输入坐标')
     }
   )
 }

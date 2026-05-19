@@ -26,10 +26,10 @@ public class RecommendController {
 
     @GetMapping("/discover")
     public Result<RecommendResponse> discover(@RequestHeader(value = "X-User-Id", required = false) Long userId,
-                                              @RequestParam(required = false) Long cursor,
-                                              @RequestParam(defaultValue = "20") int size,
-                                              @RequestParam(required = false) String tag,
-                                              @RequestParam(required = false) String city) {
+                                              @RequestParam(name = "cursor", required = false) Long cursor,
+                                              @RequestParam(name = "size", defaultValue = "20") int size,
+                                              @RequestParam(name = "tag", required = false) String tag,
+                                              @RequestParam(name = "city", required = false) String city) {
         if (userId == null) {
             return Result.fail(400, "missing X-User-Id");
         }

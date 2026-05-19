@@ -21,8 +21,8 @@ public class FeedController {
     /** 关注 Feed 流 GET /feed/timeline */
     @GetMapping("/timeline")
     public Result<Map<String, Object>> timeline(@RequestHeader("X-User-Id") Long userId,
-                                                 @RequestParam(required = false) Long cursor,
-                                                 @RequestParam(defaultValue = "20") int size) {
+                                                 @RequestParam(name = "cursor", required = false) Long cursor,
+                                                 @RequestParam(name = "size", defaultValue = "20") int size) {
         return Result.success(feedService.getTimeline(userId, cursor, size));
     }
 }

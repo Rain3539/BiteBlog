@@ -56,7 +56,7 @@ foreach ($n in $notesByAuthor1) {
     $json = $n | ConvertTo-Json -Depth 5 -Compress
     $bytes = [System.Text.Encoding]::UTF8.GetBytes($json)
     try {
-        $resp = Invoke-RestMethod -Uri "$postBase/post/publish" -Method POST -Headers $h1 `
+        $resp = Invoke-RestMethod -Uri "$postBase/publish" -Method POST -Headers $h1 `
             -ContentType "application/json; charset=utf-8" -Body $bytes
         if ($resp.code -eq 200) {
             $postIds += $resp.data.postId
@@ -72,7 +72,7 @@ foreach ($n in $notesByAuthor2) {
     $json = $n | ConvertTo-Json -Depth 5 -Compress
     $bytes = [System.Text.Encoding]::UTF8.GetBytes($json)
     try {
-        $resp = Invoke-RestMethod -Uri "$postBase/post/publish" -Method POST -Headers $h2 `
+        $resp = Invoke-RestMethod -Uri "$postBase/publish" -Method POST -Headers $h2 `
             -ContentType "application/json; charset=utf-8" -Body $bytes
         if ($resp.code -eq 200) {
             $postIds += $resp.data.postId
@@ -95,7 +95,7 @@ for ($i = 1; $i -le 10; $i++) {
 # ===== 验证 Redis GEO 数据 =====
 Write-Host ""
 Write-Host "===== Redis GEO Data =====" -ForegroundColor Cyan
-docker exec biteblog-redis redis-cli -a redis123456 ZRANGE location:notes 0 -1 WITHCOORDS 2>$null
+docker exec biteblog-redis redis-cli -a redis123456 ZRANGE location:notes 0 -1 WITHSCORES 2>$null
 
 Write-Host ""
 Write-Host "===== Done =====" -ForegroundColor Cyan

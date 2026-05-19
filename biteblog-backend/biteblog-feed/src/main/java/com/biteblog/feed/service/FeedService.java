@@ -68,12 +68,6 @@ public class FeedService {
         }
         allNoteIds.addAll(bigVNoteIds);
 
-        // 3.5 始终拉取用户自己的最新笔记（兜底fanout延迟/故障）
-        List<Long> ownNoteIds = jdbcTemplate.queryForList(
-                "SELECT id FROM note WHERE author_id = ? AND status = 1 ORDER BY created_at DESC LIMIT 20",
-                Long.class, userId);
-        allNoteIds.addAll(ownNoteIds);
-
         // 4. inbox 为空 → 降级到数据库查询
         if (allNoteIds.isEmpty()) {
             return getTimelineFromDb(userId, size);
@@ -87,6 +81,14 @@ public class FeedService {
 
         // 6. 查询全部笔记详情，按时间倒序排列
         List<FeedItemVO> allItems = queryAndSortByTime(new ArrayList<>(allNoteIds));
+
+        // 6.5 过滤掉自己的笔记
+        allItems.removeIf(item -> userId.equals(item.getAuthorId()));
+
+        // 6.6 过滤后为空 → 降级到数据库查询
+        if (allItems.isEmpty()) {
+            return getTimelineFromDb(userId, size);
+        }
 
         // 7. 基于时间戳游标分页：过滤掉已读的（时间戳 >= cursor 的项）
         if (cursor != null && cursor > 0) {

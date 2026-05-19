@@ -8,15 +8,16 @@ import com.biteblog.common.result.ErrorCode;
 import com.biteblog.post.dto.CommentVO;
 import com.biteblog.post.entity.Comment;
 import com.biteblog.post.entity.Note;
+import com.biteblog.post.entity.UserInfo;
 import com.biteblog.post.mapper.CommentMapper;
 import com.biteblog.post.mapper.NoteMapper;
+import com.biteblog.post.mapper.UserInfoMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -25,6 +26,7 @@ public class CommentService {
 
     private final CommentMapper commentMapper;
     private final NoteMapper noteMapper;
+    private final UserInfoMapper userInfoMapper;
     private final PostEventPublisher eventPublisher;
 
     @Transactional
@@ -93,6 +95,39 @@ public class CommentService {
             return vo;
         }).collect(Collectors.toList());
 
+        fillCommentUsernames(list);
+
         return Map.of("list", list, "total", commentPage.getTotal());
+    }
+
+    private void fillCommentUsernames(List<CommentVO> list) {
+        Set<Long> userIds = new LinkedHashSet<>();
+        for (CommentVO vo : list) {
+            if (vo.getUserId() != null) userIds.add(vo.getUserId());
+            if (vo.getReplies() != null) {
+                for (CommentVO r : vo.getReplies()) {
+                    if (r.getUserId() != null) userIds.add(r.getUserId());
+                }
+            }
+        }
+        if (userIds.isEmpty()) return;
+        List<UserInfo> users = userInfoMapper.selectBatchIds(userIds);
+        Map<Long, UserInfo> userMap = users.stream().collect(Collectors.toMap(UserInfo::getId, u -> u));
+        for (CommentVO vo : list) {
+            UserInfo u = userMap.get(vo.getUserId());
+            if (u != null) {
+                vo.setUsername(u.getUsername());
+                vo.setAvatar(u.getAvatar());
+            }
+            if (vo.getReplies() != null) {
+                for (CommentVO r : vo.getReplies()) {
+                    UserInfo ru = userMap.get(r.getUserId());
+                    if (ru != null) {
+                        r.setUsername(ru.getUsername());
+                        r.setAvatar(ru.getAvatar());
+                    }
+                }
+            }
+        }
     }
 }

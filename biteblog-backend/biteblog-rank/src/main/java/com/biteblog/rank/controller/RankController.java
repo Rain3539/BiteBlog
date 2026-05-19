@@ -15,21 +15,21 @@ public class RankController {
 
     /** 热榜 Top10：GET /rank/top10?type=daily|weekly|all */
     @GetMapping("/top10")
-    public Result<Map<String, Object>> top10(@RequestParam(defaultValue = "daily") String type) {
+    public Result<Map<String, Object>> top10(@RequestParam(name = "type", defaultValue = "daily") String type) {
         return Result.success(rankService.getTop10(type));
     }
 
     /** 分页热榜：GET /rank/list?type=daily&page=1&size=20 */
     @GetMapping("/list")
-    public Result<Map<String, Object>> list(@RequestParam(defaultValue = "daily") String type,
-                                            @RequestParam(defaultValue = "1") int page,
-                                            @RequestParam(defaultValue = "20") int size) {
+    public Result<Map<String, Object>> list(@RequestParam(name = "type", defaultValue = "daily") String type,
+                                            @RequestParam(name = "page", defaultValue = "1") int page,
+                                            @RequestParam(name = "size", defaultValue = "20") int size) {
         return Result.success(rankService.getRankList(type, page, size));
     }
 
     /** 手动重建缓存，便于初始化和测试：POST /rank/rebuild?type=daily|weekly|all */
     @PostMapping("/rebuild")
-    public Result<Map<String, Object>> rebuild(@RequestParam(defaultValue = "daily") String type) {
+    public Result<Map<String, Object>> rebuild(@RequestParam(name = "type", defaultValue = "daily") String type) {
         rankService.rebuild(type);
         return Result.success(Map.of("rebuilt", true, "type", type));
     }

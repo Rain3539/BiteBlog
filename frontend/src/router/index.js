@@ -19,8 +19,7 @@ const routes = [
       { path: 'post/:id', name: 'PostDetail', component: () => import('../views/PostDetailView.vue') },
       { path: 'nearby', name: 'Nearby', component: () => import('../views/NearbyView.vue') },
       { path: 'profile/:id?', name: 'Profile', component: () => import('../views/ProfileView.vue') },
-      { path: 'notify', name: 'Notify', component: () => import('../views/NotifyView.vue') },
-      { path: 'admin/dashboard', name: 'AdminDashboard', component: () => import('../views/admin/DashboardView.vue') }
+      { path: 'notify', name: 'Notify', component: () => import('../views/NotifyView.vue') }
     ]
   }
 ]

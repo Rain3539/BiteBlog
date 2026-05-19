@@ -253,18 +253,4 @@ Write-Host "hot: $($sw.ElapsedMilliseconds)ms"
 | WebSocket 无效 Token | 连接 `/ws-notify?token=invalid`            | 握手被拒，WS 连接失败  |
 
 
----
-
-## 5. 常见问题
-
-
-| 现象                        | 原因                                                | 处理                                                                                                                            |
-| ------------------------- | ------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| MQ 消费失败，Unacked 持续增加      | 业务异常或 `CollSer` 反序列化失败                            | 检查 notify 日志；确认 `System.setProperty("spring.amqp.deserialization.trust.all","true")` 已在 main() 中设置；在 RabbitMQ 管理台 Purge 队列后重试 |
-| `/notify/list` total 始终 0 | MyBatis-Plus 分页插件未加载                              | 确认 `config/MybatisPlusConfig.java` 存在，重新编译启动                                                                                  |
-| 分页出现重复记录                  | 只按 `created_at` 排序，批量插入时顺序不稳定                     | 已修复为 `created_at DESC, id DESC` 双列排序；重启 notify-service                                                                        |
-| 前端「实时未连接」                 | WebSocket 无法连接 8087，或 `sockjs-client` global 变量报错 | 确认 notify-service 8087 可访问；确认 `vite.config.js` 含 `define: { global: 'globalThis' }` 并重启 dev server                            |
-| JMeter 全部 401             | setUp 登录失败，token 为 NOT_FOUND，后续请求无效 token         | 先运行 `init-data.ps1`；检查 JMeter Console 中 setUp 阶段的 Groovy 日志；确认网关和 user-service 正常                                             |
-| 通知列表无 senderUsername      | user-service 未启动，Feign 调用失败                       | 启动 user-service 8081；超时降级为 null（前端显示"用户{id}"）                                                                                 |
-
 
