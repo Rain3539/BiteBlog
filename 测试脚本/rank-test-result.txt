@@ -1,12 +1,12 @@
 ﻿**********************
 Windows PowerShell transcript start
-Start time: 20260519003935
+Start time: 20260519191144
 Username: HUOHUA\18335
 RunAs User: HUOHUA\18335
-Configuration Name:
+Configuration Name: 
 Machine: HUOHUA (Microsoft Windows NT 10.0.26200.0)
 Host Application: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -ExecutionPolicy Bypass -File .\测试脚本\rank-test-verify.ps1
-Process ID: 16548
+Process ID: 53828
 PSVersion: 5.1.26100.8457
 PSEdition: Desktop
 PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.8457
@@ -34,38 +34,35 @@ Expected daily key: rank:daily:2026-05-19
   [PASS] rebuild all
 
 ===== 3. Top10 Whitelist Latency =====
-  try 1: 49ms
-  try 2: 32ms
+  try 1: 1097ms
+  try 2: 35ms
   try 3: 31ms
-  try 4: 31ms
-  try 5: 31ms
-  try 6: 31ms
-  try 7: 30ms
-  try 8: 28ms
-  try 9: 29ms
-  try 10: 29ms
-  try 11: 29ms
-  try 12: 29ms
-  try 13: 29ms
-  try 14: 29ms
-  try 15: 29ms
-  try 16: 29ms
-  try 17: 29ms
-  try 18: 30ms
-  try 19: 28ms
-  try 20: 27ms
-  [PASS] average latency 30.45ms (target <100ms)
+  try 4: 34ms
+  try 5: 34ms
+  try 6: 32ms
+  try 7: 33ms
+  try 8: 30ms
+  try 9: 30ms
+  try 10: 30ms
+  try 11: 40ms
+  try 12: 31ms
+  try 13: 36ms
+  try 14: 28ms
+  try 15: 30ms
+  try 16: 28ms
+  try 17: 30ms
+  try 18: 31ms
+  try 19: 31ms
+  try 20: 30ms
+  [PASS] average latency 85.05ms (target <100ms)
 
 ===== 4. Redis Daily ZSet Snapshot =====
   daily keys found:
-    rank:daily:2026-05-19 count=4
-      member=4 score=41
-      member=3 score=41
-      member=2 score=25.485281374238568
-      member=1 score=25.485281374238568
+    rank:daily:2026-05-19 count=1
+      member=1 score=41
 
 ===== 5. Publish Note -> Rank Event =====
-  [PASS] published postId=5 title=RankEventTest-003939
+  [PASS] published postId=2 title=RankEventTest-191150
   try 1: key=rank:daily:2026-05-19 score=29
   [PASS] note.published score increased: before= after=29
 
@@ -81,40 +78,36 @@ Expected daily key: rank:daily:2026-05-19
   [PASS] comment score increased: before=37 after=41
 
 ===== 7. Rank List API =====
-  [PASS] page=1 size=50 total=5
-  #1 postId=5 hotScore=41.0 title=RankEventTest-003939
-  #2 postId=4 hotScore=41.0 title=RankEventTest-003205
-  #3 postId=3 hotScore=41.0 title=RankEventTest-002606
-  #4 postId=2 hotScore=25.485281374238568 title=RankEventTest-002145
-  #5 postId=1 hotScore=25.485281374238568 title=RankEventTest-001228
+  [PASS] page=1 size=50 total=2
+  #1 postId=2 hotScore=41.0 title=RankEventTest-191150
+  #2 postId=1 hotScore=41.0 title=RankEventTest-190740
   [PASS] published post is present in rank list
 
 ===== 8. Diagnostics =====
   daily keys found:
-    rank:daily:2026-05-19 count=5
-      member=5 score=41
-      member=4 score=41
-      member=3 score=41
-      member=2 score=25.485281374238568
-      member=1 score=25.485281374238568
+    rank:daily:2026-05-19 count=2
+      member=2 score=41
+      member=1 score=41
   RabbitMQ queues:
-    name    messages_ready    messages_unacknowledged    consumers
-    rank.note.published.queue    0    0    1
-    rank.note.deleted.queue    0    0    1
-    rank.interaction.queue    0    0    1
+    name	messages_ready	messages_unacknowledged	consumers
+    rank.note.published.queue	0	0	1
+    rank.note.deleted.queue	0	0	1
+    rank.interaction.queue	0	0	1
   RabbitMQ bindings:
-    source_name    destination_name    routing_key
-        rank.note.published.queue    rank.note.published.queue
-        rank.note.deleted.queue    rank.note.deleted.queue
-        rank.interaction.queue    rank.interaction.queue
-    biteblog.interaction    rank.interaction.queue    interaction.*
-    biteblog.post    rank.note.deleted.queue    note.deleted
-    biteblog.post    rank.note.published.queue    note.published
+    source_name	destination_name	routing_key
+    	rank.note.published.queue	rank.note.published.queue
+    	rank.note.deleted.queue	rank.note.deleted.queue
+    	rank.interaction.queue	rank.interaction.queue
+    	biteblog.user.like	biteblog.user.like
+    biteblog.interaction	rank.interaction.queue	interaction.*
+    biteblog.interaction	biteblog.user.like	interaction.like
+    biteblog.post	rank.note.deleted.queue	note.deleted
+    biteblog.post	rank.note.published.queue	note.published
 
 ===== Done =====
   [PASS] Rank verification passed
 Result saved to: C:\Users\18335\Desktop\分布式大作业\BiteBlog\测试脚本\rank-test-result.txt
 **********************
 Windows PowerShell transcript end
-End time: 20260519003947
+End time: 20260519191202
 **********************
