@@ -6,6 +6,7 @@ $gatewayBase = "http://localhost:8080/api"
 $recommendBase = "http://localhost:8084/recommend"
 $redisContainer = "biteblog-redis"
 $redisPassword = "redis123456"
+$rankDailyKey = "rank:daily:$(Get-Date -Format 'yyyy-MM-dd')"
 
 function Invoke-Json($uri, $method = "GET", $body = $null, $headers = $null) {
     if ($body) {
@@ -46,7 +47,7 @@ function Login-TestUser($phone) {
 }
 
 function Clear-Exposure($userId) {
-    docker exec $redisContainer redis-cli -a $redisPassword DEL "exposure:$userId" 2>$null | Out-Null
+    docker exec -e "REDISCLI_AUTH=$redisPassword" $redisContainer redis-cli DEL "exposure:$userId" 2>$null | Out-Null
 }
 
 function Write-LatencyStats($name, $times, $targetMs = 600) {
@@ -70,8 +71,10 @@ try {
     Write-Host "===== 0. Login test users =====" -ForegroundColor Cyan
     $coldUser = Login-TestUser "13800000060"
     $foodieUser = Login-TestUser "13800000005"
+    $bigvUser = Login-TestUser "13800000001"
     Write-Host "  cold-start user: $($coldUser.username), phone=$($coldUser.phone), userId=$($coldUser.userId)" -ForegroundColor White
     Write-Host "  personalized user: $($foodieUser.username), phone=$($foodieUser.phone), userId=$($foodieUser.userId)" -ForegroundColor White
+    Write-Host "  MQ author user: $($bigvUser.username), phone=$($bigvUser.phone), userId=$($bigvUser.userId)" -ForegroundColor White
 
     Write-Host ""
     Write-Host "===== 1. Health and Gateway route =====" -ForegroundColor Cyan
@@ -80,6 +83,47 @@ try {
     Measure-Api "Manual precompute hot pool and item_sim_index" {
         Invoke-Json "$recommendBase/internal/precompute" "POST"
     } | Out-Null
+    $rankDailyCount = docker exec -e "REDISCLI_AUTH=$redisPassword" $redisContainer redis-cli ZCARD $rankDailyKey 2>$null
+    Write-Host "  Redis rank daily key=$rankDailyKey, count=$rankDailyCount" -ForegroundColor White
+
+    Write-Host ""
+    Write-Host "===== 1.1 MQ event consumption: publish and interaction =====" -ForegroundColor Cyan
+    $mqTitle = "Recommend MQ Test $(Get-Date -Format 'MMddHHmmss')"
+    $publishBody = @{
+        title = $mqTitle
+        content = "Recommend Service MQ event verification: note.published should refresh ES post_index and Redis hot pool."
+        shopName = "Recommend MQ Demo Shop"
+        address = "Guangzhou Tianhe"
+        longitude = 113.320000
+        latitude = 23.120000
+        scoreColor = 4
+        scoreSmell = 4
+        scoreTaste = 5
+        imageUrls = @()
+    }
+    $publishResult = Measure-Api "publish note via Post Service" {
+        Invoke-Json "$gatewayBase/post/publish" "POST" $publishBody $bigvUser.headers
+    }
+    if ($publishResult.ok) {
+        $mqPostId = [long]$publishResult.data.data.postId
+        Start-Sleep -Seconds 2
+        $esDoc = Measure-Api "MQ note.published -> ES post_index" {
+            Invoke-Json "http://localhost:9200/post_index/_doc/$mqPostId"
+        }
+        $hotScoreBefore = docker exec -e "REDISCLI_AUTH=$redisPassword" $redisContainer redis-cli ZSCORE recommend:hot:pool $mqPostId 2>$null
+        if ($esDoc.ok -and $hotScoreBefore) {
+            Write-Host "  note.published consumed: postId=$mqPostId, ES found=True, hotScore=$hotScoreBefore" -ForegroundColor Green
+        } else {
+            Write-Host "  note.published consumed: check ES/Redis result manually, postId=$mqPostId" -ForegroundColor Yellow
+        }
+
+        Measure-Api "like note to publish interaction.like" {
+            Invoke-Json "$gatewayBase/post/$mqPostId/like" "POST" $null $foodieUser.headers
+        } | Out-Null
+        Start-Sleep -Seconds 3
+        $hotScoreAfter = docker exec -e "REDISCLI_AUTH=$redisPassword" $redisContainer redis-cli ZSCORE recommend:hot:pool $mqPostId 2>$null
+        Write-Host "  interaction.like consumed: hotScoreBefore=$hotScoreBefore, hotScoreAfter=$hotScoreAfter" -ForegroundColor White
+    }
 
     Write-Host ""
     Write-Host "===== 2. Cold-start latency: 10 requests, target avg < 600ms =====" -ForegroundColor Cyan
@@ -122,6 +166,8 @@ try {
     if ($lastPersonalResp) {
         Write-Host "  result count=$($lastPersonalResp.data.list.Count), hasMore=$($lastPersonalResp.data.hasMore), cursor=$($lastPersonalResp.data.cursor)" -ForegroundColor White
     }
+    $behaviorTtl = docker exec -e "REDISCLI_AUTH=$redisPassword" $redisContainer redis-cli TTL "behavior:$($foodieUser.userId)" 2>$null
+    Write-Host "  behavior cache key=behavior:$($foodieUser.userId), TTL=$behaviorTtl seconds" -ForegroundColor White
 
     Write-Host ""
     Write-Host "===== 2.2 Tag recall latency: 10 requests, target avg < 600ms =====" -ForegroundColor Cyan
@@ -179,8 +225,8 @@ try {
 
     Write-Host ""
     Write-Host "===== 5. Exposure Lua preclaim and idempotent report =====" -ForegroundColor Cyan
-    $redisMembers = docker exec $redisContainer redis-cli -a $redisPassword SMEMBERS "exposure:$($coldUser.userId)" 2>$null
-    $redisTtl = docker exec $redisContainer redis-cli -a $redisPassword TTL "exposure:$($coldUser.userId)" 2>$null
+    $redisMembers = docker exec -e "REDISCLI_AUTH=$redisPassword" $redisContainer redis-cli SMEMBERS "exposure:$($coldUser.userId)" 2>$null
+    $redisTtl = docker exec -e "REDISCLI_AUTH=$redisPassword" $redisContainer redis-cli TTL "exposure:$($coldUser.userId)" 2>$null
     Write-Host "  after discover: exposure:$($coldUser.userId) members=[$(($redisMembers -join ',').Trim())]" -ForegroundColor White
     Write-Host "  TTL=$redisTtl seconds" -ForegroundColor White
     if ($ids1.Count -gt 0) {
@@ -188,7 +234,7 @@ try {
         $body = @{ postIds = $sampleIds }
         Measure-Api "exposures-post-1" { Invoke-Json "$recommendBase/exposures" "POST" $body $coldUser.directHeaders } | Out-Null
         Measure-Api "exposures-post-2-repeat" { Invoke-Json "$recommendBase/exposures" "POST" $body $coldUser.directHeaders } | Out-Null
-        $scard = docker exec $redisContainer redis-cli -a $redisPassword SCARD "exposure:$($coldUser.userId)" 2>$null
+        $scard = docker exec -e "REDISCLI_AUTH=$redisPassword" $redisContainer redis-cli SCARD "exposure:$($coldUser.userId)" 2>$null
         Write-Host "  repeated exposure ids=[$($sampleIds -join ',')], Redis SCARD=$scard" -ForegroundColor White
     }
 

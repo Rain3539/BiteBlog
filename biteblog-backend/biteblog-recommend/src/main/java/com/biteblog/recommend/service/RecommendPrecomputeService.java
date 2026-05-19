@@ -9,7 +9,9 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -25,6 +27,8 @@ import java.util.stream.Collectors;
 public class RecommendPrecomputeService {
 
     private static final String HOT_POOL_KEY = "recommend:hot:pool";
+    private static final String RANK_DAILY_KEY_PREFIX = "rank:daily:";
+    private static final String BEHAVIOR_KEY_PREFIX = "behavior:";
     private static final int MAX_BEHAVIOR_SCAN = 2000;
     private static final int MAX_HOT_POOL_SIZE = 200;
     private static final int MAX_ITEMS_PER_USER = 30;
@@ -55,12 +59,83 @@ public class RecommendPrecomputeService {
         );
     }
 
+    public Map<String, Object> refreshNote(Long noteId) {
+        long started = System.currentTimeMillis();
+        if (noteId == null) {
+            return Map.of(
+                    "updated", false,
+                    "reason", "missing noteId",
+                    "elapsedMs", System.currentTimeMillis() - started
+            );
+        }
+        Note note = recommendDataService.getNormalNoteById(noteId);
+        if (note == null) {
+            return removeNote(noteId);
+        }
+
+        List<String> coverUrls = new ArrayList<>(recommendDataService.getCoverUrls(List.of(noteId)).values());
+        boolean esSaved = recommendSearchService.indexPost(note, coverUrls);
+        double score = calculateHotScore(note);
+        redisTemplate.opsForZSet().add(HOT_POOL_KEY, note.getId(), score);
+        if (shouldJoinDailyRank(note)) {
+            redisTemplate.opsForZSet().add(rankDailyKey(), note.getId().toString(), score);
+        }
+        return Map.of(
+                "noteId", noteId,
+                "esPostIndexed", esSaved,
+                "hotPoolUpdated", true,
+                "elapsedMs", System.currentTimeMillis() - started
+        );
+    }
+
+    public Map<String, Object> removeNote(Long noteId) {
+        long started = System.currentTimeMillis();
+        if (noteId == null) {
+            return Map.of(
+                    "removed", false,
+                    "reason", "missing noteId",
+                    "elapsedMs", System.currentTimeMillis() - started
+            );
+        }
+        boolean esDeleted = recommendSearchService.deletePostFromIndex(noteId);
+        Long removed = redisTemplate.opsForZSet().remove(HOT_POOL_KEY, noteId);
+        Long rankRemoved = redisTemplate.opsForZSet().remove(rankDailyKey(), noteId.toString(), noteId);
+        int itemSimCount = rebuildItemSimilarities();
+        return Map.of(
+                "noteId", noteId,
+                "esPostDeleted", esDeleted,
+                "hotPoolRemoved", removed == null ? 0L : removed,
+                "rankDailyRemoved", rankRemoved == null ? 0L : rankRemoved,
+                "itemSimilarityCount", itemSimCount,
+                "elapsedMs", System.currentTimeMillis() - started
+        );
+    }
+
+    public Map<String, Object> refreshAfterInteraction(Long noteId) {
+        long started = System.currentTimeMillis();
+        Map<String, Object> noteResult = refreshNote(noteId);
+        clearBehaviorCache();
+        int itemSimCount = rebuildItemSimilarities();
+        return Map.of(
+                "noteId", noteId,
+                "noteRefresh", noteResult,
+                "itemSimilarityCount", itemSimCount,
+                "elapsedMs", System.currentTimeMillis() - started
+        );
+    }
+
     private int rebuildHotPool() {
         List<Note> notes = recommendDataService.listNormalNotesForPrecompute(MAX_HOT_POOL_SIZE);
         redisTemplate.delete(HOT_POOL_KEY);
+        String rankKey = rankDailyKey();
+        redisTemplate.delete(rankKey);
         int saved = 0;
         for (Note note : notes) {
-            redisTemplate.opsForZSet().add(HOT_POOL_KEY, note.getId(), calculateHotScore(note));
+            double score = calculateHotScore(note);
+            redisTemplate.opsForZSet().add(HOT_POOL_KEY, note.getId(), score);
+            if (shouldJoinDailyRank(note)) {
+                redisTemplate.opsForZSet().add(rankKey, note.getId().toString(), score);
+            }
             saved++;
         }
         return saved;
@@ -152,5 +227,22 @@ public class RecommendPrecomputeService {
 
     private double roundScore(double value) {
         return Math.round(value * 1000.0) / 1000.0;
+    }
+
+    private boolean shouldJoinDailyRank(Note note) {
+        return note != null && note.getCreatedAt() != null
+                && note.getCreatedAt().isAfter(LocalDateTime.now().minusDays(1));
+    }
+
+    private String rankDailyKey() {
+        return RANK_DAILY_KEY_PREFIX + LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
+    }
+
+    private void clearBehaviorCache() {
+        try {
+            redisTemplate.delete(Objects.requireNonNull(redisTemplate.keys(BEHAVIOR_KEY_PREFIX + "*")));
+        } catch (Exception e) {
+            log.warn("Clear recommend behavior cache failed: {}", e.getMessage());
+        }
     }
 }

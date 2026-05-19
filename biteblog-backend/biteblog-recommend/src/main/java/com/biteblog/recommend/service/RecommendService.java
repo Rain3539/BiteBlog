@@ -18,6 +18,8 @@ import org.springframework.stereotype.Service;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -37,9 +39,12 @@ import java.util.stream.Collectors;
 public class RecommendService {
 
     private static final String HOT_POOL_KEY = "recommend:hot:pool";
+    private static final String RANK_DAILY_KEY_PREFIX = "rank:daily:";
+    private static final String BEHAVIOR_KEY_PREFIX = "behavior:";
     private static final String EXPOSURE_KEY_PREFIX = "exposure:";
     private static final String ITEM_SIM_KEY_PREFIX = "recommend:itemcf:similar:";
     private static final Duration EXPOSURE_TTL = Duration.ofDays(7);
+    private static final Duration BEHAVIOR_TTL = Duration.ofMinutes(5);
     private static final int DEFAULT_SIZE = 20;
     private static final int MAX_SIZE = 50;
     private static final int MIN_BEHAVIOR_COUNT = 5;
@@ -92,16 +97,26 @@ public class RecommendService {
         int recallSize = (offset + size + 1) * RECALL_MULTIPLIER;
         Map<Long, Candidate> candidates = new LinkedHashMap<>();
 
-        recallByTag(tag, city, recallSize, candidates);
+        try {
+            recallByTag(userId, tag, city, recallSize, candidates);
+        } catch (IllegalStateException e) {
+            if (!isBlank(tag) || !isBlank(city)) {
+                log.warn("ES recall unavailable, fallback to Redis rank hot pool, userId={}, tag={}, city={}",
+                        userId, tag, city);
+                return coldStart(userId, offset, size);
+            }
+            throw e;
+        }
         recallByItemCf(userId, recallSize, candidates);
-        supplementByHot(recallSize, candidates);
+        supplementByHot(userId, recallSize, candidates);
 
         List<Candidate> ranked = candidates.values().stream()
+                .filter(candidate -> !isOwnNote(userId, candidate.note))
                 .sorted(Comparator.comparingDouble(Candidate::finalScore).reversed()
                         .thenComparing(candidate -> candidate.note.getCreatedAt(), Comparator.nullsLast(Comparator.reverseOrder())))
                 .skip(offset)
                 .toList();
-        List<Long> selectedIds = selectAndReserveUnexposed(userId,
+        List<Long> selectedIds = selectAndReserveWithRefill(userId,
                 ranked.stream().map(candidate -> candidate.note.getId()).toList(), size);
         Map<Long, Candidate> candidateMap = ranked.stream()
                 .collect(Collectors.toMap(candidate -> candidate.note.getId(), candidate -> candidate, (left, right) -> left, LinkedHashMap::new));
@@ -114,7 +129,7 @@ public class RecommendService {
         return new RecommendResponse(page, hasMore ? (long) offset + Math.min(size, ranked.size()) : null, hasMore);
     }
 
-    private void recallByTag(String tag, String city, int recallSize, Map<Long, Candidate> candidates) {
+    private void recallByTag(Long userId, String tag, String city, int recallSize, Map<Long, Candidate> candidates) {
         if (isBlank(tag) && isBlank(city)) {
             return;
         }
@@ -123,6 +138,9 @@ public class RecommendService {
                 ? recommendDataService.searchNormalNotes(tag, city, recallSize, List.of())
                 : new ArrayList<>(recommendDataService.getNormalNotesByIds(esNoteIds).values());
         for (Note note : notes) {
+            if (isOwnNote(userId, note)) {
+                continue;
+            }
             Candidate candidate = candidates.computeIfAbsent(note.getId(), id -> new Candidate(note));
             candidate.tagScore = Math.max(candidate.tagScore, calculateScore(note));
             candidate.reason = TAG_REASON;
@@ -130,7 +148,7 @@ public class RecommendService {
     }
 
     private void recallByItemCf(Long userId, int recallSize, Map<Long, Candidate> candidates) {
-        List<UserBehavior> ownBehaviors = recommendDataService.listRecentUserBehaviors(userId, 50);
+        List<UserBehavior> ownBehaviors = listRecentUserBehaviorsCached(userId, 50);
         Set<Long> interactedNoteIds = ownBehaviors.stream()
                 .map(UserBehavior::getNoteId)
                 .filter(Objects::nonNull)
@@ -139,11 +157,11 @@ public class RecommendService {
             return;
         }
 
-        if (recallByEsItemCf(interactedNoteIds, recallSize, candidates)) {
+        if (recallByEsItemCf(userId, interactedNoteIds, recallSize, candidates)) {
             return;
         }
 
-        if (recallByRedisItemCf(interactedNoteIds, recallSize, candidates)) {
+        if (recallByRedisItemCf(userId, interactedNoteIds, recallSize, candidates)) {
             return;
         }
 
@@ -176,7 +194,7 @@ public class RecommendService {
         Map<Long, Note> noteMap = recommendDataService.getNormalNotesByIds(orderedIds);
         for (Long noteId : orderedIds) {
             Note note = noteMap.get(noteId);
-            if (note == null) {
+            if (note == null || isOwnNote(userId, note)) {
                 continue;
             }
             Candidate candidate = candidates.computeIfAbsent(noteId, id -> new Candidate(note));
@@ -187,12 +205,12 @@ public class RecommendService {
         }
     }
 
-    private boolean recallByEsItemCf(Set<Long> interactedNoteIds, int recallSize, Map<Long, Candidate> candidates) {
+    private boolean recallByEsItemCf(Long userId, Set<Long> interactedNoteIds, int recallSize, Map<Long, Candidate> candidates) {
         Map<Long, Double> itemCfScores = recommendSearchService.searchSimilarPostScores(interactedNoteIds, recallSize);
-        return fillItemCfCandidates(itemCfScores, recallSize, candidates);
+        return fillItemCfCandidates(userId, itemCfScores, recallSize, candidates);
     }
 
-    private boolean recallByRedisItemCf(Set<Long> interactedNoteIds, int recallSize, Map<Long, Candidate> candidates) {
+    private boolean recallByRedisItemCf(Long userId, Set<Long> interactedNoteIds, int recallSize, Map<Long, Candidate> candidates) {
         Map<Long, Double> itemCfScores = new HashMap<>();
         try {
             for (Long noteId : interactedNoteIds) {
@@ -216,10 +234,10 @@ public class RecommendService {
         if (itemCfScores.isEmpty()) {
             return false;
         }
-        return fillItemCfCandidates(itemCfScores, recallSize, candidates);
+        return fillItemCfCandidates(userId, itemCfScores, recallSize, candidates);
     }
 
-    private boolean fillItemCfCandidates(Map<Long, Double> itemCfScores, int recallSize, Map<Long, Candidate> candidates) {
+    private boolean fillItemCfCandidates(Long userId, Map<Long, Double> itemCfScores, int recallSize, Map<Long, Candidate> candidates) {
         if (itemCfScores == null || itemCfScores.isEmpty()) {
             return false;
         }
@@ -231,7 +249,7 @@ public class RecommendService {
         Map<Long, Note> noteMap = recommendDataService.getNormalNotesByIds(orderedIds);
         for (Long noteId : orderedIds) {
             Note note = noteMap.get(noteId);
-            if (note == null) {
+            if (note == null || isOwnNote(userId, note)) {
                 continue;
             }
             Candidate candidate = candidates.computeIfAbsent(noteId, id -> new Candidate(note));
@@ -243,15 +261,22 @@ public class RecommendService {
         return true;
     }
 
-    private void supplementByHot(int recallSize, Map<Long, Candidate> candidates) {
+    private void supplementByHot(Long userId, int recallSize, Map<Long, Candidate> candidates) {
         if (candidates.size() >= recallSize) {
             return;
         }
         Set<Long> excluded = new HashSet<>(candidates.keySet());
-        for (Note note : recommendDataService.listHotNotes(0, recallSize - candidates.size(), excluded)) {
+        int requestSize = (recallSize - candidates.size()) * 2;
+        for (Note note : recommendDataService.listHotNotes(0, requestSize, excluded)) {
+            if (isOwnNote(userId, note)) {
+                continue;
+            }
             Candidate candidate = candidates.computeIfAbsent(note.getId(), id -> new Candidate(note));
             if (candidate.reason == null) {
                 candidate.reason = COLD_START_REASON;
+            }
+            if (candidates.size() >= recallSize) {
+                break;
             }
         }
     }
@@ -266,11 +291,10 @@ public class RecommendService {
 
     private RecommendResponse coldStartFromRedis(Long userId, int offset, int size) {
         try {
-            long start = offset;
-            long end = offset + (long) (size + 1) * RECALL_MULTIPLIER;
+            long end = Math.max(offset + (long) size * RECALL_MULTIPLIER, MAX_SIZE * (long) RECALL_MULTIPLIER);
+            String hotKey = resolveHotPoolKey();
             Set<ZSetOperations.TypedTuple<Object>> tuples =
-                    redisTemplate.opsForZSet().reverseRangeWithScores(HOT_POOL_KEY, start, end);
-            Long total = redisTemplate.opsForZSet().zCard(HOT_POOL_KEY);
+                    redisTemplate.opsForZSet().reverseRangeWithScores(hotKey, 0, end);
             if (tuples == null || tuples.isEmpty()) {
                 return null;
             }
@@ -281,18 +305,20 @@ public class RecommendService {
                     .filter(Objects::nonNull)
                     .distinct()
                     .toList();
-            List<Long> noteIds = selectAndReserveUnexposed(userId, orderedIds, size);
+            Map<Long, Note> orderedNoteMap = recommendDataService.getNormalNotesByIds(orderedIds);
+            List<Long> filteredIds = orderedIds.stream()
+                    .filter(id -> {
+                        Note note = orderedNoteMap.get(id);
+                        return note != null && !isOwnNote(userId, note);
+                    })
+                    .skip(offset)
+                    .toList();
+            List<Long> noteIds = selectAndReserveWithRefill(userId, filteredIds, size);
             Map<Long, Note> noteMap = recommendDataService.getNormalNotesByIds(noteIds);
             Map<Long, String> coverMap = recommendDataService.getCoverUrls(noteIds);
 
             List<RecommendItemVO> items = new ArrayList<>();
-            int scanned = 0;
-            for (ZSetOperations.TypedTuple<Object> tuple : tuples) {
-                scanned++;
-                Long noteId = toLong(tuple.getValue());
-                if (noteId == null || !noteIds.contains(noteId)) {
-                    continue;
-                }
+            for (Long noteId : noteIds) {
                 Note note = noteMap.get(noteId);
                 if (note == null) {
                     continue;
@@ -303,9 +329,8 @@ public class RecommendService {
                 }
             }
 
-            long safeTotal = total == null ? offset + scanned : total;
-            long nextOffset = offset + scanned;
-            boolean hasMore = nextOffset < safeTotal;
+            long nextOffset = offset + noteIds.size();
+            boolean hasMore = filteredIds.size() > noteIds.size();
             return new RecommendResponse(diversifyItems(items), hasMore ? nextOffset : null, hasMore);
         } catch (Exception e) {
             log.warn("Recommend hot pool unavailable, fallback to MySQL: {}", e.getMessage());
@@ -313,12 +338,54 @@ public class RecommendService {
         }
     }
 
+    @SuppressWarnings("unchecked")
+    private List<UserBehavior> listRecentUserBehaviorsCached(Long userId, int limit) {
+        if (userId == null || limit <= 0) {
+            return List.of();
+        }
+        String key = behaviorKey(userId);
+        try {
+            Object cached = redisTemplate.opsForValue().get(key);
+            if (cached instanceof List<?> list && !list.isEmpty()) {
+                return list.stream()
+                        .filter(UserBehavior.class::isInstance)
+                        .map(UserBehavior.class::cast)
+                        .limit(limit)
+                        .toList();
+            }
+        } catch (Exception e) {
+            log.warn("Read behavior profile cache failed, userId={}, reason={}", userId, e.getMessage());
+        }
+
+        List<UserBehavior> behaviors = recommendDataService.listRecentUserBehaviors(userId, limit);
+        try {
+            redisTemplate.opsForValue().set(key, behaviors, BEHAVIOR_TTL);
+        } catch (Exception e) {
+            log.warn("Write behavior profile cache failed, userId={}, reason={}", userId, e.getMessage());
+        }
+        return behaviors;
+    }
+
+    private String resolveHotPoolKey() {
+        String rankKey = rankDailyKey();
+        try {
+            Long rankSize = redisTemplate.opsForZSet().zCard(rankKey);
+            if (rankSize != null && rankSize > 0) {
+                return rankKey;
+            }
+        } catch (Exception e) {
+            log.warn("Read rank daily hot pool failed, fallback to recommend hot pool: {}", e.getMessage());
+        }
+        return HOT_POOL_KEY;
+    }
+
     private RecommendResponse coldStartFromMysql(Long userId, int offset, int size) {
         List<Note> notes = recommendDataService.listHotNotes(offset, (size + 1) * RECALL_MULTIPLIER, List.of());
         List<Note> ranked = notes.stream()
+                .filter(note -> !isOwnNote(userId, note))
                 .sorted(Comparator.comparingDouble(this::calculateScore).reversed())
                 .toList();
-        List<Long> selectedIds = selectAndReserveUnexposed(userId, ranked.stream().map(Note::getId).toList(), size);
+        List<Long> selectedIds = selectAndReserveWithRefill(userId, ranked.stream().map(Note::getId).toList(), size);
         Map<Long, Note> noteMap = ranked.stream()
                 .collect(Collectors.toMap(Note::getId, note -> note, (left, right) -> left, LinkedHashMap::new));
         List<Note> pageNotes = selectedIds.stream()
@@ -467,6 +534,27 @@ public class RecommendService {
         }
     }
 
+    private List<Long> selectAndReserveWithRefill(Long userId, List<Long> orderedIds, int limit) {
+        List<Long> reserved = selectAndReserveUnexposed(userId, orderedIds, limit);
+        if (reserved.size() >= limit || orderedIds == null || orderedIds.isEmpty()) {
+            return reserved;
+        }
+
+        Set<Long> selected = new HashSet<>(reserved);
+        List<Long> result = new ArrayList<>(reserved);
+        for (Long id : orderedIds) {
+            if (id == null || selected.contains(id)) {
+                continue;
+            }
+            result.add(id);
+            selected.add(id);
+            if (result.size() >= limit) {
+                break;
+            }
+        }
+        return result;
+    }
+
     @SuppressWarnings("unchecked")
     private List<Long> selectAndReserveUnexposed(Long userId, List<Long> orderedIds, int limit) {
         if (userId == null || orderedIds == null || orderedIds.isEmpty() || limit <= 0) {
@@ -583,6 +671,14 @@ public class RecommendService {
         return EXPOSURE_KEY_PREFIX + userId;
     }
 
+    private String behaviorKey(Long userId) {
+        return BEHAVIOR_KEY_PREFIX + userId;
+    }
+
+    private String rankDailyKey() {
+        return RANK_DAILY_KEY_PREFIX + LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
+    }
+
     private boolean isBlank(String text) {
         return text == null || text.isBlank();
     }
@@ -632,5 +728,9 @@ public class RecommendService {
         private double finalScore() {
             return tagScore * 0.6 + itemCfScore * 0.4;
         }
+    }
+
+    private boolean isOwnNote(Long userId, Note note) {
+        return userId != null && note != null && userId.equals(note.getAuthorId());
     }
 }

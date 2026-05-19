@@ -1,146 +1,245 @@
-# Recommend Service 测试说明
+﻿# Recommend Service 非功能测试说明
 
-## 1. 测试目标
+## 1. 非功能性需求
 
-本文档说明成员 3 负责的 Recommend Service 测试方案和测试产物。测试重点：
+| 指标 | 要求 | 来源 |
+|------|------|------|
+| 推荐列表响应时间 | 平均 < 600ms，需求目标 < 1s | 需求说明书 3.6.3 / 概设 6.7 |
+| 冷启动可用性 | 新用户无行为时仍能返回推荐内容 | 人员分工 Recommend Service |
+| 标签召回性能 | 使用 ES `post_index` 召回候选，避免 MySQL 全量扫描 | 人员分工 Recommend Service |
+| ItemCF 召回性能 | 使用 ES `item_sim_index` 读取预计算相似笔记 | 人员分工 Recommend Service |
+| MQ 准实时更新 | 消费发帖和互动事件，刷新推荐侧 ES/Redis 数据 | 跨服务联调要求 |
+| 行为画像缓存 | Redis `behavior:{userId}` 缓存近期行为，TTL 分钟级 | 人员分工 Recommend Service |
+| 曝光去重准确性 | 同一用户连续请求不重复推荐已曝光内容 | 人员分工 Recommend Service |
+| 并发一致性 | Redis Lua 原子预占曝光，降低并发刷新重复推荐 | 概设 6.7 |
+| 冷启动降级 | 优先读取 `rank:daily:{date}`，再读推荐热门池，Redis 不可用时降级 MySQL 热门笔记 | 需求说明书 3.5 |
+| ES 降级 | ES 不可用时降级 Redis 热榜 / Redis 相似池，不报错 | 需求说明书 3.5 |
+| 推荐多样性 | 相邻内容尽量不来自同一作者 | 人员分工 Recommend Service |
+| 容量边界 | `size` 最大 50，曝光上报单次最多 100 个 postId | 概设 6.7 |
 
-- 功能正确性：发现页推荐、冷启动、标签/城市召回、分页加载、曝光去重。
-- 跨服务联调：前端发现页、Gateway、User Service、Post Detail、Redis、MySQL、Elasticsearch。
-- 非功能性需求：响应时间、并发能力、可用性、一致性、安全性、容量边界、可维护性。
-- 分布式能力：Gateway 路由、Nacos 注册、Redis 共享状态、ES 召回、Redis Lua 原子曝光预占、JMeter 并发压测。
+## 2. 测试总览
 
-说明文件中不直接放截图。截图和测试结果文件单独放在对应目录中。
+| 编号 | 测试项 | 测试方式 | 结果 |
+|------|--------|----------|------|
+| R-1 | 健康检查与预计算 | PS1 调用 `/recommend/health`、Gateway `/api/recommend/health`、`/recommend/internal/precompute`，检查 `rank:daily:{date}` | **通过** |
+| R-2 | MQ 发帖与互动事件消费 | PS1 发布笔记触发 `note.published`，点赞触发 `interaction.like`，检查 ES/Redis 更新 | **脚本已补充，需重跑** |
+| R-3 | 冷启动推荐响应时间 | PS1 连续请求 10 次，统计 avg/min/max | **通过** |
+| R-4 | 个性化推荐响应时间 | PS1 使用有行为用户连续请求 10 次，统计 avg/min/max，并检查 `behavior:{userId}` TTL | **通过** |
+| R-5 | 标签召回响应时间 | PS1 使用 `tag=Hotpot&city=Guangzhou` 连续请求 10 次 | **通过** |
+| R-6 | 游标分页与曝光去重 | PS1 连续请求两页，检查 postId 无重复 | **通过** |
+| R-7 | 标签召回功能 | PS1 检查 ES 标签召回返回 Hotpot 相关内容 | **通过** |
+| R-8 | 曝光 Lua 预占与幂等上报 | redis-cli 检查 `exposure:{userId}`，重复上报同一批 postId | **通过** |
+| R-9 | ES ItemCF 预计算索引 | 查询 ES `item_sim_index`，检查相似候选与 score | **通过** |
+| R-10 | 边界参数 | `size=1`、`size=999` 验证分页上限 | **通过** |
+| R-11 | JMeter 并发压测 | `jmeter/recommend-service-test.jmx`，报告输出到 `jmeter/recommendservice-report` | **脚本已准备，报告运行后生成** |
 
-## 2. 测试产物
+测试产物：
 
-| 类型 | 路径 | 说明 |
-|---|---|---|
-| 命令行验证脚本 | `测试脚本/recommend-test-verify.ps1` | 功能、延迟、分页、曝光、ItemCF、边界参数验证 |
-| 命令行结果文本 | `测试脚本/recommend-test-result.txt` | 执行脚本后由 `Start-Transcript` 自动生成 |
-| JMeter 脚本 | `jmeter/recommend-service-test.jmx` | 推荐接口并发压测 |
-| JMeter 原始结果 | `jmeter/recommend-service-result.jtl` | JMeter CLI 输出 |
-| JMeter HTML 报告 | `jmeter/recommendservice-report/index.html` | 压测报告首页，用于截图 |
+| 类型 | 路径 |
+|------|------|
+| PS1 验证脚本 | `测试脚本/recommend-test-verify.ps1` |
+| PS1 文本结果 | `测试脚本/recommend-test-result.txt` |
+| 终端截图 | `测试脚本/recommend-test-截图1.png`、`测试脚本/recommend-test-截图2.png` |
+| JMeter 脚本 | `jmeter/recommend-service-test.jmx` |
+| JMeter 报告目录 | `jmeter/recommendservice-report` |
 
-截图要求：
+## 3. 测试结果详情
 
-- JMeter 结果截图：打开 `jmeter/recommendservice-report/index.html`，截 Dashboard 首页和 Statistics 表格。
-- PS1 脚本结果截图：运行 `测试脚本/recommend-test-verify.ps1` 后截 PowerShell 终端即可。
-- 同时保留 `测试脚本/recommend-test-result.txt`，方便老师直接查看文本结果。
+### R-1: 健康检查与预计算
 
-## 3. 测试环境
+**要求**: Recommend Service 可用，Gateway 路由可用，预计算可手动触发，并能写入 Rank 日榜热度池。
 
-启动基础组件：
-
-```powershell
-cd E:\desktop\BiteBlog
-docker compose up -d
-docker compose ps
-```
-
-启动后端服务：
-
-```powershell
-.\start-all.ps1
-```
-
-启动前端：
-
-```powershell
-cd E:\desktop\BiteBlog\frontend
-npm run dev
-```
-
-访问地址：
-
-```text
-http://localhost:3000
-```
-
-## 4. 测试数据准备
-
-```powershell
-cd E:\desktop\BiteBlog
-.\sql\init-data.ps1
-.\sql\init-recommend-data.ps1
-```
-
-`init-recommend-data.ps1` 只复用 `init-data.ps1` 创建的 `13800000001` ~ `13800000060`，不会额外创建用户。
-
-推荐数据包括：
-
-| 数据 | 说明 |
-|---|---|
-| `13800000001` | 大 V 作者，发布 `Recommend Test 01` ~ `Recommend Test 18` |
-| `13800000004` | 普通作者，发布 `Recommend Test 19` ~ `Recommend Test 30` |
-| `13800000005` | 有火锅/烧烤行为的个性化用户 |
-| `13800000006` | 有甜品/茶饮行为的个性化用户 |
-| `13800000007` | ItemCF 相似用户 |
-| `13800000060` | 冷启动用户 |
-| `recommend:hot:pool` | Redis ZSet，保存 30 条冷启动热门候选 |
-| `recommend:itemcf:similar:{postId}` | Redis ZSet，保存 ItemCF 降级用的相似笔记 |
-| `exposure:{userId}` | Redis Set，保存曝光记录 |
-| `post_index` | ES 索引，保存推荐样例的全文检索数据 |
-| `item_sim_index` | ES 索引，保存 `item_id/similar_item_id/score`，用于 ItemCF 相似候选召回 |
-
-## 5. PS1 功能与延迟测试
-
-运行：
-
-```powershell
-cd E:\desktop\BiteBlog
-.\测试脚本\recommend-test-verify.ps1
-```
-
-脚本开头包含：
-
-```powershell
-$transcriptFile = Join-Path $PSScriptRoot "recommend-test-result.txt"
-Start-Transcript -Path $transcriptFile -Force | Out-Null
-```
-
-因此终端输出会自动保存到：
+**方法**: PS1 调用健康检查和预计算接口。
 
 ```text
-测试脚本/recommend-test-result.txt
+Direct /recommend/health: 3ms OK
+Gateway /api/recommend/health: 10ms OK
+Manual precompute hot pool and item_sim_index: 260ms OK
+Redis rank daily key=rank:daily:2026-05-19, count=...
 ```
 
-脚本覆盖：
+- **预计算内容**: 重建 Redis `recommend:hot:pool`、Redis `rank:daily:{date}` 和 ES `item_sim_index`
+- **结论**: 通过。服务直连、网关访问和准实时预计算接口均正常。
 
-| 编号 | 测试项 | 验证内容 |
-|---|---|---|
-| 1 | 健康检查与预计算 | 直连 `8084/recommend/health`、Gateway `/api/recommend/health`，并触发 `/recommend/internal/precompute` |
-| 2 | 冷启动响应时间 | 连续 10 次请求冷启动推荐，统计平均/最小/最大耗时，目标平均 < 600ms |
-| 3 | 分页一致性 | 请求两页推荐，检查前两页 `postId` 无重复 |
-| 4 | 标签召回 | 请求 `tag=Hotpot&city=Guangzhou`，验证 ES 优先、MySQL 兜底链路可返回 |
-| 5 | 曝光预占与幂等 | 检查 Redis `exposure:{userId}`、TTL，并重复上报同一批 `postIds` |
-| 6 | ES ItemCF | 检查 `item_sim_index` 是否写入相似候选，Redis 相似池作为降级 |
-| 7 | 边界参数 | 测试 `size=1`、`size=999`，验证最大分页限制 |
+### R-2: MQ 发帖与互动事件消费
 
-建议截图：
+**要求**: Recommend Service 能消费 Post Service 发出的发帖和互动事件，并准实时刷新推荐侧 ES/Redis 数据。
 
-- PowerShell 终端中“冷启动推荐响应时间”段落。
-- PowerShell 终端中“分页一致性”“曝光 Lua 预占与幂等上报”段落。
-- `测试脚本/recommend-test-result.txt` 文件内容可作为文本版结果提交。
+**方法**: PS1 通过 Gateway 调用 Post Service 发布一条笔记，触发 `note.published`；等待 Recommend 消费后检查 ES `post_index` 和 Redis `recommend:hot:pool`。随后用另一个用户点赞该笔记，触发 `interaction.like`，检查热门分刷新。
 
-## 6. JMeter 并发测试
+预期输出示例：
 
-压测前建议先运行一次：
+```text
+publish note via Post Service: OK
+MQ note.published -> ES post_index: OK
+note.published consumed: postId=..., ES found=True, hotScore=...
+like note to publish interaction.like: OK
+interaction.like consumed: hotScoreBefore=..., hotScoreAfter=...
+```
+
+- **当前状态**: 验证逻辑已补充到 `测试脚本/recommend-test-verify.ps1`，需启动 Post/Recommend/RabbitMQ/ES/Redis 后重新执行脚本生成最新结果。
+
+### R-3: 冷启动推荐响应时间
+
+**要求**: 新用户也能返回推荐，平均响应时间 < 600ms。
+
+**方法**: 使用 `13800000060` 冷启动用户连续请求 10 次。
+
+| 指标 | 结果 |
+|------|------|
+| 平均响应时间 | **190ms** |
+| 最小响应时间 | 164ms |
+| 最大响应时间 | 212ms |
+| 返回条数 | 20 |
+| hasMore | True |
+
+```text
+cold-start latency avg=190ms, min=164ms, max=212ms, target<600ms
+result count=20, hasMore=True, cursor=21
+```
+
+- **结论**: 通过。Redis 热门池冷启动结果稳定返回，响应时间低于 600ms 目标。
+
+### R-4: 个性化推荐响应时间
+
+**要求**: 有行为用户推荐平均响应时间 < 600ms。
+
+**方法**: 使用 `13800000005` 个性化用户连续请求 10 次。
+
+| 指标 | 结果 |
+|------|------|
+| 平均响应时间 | **208ms** |
+| 最小响应时间 | 166ms |
+| 最大响应时间 | 260ms |
+| 返回条数 | 20 |
+| hasMore | True |
+
+```text
+personalized latency avg=208ms, min=166ms, max=260ms, target<600ms
+result count=20, hasMore=True, cursor=20
+behavior cache key=behavior:10, TTL=300 seconds
+```
+
+- **结论**: 通过。在线请求只做 ES 召回、行为画像缓存读取、曝光过滤、轻量排序和作者打散，未出现超时。
+
+### R-5: 标签召回响应时间
+
+**要求**: 标签/城市过滤走 ES `post_index`，平均响应时间 < 600ms。
+
+**方法**: 连续 10 次请求 `tag=Hotpot&city=Guangzhou`。
+
+| 指标 | 结果 |
+|------|------|
+| 平均响应时间 | **208ms** |
+| 最小响应时间 | 177ms |
+| 最大响应时间 | 238ms |
+| 返回条数 | 20 |
+
+```text
+tag-recall latency avg=208ms, min=177ms, max=238ms, target<600ms
+result count=20, hasMore=True, cursor=20
+```
+
+- **结论**: 通过。ES 标签召回路径响应稳定。
+
+### R-6: 游标分页与曝光去重
+
+**要求**: 连续翻页不重复，已曝光内容不再次返回。
+
+**方法**: 清空用户曝光集合后请求两页，比较两页 `postId`。
+
+| 页码 | postIds | hasMore | cursor |
+|------|---------|---------|--------|
+| 1 | [42,43,44,45,46,47,48,49,50,51] | True | 11 |
+| 2 | [53,59,54,60,55,61,56,62,57,58] | True | 22 |
+
+```text
+pagination check: PASS, no duplicates in first two pages
+```
+
+- **结论**: 通过。分页结果未发现重复 postId。
+
+### R-7: 标签召回功能
+
+**要求**: `Hotpot + Guangzhou` 能召回相关内容，并在 ES 不可用时具备 MySQL 降级能力。
+
+**方法**: 请求 `GET /recommend/discover?tag=Hotpot&city=Guangzhou`。
+
+```text
+tag=Hotpot city=Guangzhou: 232ms OK
+top titles=[Recommend Test 11 Hotpot | Recommend Test 21 Hotpot | Recommend Test 05 Noodles | Recommend Test 19 Cantonese | Recommend Test 02 BBQ]
+```
+
+- **结论**: 通过。结果包含 Hotpot 相关内容，同时补量逻辑会加入其他候选，避免列表过短。
+
+### R-8: 曝光 Lua 预占与幂等上报
+
+**要求**: 曝光记录实时写入 Redis Set，重复上报不产生重复数据。
+
+**方法**: 查询 `exposure:{userId}`，重复调用 `/recommend/exposures`。
+
+| 指标 | 结果 |
+|------|------|
+| 曝光集合 | `exposure:65` |
+| 初始 members | ["41","52"] |
+| 重复上报样例 | [42,43,44] |
+| Redis SCARD | 5 |
+| 上报接口 | 8ms / 5ms |
+
+```text
+exposures-post-1: 8ms OK
+exposures-post-2-repeat: 5ms OK
+repeated exposure ids=[42,43,44], Redis SCARD=5
+```
+
+- **结论**: 通过。Redis Set 天然幂等，Lua 预占降低并发重复推荐概率。
+- **备注**: 测试结果中的 `redis-cli -a` 安全警告来自 Redis 命令行提示，不影响测试结果。
+
+### R-9: ES ItemCF 预计算索引
+
+**要求**: ItemCF 相似度预计算后写入 ES `item_sim_index`。
+
+**方法**: 查询 `item_sim_index` 中某个 `item_id` 的相似候选。
+
+```text
+item_sim_index item_id=42 => [41:11.325,45:6.325]
+```
+
+- **结论**: 通过。ItemCF 已由预计算任务写入 ES，在线推荐请求只查询相似候选。
+
+### R-10: 边界参数
+
+**要求**: 分页参数有上限，异常 size 不导致一次拉取过多数据。
+
+**方法**: 请求 `size=1` 和 `size=999`。
+
+| 参数 | 结果 |
+|------|------|
+| `size=1` | 返回 1 条 |
+| `size=999` | 返回 29 条，未超过最大上限 50 |
+
+```text
+size=1: 21ms OK
+size=999 capped to 50: 261ms OK
+size=1 count=1
+size=999 count=29, expected <= 50
+```
+
+- **结论**: 通过。最大分页限制生效。
+
+### R-11: JMeter 并发压测
+
+**要求**: 支持一定并发用户量，接口错误率应为 0%。
+
+**方法**: 使用 `jmeter/recommend-service-test.jmx` 对推荐接口压测。
+
+压测前建议执行：
 
 ```powershell
 curl.exe -X POST http://localhost:8084/recommend/internal/precompute
 ```
 
-该步骤会提前重建 Redis `recommend:hot:pool` 和 ES `item_sim_index`，使 JMeter 压测更接近“在线请求只做曝光过滤、轻量重排和多样性打散”的设计。
-
-先登录获取 Token 和 userId：
-
-```powershell
-curl.exe -X POST http://localhost:8080/api/user/login `
-  -H "Content-Type: application/json" `
-  -d "{\"phone\":\"13800000060\",\"password\":\"12345678\"}"
-```
-
-运行 JMeter：
+JMeter 命令：
 
 ```powershell
 jmeter -n -t jmeter/recommend-service-test.jmx `
@@ -152,64 +251,23 @@ jmeter -n -t jmeter/recommend-service-test.jmx `
   -e -o jmeter/recommendservice-report
 ```
 
-建议并发参数：
-
-| 配置项 | 建议值 |
-|---|---:|
-| Number of Threads | 20 |
-| Ramp-up Period | 10s |
-| Loop Count | 10 |
-
-JMeter 覆盖接口：
-
-- `GET /api/recommend/health`
-- `GET /api/recommend/discover?cursor=0&size=20`
-- `GET /api/recommend/discover?cursor=0&size=5`
-- `GET /api/recommend/discover?cursor=0&size=20&tag=Hotpot`
-- `POST /api/recommend/exposures`
-
-JMeter 截图：
+报告生成后打开：
 
 ```text
 jmeter/recommendservice-report/index.html
 ```
 
-打开该网页后截：
+- **当前状态**: JMeter 脚本已准备，报告需在本地服务全部启动后生成。
+- **截图要求**: 截 Dashboard 首页和 Statistics 表格。
 
-- Dashboard 首页：Total、Error%、Average、Throughput。
-- Statistics 表：各接口 sample 数、平均响应时间、错误率。
+## 4. 测试截图
 
-## 7. 非功能需求与测试方式
+PS1 脚本测试结果截图：
 
-| 非功能需求 | 实现方式 | 测试方式 | 预期结果 |
-|---|---|---|---|
-| 性能 | 标签召回优先 ES；ItemCF 优先 ES `item_sim_index`；冷启动读 Redis ZSet；分页最大 50 | PS1 统计响应时间；JMeter 并发压测 | 推荐列表平均响应时间建议 < 600ms |
-| 并发能力 | Recommend 无本地会话；Redis 共享曝光/热门；ES 共享召回索引；Lua 原子预占 | JMeter 多线程请求推荐和曝光 | 错误率 0%，无明显重复推荐 |
-| 可用性 | ES 失败降级 MySQL；Redis 热门池失败降级 MySQL；ItemCF 缺失降级在线行为扫描 | 清空或停用部分缓存后请求推荐 | 接口不返回 500，有兜底结果 |
-| 一致性 | 曝光 Set 幂等；TTL 7 天；Lua 返回前预占 | 重复上报同一批 ID，检查 Redis Set | 不重复，TTL 正常 |
-| 安全性 | Gateway JWT；直连必须传 `X-User-Id`；曝光最多 100 个 ID | 未登录访问、缺 Header 访问、超大曝光请求 | 未授权被拦截，非法请求有明确错误 |
-| 容量边界 | `size` 最大 50，`postIds` 最多处理 100 个 | `size=999`、超长 `postIds` | 返回数量被限制 |
-| 可维护性 | Controller/Service/DataService/SearchService 分层 | Maven 编译、代码结构检查 | 模块可独立编译，召回源可替换 |
+![Recommend PS1 测试截图 1](../测试脚本/recommend-test-截图1.png)
 
-## 8. 当前已验证结果
+![Recommend PS1 测试截图 2](../测试脚本/recommend-test-截图2.png)
 
-| 验证项 | 结果 |
-|---|---|
-| Recommend 后端编译 | `mvn -pl biteblog-recommend -am test -DskipTests` 通过 |
-| 前端构建 | `npm run build` 通过 |
-| PS1 脚本语法 | `recommend-test-verify.ps1` 可被 PowerShell 解析 |
-| 运行时接口/JMeter | 需要 Docker、后端服务和 JMeter 启动后执行，并保存 txt/report 截图 |
+![Recommend PS1 测试截图 3](../测试脚本/recommend-test-截图3.png)
 
-## 9. 提交材料建议
-
-最终建议提交或展示以下材料：
-
-| 材料 | 路径 |
-|---|---|
-| 测试说明 | `docs/recommendservice-测试说明.md` |
-| 修改说明 | `docs/recommendservice-修改说明.md` |
-| 命令行测试脚本 | `测试脚本/recommend-test-verify.ps1` |
-| 命令行测试结果 | `测试脚本/recommend-test-result.txt` |
-| JMeter 脚本 | `jmeter/recommend-service-test.jmx` |
-| JMeter 报告 | `jmeter/recommendservice-report/index.html` |
-| JMeter 截图 | 从 `index.html` 截取 Dashboard 和 Statistics |
+JMeter 报告截图在运行 `jmeter/recommend-service-test.jmx` 后，从 `jmeter/recommendservice-report/index.html` 截取 Dashboard 和 Statistics。

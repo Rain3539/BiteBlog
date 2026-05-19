@@ -141,6 +141,16 @@ public class RecommendDataService {
                 .last("LIMIT " + safeLimit));
     }
 
+    public Note getNormalNoteById(Long noteId) {
+        if (noteId == null) {
+            return null;
+        }
+        return noteMapper.selectOne(new LambdaQueryWrapper<Note>()
+                .eq(Note::getId, noteId)
+                .eq(Note::getStatus, NORMAL_STATUS)
+                .last("LIMIT 1"));
+    }
+
     public Map<Long, Note> getNormalNotesByIds(Collection<Long> noteIds) {
         List<Long> ids = distinctIds(noteIds);
         if (ids.isEmpty()) {

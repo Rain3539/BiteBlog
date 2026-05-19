@@ -65,7 +65,7 @@ INSERT INTO note (
 )
 SELECT * FROM (
   SELECT
-         CASE WHEN seed.n <= 18 THEN @bigv_author ELSE @normal_author END author_id,
+         CASE WHEN seed.n <= 30 THEN @bigv_author ELSE @normal_author END author_id,
          CONCAT(
            'Recommend Test ',
            LPAD(seed.n, 2, '0'),
@@ -131,9 +131,9 @@ SELECT * FROM (
          3 + seed.n % 3 score_color,
          3 + (seed.n + 1) % 3 score_smell,
          3 + (seed.n + 2) % 3 score_taste,
-         65 - seed.n like_count,
-         36 - FLOOR(seed.n / 2) collect_count,
-         18 - FLOOR(seed.n / 3) comment_count,
+         GREATEST(1, 95 - seed.n) like_count,
+         GREATEST(1, 50 - FLOOR(seed.n / 2)) collect_count,
+         GREATEST(1, 30 - FLOOR(seed.n / 3)) comment_count,
          1 status,
          NOW() - INTERVAL seed.n HOUR created_at,
          NOW() updated_at
@@ -144,6 +144,12 @@ SELECT * FROM (
     UNION ALL SELECT 16 UNION ALL SELECT 17 UNION ALL SELECT 18 UNION ALL SELECT 19 UNION ALL SELECT 20
     UNION ALL SELECT 21 UNION ALL SELECT 22 UNION ALL SELECT 23 UNION ALL SELECT 24 UNION ALL SELECT 25
     UNION ALL SELECT 26 UNION ALL SELECT 27 UNION ALL SELECT 28 UNION ALL SELECT 29 UNION ALL SELECT 30
+    UNION ALL SELECT 31 UNION ALL SELECT 32 UNION ALL SELECT 33 UNION ALL SELECT 34 UNION ALL SELECT 35
+    UNION ALL SELECT 36 UNION ALL SELECT 37 UNION ALL SELECT 38 UNION ALL SELECT 39 UNION ALL SELECT 40
+    UNION ALL SELECT 41 UNION ALL SELECT 42 UNION ALL SELECT 43 UNION ALL SELECT 44 UNION ALL SELECT 45
+    UNION ALL SELECT 46 UNION ALL SELECT 47 UNION ALL SELECT 48 UNION ALL SELECT 49 UNION ALL SELECT 50
+    UNION ALL SELECT 51 UNION ALL SELECT 52 UNION ALL SELECT 53 UNION ALL SELECT 54 UNION ALL SELECT 55
+    UNION ALL SELECT 56 UNION ALL SELECT 57 UNION ALL SELECT 58 UNION ALL SELECT 59 UNION ALL SELECT 60
   ) seed
 ) seed
 WHERE @missing = 0;
@@ -212,30 +218,32 @@ if ($missing.Trim() -ne "0") {
 $noteIds = docker exec $mysqlContainer mysql -N -uroot "-p$mysqlPassword" biteblog -e "SELECT id FROM note WHERE title LIKE 'Recommend Test%' ORDER BY id;"
 $foodieUserId = docker exec $mysqlContainer mysql -N -uroot "-p$mysqlPassword" biteblog -e "SELECT id FROM user WHERE phone='13800000005';"
 
-docker exec $redisContainer redis-cli -a $redisPassword DEL recommend:hot:pool "exposure:$foodieUserId" | Out-Null
+$rankDailyKey = "rank:daily:$(Get-Date -Format 'yyyy-MM-dd')"
+docker exec -e "REDISCLI_AUTH=$redisPassword" $redisContainer redis-cli DEL recommend:hot:pool $rankDailyKey "behavior:$foodieUserId" "exposure:$foodieUserId" | Out-Null
 
 $score = 300
 foreach ($id in $noteIds) {
     if ([string]::IsNullOrWhiteSpace($id)) {
         continue
     }
-    docker exec $redisContainer redis-cli -a $redisPassword DEL "recommend:itemcf:similar:$id" | Out-Null
-    docker exec $redisContainer redis-cli -a $redisPassword ZADD recommend:hot:pool $score $id | Out-Null
+    docker exec -e "REDISCLI_AUTH=$redisPassword" $redisContainer redis-cli DEL "recommend:itemcf:similar:$id" | Out-Null
+    docker exec -e "REDISCLI_AUTH=$redisPassword" $redisContainer redis-cli ZADD recommend:hot:pool $score $id | Out-Null
+    docker exec -e "REDISCLI_AUTH=$redisPassword" $redisContainer redis-cli ZADD $rankDailyKey $score $id | Out-Null
     $score -= 5
 }
 
 $noteIdList = @($noteIds | Where-Object { ![string]::IsNullOrWhiteSpace($_) })
 if ($noteIdList.Count -ge 9) {
-    docker exec $redisContainer redis-cli -a $redisPassword ZADD "recommend:itemcf:similar:$($noteIdList[0])" 0.93 $noteIdList[1] 0.81 $noteIdList[4] 0.72 $noteIdList[5] | Out-Null
-    docker exec $redisContainer redis-cli -a $redisPassword ZADD "recommend:itemcf:similar:$($noteIdList[1])" 0.93 $noteIdList[0] 0.86 $noteIdList[4] 0.68 $noteIdList[6] | Out-Null
-    docker exec $redisContainer redis-cli -a $redisPassword ZADD "recommend:itemcf:similar:$($noteIdList[2])" 0.90 $noteIdList[3] 0.77 $noteIdList[7] | Out-Null
-    docker exec $redisContainer redis-cli -a $redisPassword ZADD "recommend:itemcf:similar:$($noteIdList[3])" 0.90 $noteIdList[2] 0.74 $noteIdList[8] | Out-Null
-    docker exec $redisContainer redis-cli -a $redisPassword ZADD "recommend:itemcf:similar:$($noteIdList[4])" 0.81 $noteIdList[0] 0.86 $noteIdList[1] | Out-Null
+    docker exec -e "REDISCLI_AUTH=$redisPassword" $redisContainer redis-cli ZADD "recommend:itemcf:similar:$($noteIdList[0])" 0.93 $noteIdList[1] 0.81 $noteIdList[4] 0.72 $noteIdList[5] | Out-Null
+    docker exec -e "REDISCLI_AUTH=$redisPassword" $redisContainer redis-cli ZADD "recommend:itemcf:similar:$($noteIdList[1])" 0.93 $noteIdList[0] 0.86 $noteIdList[4] 0.68 $noteIdList[6] | Out-Null
+    docker exec -e "REDISCLI_AUTH=$redisPassword" $redisContainer redis-cli ZADD "recommend:itemcf:similar:$($noteIdList[2])" 0.90 $noteIdList[3] 0.77 $noteIdList[7] | Out-Null
+    docker exec -e "REDISCLI_AUTH=$redisPassword" $redisContainer redis-cli ZADD "recommend:itemcf:similar:$($noteIdList[3])" 0.90 $noteIdList[2] 0.74 $noteIdList[8] | Out-Null
+    docker exec -e "REDISCLI_AUTH=$redisPassword" $redisContainer redis-cli ZADD "recommend:itemcf:similar:$($noteIdList[4])" 0.81 $noteIdList[0] 0.86 $noteIdList[1] | Out-Null
 }
 
 if ($noteIdList.Count -gt 0) {
-    docker exec $redisContainer redis-cli -a $redisPassword SADD "exposure:$foodieUserId" $noteIdList[0] | Out-Null
-    docker exec $redisContainer redis-cli -a $redisPassword EXPIRE "exposure:$foodieUserId" 604800 | Out-Null
+    docker exec -e "REDISCLI_AUTH=$redisPassword" $redisContainer redis-cli SADD "exposure:$foodieUserId" $noteIdList[0] | Out-Null
+    docker exec -e "REDISCLI_AUTH=$redisPassword" $redisContainer redis-cli EXPIRE "exposure:$foodieUserId" 604800 | Out-Null
 }
 
 Write-Host ""
