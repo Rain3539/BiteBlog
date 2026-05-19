@@ -1,4 +1,4 @@
-package com.biteblog.recommend.dto;
+package com.biteblog.recommend.client.dto;
 
 import lombok.Data;
 
@@ -6,19 +6,17 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Data
-public class RecommendItemVO {
+public class PostDetailDTO {
 
     private Long postId;
     private Long authorId;
     private String authorName;
     private String authorAvatar;
     private String title;
-    private String coverUrl;
     private String shopName;
-    private List<String> tags;
-    private Long likeCount;
-    private Long collectCount;
-    private Long commentCount;
-    private String reason;
+    private List<String> imageUrls;
+    private Integer likeCount;
+    private Integer collectCount;
+    private Integer commentCount;
     private LocalDateTime createdAt;
 }

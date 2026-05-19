@@ -1,0 +1,156 @@
+package com.biteblog.recommend.service;
+
+import com.biteblog.recommend.entity.Note;
+import com.biteblog.recommend.entity.UserBehavior;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.stereotype.Service;
+
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.stream.Collectors;
+
+@Slf4j
+@Service
+@RequiredArgsConstructor
+public class RecommendPrecomputeService {
+
+    private static final String HOT_POOL_KEY = "recommend:hot:pool";
+    private static final int MAX_BEHAVIOR_SCAN = 2000;
+    private static final int MAX_HOT_POOL_SIZE = 200;
+    private static final int MAX_ITEMS_PER_USER = 30;
+    private static final int MAX_SIMILAR_PER_ITEM = 20;
+
+    private final RecommendDataService recommendDataService;
+    private final RecommendSearchService recommendSearchService;
+    private final RedisTemplate<String, Object> redisTemplate;
+
+    @Scheduled(initialDelay = 60_000, fixedDelay = 10 * 60_000)
+    public void scheduledPrecompute() {
+        try {
+            precompute();
+        } catch (Exception e) {
+            log.warn("Scheduled recommend precompute failed: {}", e.getMessage());
+        }
+    }
+
+    public Map<String, Object> precompute() {
+        long started = System.currentTimeMillis();
+        int hotCount = rebuildHotPool();
+        int itemSimCount = rebuildItemSimilarities();
+        long elapsed = System.currentTimeMillis() - started;
+        return Map.of(
+                "hotPoolCount", hotCount,
+                "itemSimilarityCount", itemSimCount,
+                "elapsedMs", elapsed
+        );
+    }
+
+    private int rebuildHotPool() {
+        List<Note> notes = recommendDataService.listNormalNotesForPrecompute(MAX_HOT_POOL_SIZE);
+        redisTemplate.delete(HOT_POOL_KEY);
+        int saved = 0;
+        for (Note note : notes) {
+            redisTemplate.opsForZSet().add(HOT_POOL_KEY, note.getId(), calculateHotScore(note));
+            saved++;
+        }
+        return saved;
+    }
+
+    private int rebuildItemSimilarities() {
+        List<UserBehavior> behaviors = recommendDataService.listRecentBehaviorsForPrecompute(MAX_BEHAVIOR_SCAN);
+        Map<Long, Map<Long, Double>> userItemWeights = new HashMap<>();
+        for (UserBehavior behavior : behaviors) {
+            if (behavior.getUserId() == null || behavior.getNoteId() == null) {
+                continue;
+            }
+            userItemWeights
+                    .computeIfAbsent(behavior.getUserId(), id -> new LinkedHashMap<>())
+                    .merge(behavior.getNoteId(), behaviorWeight(behavior), Math::max);
+        }
+
+        Map<Long, Map<Long, Double>> itemSimilarities = new HashMap<>();
+        for (Map<Long, Double> itemWeights : userItemWeights.values()) {
+            List<Map.Entry<Long, Double>> items = itemWeights.entrySet().stream()
+                    .limit(MAX_ITEMS_PER_USER)
+                    .toList();
+            for (int i = 0; i < items.size(); i++) {
+                for (int j = 0; j < items.size(); j++) {
+                    if (i == j) {
+                        continue;
+                    }
+                    Long itemId = items.get(i).getKey();
+                    Long similarItemId = items.get(j).getKey();
+                    double score = Math.sqrt(items.get(i).getValue() * items.get(j).getValue());
+                    itemSimilarities
+                            .computeIfAbsent(itemId, id -> new HashMap<>())
+                            .merge(similarItemId, score, Double::sum);
+                }
+            }
+        }
+
+        List<RecommendSearchService.ItemSimilarityDocument> documents = new ArrayList<>();
+        for (Map.Entry<Long, Map<Long, Double>> entry : itemSimilarities.entrySet()) {
+            entry.getValue().entrySet().stream()
+                    .sorted(Map.Entry.<Long, Double>comparingByValue().reversed())
+                    .limit(MAX_SIMILAR_PER_ITEM)
+                    .map(similar -> new RecommendSearchService.ItemSimilarityDocument(
+                            entry.getKey(), similar.getKey(), roundScore(similar.getValue())))
+                    .forEach(documents::add);
+        }
+        return recommendSearchService.rebuildItemSimilarityIndex(documents);
+    }
+
+    private double calculateHotScore(Note note) {
+        int like = defaultZero(note.getLikeCount());
+        int collect = defaultZero(note.getCollectCount());
+        int comment = defaultZero(note.getCommentCount());
+        int taste = defaultZero(note.getScoreTaste());
+        int smell = defaultZero(note.getScoreSmell());
+        int color = defaultZero(note.getScoreColor());
+        double quality = (taste + smell + color) / 3.0;
+        double base = like * 3.0 + collect * 5.0 + comment * 4.0 + quality;
+        if (note.getCreatedAt() == null) {
+            return base;
+        }
+        long hours = Math.max(1, Duration.between(note.getCreatedAt(), LocalDateTime.now()).toHours());
+        return roundScore(base + 24.0 / Math.sqrt(hours));
+    }
+
+    private double behaviorWeight(UserBehavior behavior) {
+        if (behavior.getWeight() != null && behavior.getWeight() > 0) {
+            return behavior.getWeight();
+        }
+        String type = behavior.getBehaviorType();
+        if ("comment".equalsIgnoreCase(type)) {
+            return 10.0;
+        }
+        if ("collect".equalsIgnoreCase(type) || "favorite".equalsIgnoreCase(type)) {
+            return 8.0;
+        }
+        if ("like".equalsIgnoreCase(type)) {
+            return 5.0;
+        }
+        if ("dwell".equalsIgnoreCase(type)) {
+            return 3.0;
+        }
+        return 1.0;
+    }
+
+    private int defaultZero(Integer value) {
+        return value == null ? 0 : value;
+    }
+
+    private double roundScore(double value) {
+        return Math.round(value * 1000.0) / 1000.0;
+    }
+}

@@ -1,0 +1,347 @@
+﻿**********************
+Windows PowerShell 脚本开始
+开始时间: 20260519095339
+用户名: NIU\Zijun Liu
+RunAs 用户: NIU\Zijun Liu
+配置名称: 
+计算机: NIU (Microsoft Windows NT 10.0.26200.0)
+主机应用程序: C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe -NoLogo -NoExit -Command chcp.com 65001
+进程 ID: 35028
+PSVersion: 5.1.26100.8457
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.8457
+BuildVersion: 10.0.26100.8457
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+===== Recommend Service verification =====
+Time: 2026-05-19 09:53:39
+Transcript: E:\desktop\BiteBlog\测试脚本\recommend-test-result.txt
+
+===== 0. Login test users =====
+  cold-start user: bb_user_60, phone=13800000060, userId=65
+  personalized user: bb_user_05, phone=13800000005, userId=10
+
+===== 1. Health and Gateway route =====
+  Direct /recommend/health: 3ms OK
+  Gateway /api/recommend/health: 10ms OK
+  Manual precompute hot pool and item_sim_index: 260ms OK
+
+===== 2. Cold-start latency: 10 requests, target avg < 600ms =====
+docker : Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+所在位置 E:\desktop\BiteBlog\测试脚本\recommend-test-verify.ps1:49 字符: 5
++     docker exec $redisContainer redis-cli -a $redisPassword DEL "expo ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: Using ...ay not be safe.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+  cold-start-1: 212ms OK
+docker : Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+所在位置 E:\desktop\BiteBlog\测试脚本\recommend-test-verify.ps1:49 字符: 5
++     docker exec $redisContainer redis-cli -a $redisPassword DEL "expo ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: Using ...ay not be safe.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+  cold-start-2: 202ms OK
+docker : Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+所在位置 E:\desktop\BiteBlog\测试脚本\recommend-test-verify.ps1:49 字符: 5
++     docker exec $redisContainer redis-cli -a $redisPassword DEL "expo ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: Using ...ay not be safe.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+  cold-start-3: 208ms OK
+docker : Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+所在位置 E:\desktop\BiteBlog\测试脚本\recommend-test-verify.ps1:49 字符: 5
++     docker exec $redisContainer redis-cli -a $redisPassword DEL "expo ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: Using ...ay not be safe.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+  cold-start-4: 175ms OK
+docker : Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+所在位置 E:\desktop\BiteBlog\测试脚本\recommend-test-verify.ps1:49 字符: 5
++     docker exec $redisContainer redis-cli -a $redisPassword DEL "expo ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: Using ...ay not be safe.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+  cold-start-5: 211ms OK
+docker : Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+所在位置 E:\desktop\BiteBlog\测试脚本\recommend-test-verify.ps1:49 字符: 5
++     docker exec $redisContainer redis-cli -a $redisPassword DEL "expo ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: Using ...ay not be safe.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+  cold-start-6: 189ms OK
+docker : Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+所在位置 E:\desktop\BiteBlog\测试脚本\recommend-test-verify.ps1:49 字符: 5
++     docker exec $redisContainer redis-cli -a $redisPassword DEL "expo ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: Using ...ay not be safe.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+  cold-start-7: 166ms OK
+docker : Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+所在位置 E:\desktop\BiteBlog\测试脚本\recommend-test-verify.ps1:49 字符: 5
++     docker exec $redisContainer redis-cli -a $redisPassword DEL "expo ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: Using ...ay not be safe.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+  cold-start-8: 182ms OK
+docker : Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+所在位置 E:\desktop\BiteBlog\测试脚本\recommend-test-verify.ps1:49 字符: 5
++     docker exec $redisContainer redis-cli -a $redisPassword DEL "expo ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: Using ...ay not be safe.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+  cold-start-9: 164ms OK
+docker : Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+所在位置 E:\desktop\BiteBlog\测试脚本\recommend-test-verify.ps1:49 字符: 5
++     docker exec $redisContainer redis-cli -a $redisPassword DEL "expo ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: Using ...ay not be safe.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+  cold-start-10: 194ms OK
+docker : Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+所在位置 E:\desktop\BiteBlog\测试脚本\recommend-test-verify.ps1:49 字符: 5
++     docker exec $redisContainer redis-cli -a $redisPassword DEL "expo ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: Using ...ay not be safe.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+  cold-start latency avg=190ms, min=164ms, max=212ms, target<600ms
+  result count=20, hasMore=True, cursor=21
+
+===== 2.1 Personalized latency: 10 requests, target avg < 600ms =====
+docker : Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+所在位置 E:\desktop\BiteBlog\测试脚本\recommend-test-verify.ps1:49 字符: 5
++     docker exec $redisContainer redis-cli -a $redisPassword DEL "expo ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: Using ...ay not be safe.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+  personalized-1: 260ms OK
+docker : Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+所在位置 E:\desktop\BiteBlog\测试脚本\recommend-test-verify.ps1:49 字符: 5
++     docker exec $redisContainer redis-cli -a $redisPassword DEL "expo ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: Using ...ay not be safe.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+  personalized-2: 203ms OK
+docker : Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+所在位置 E:\desktop\BiteBlog\测试脚本\recommend-test-verify.ps1:49 字符: 5
++     docker exec $redisContainer redis-cli -a $redisPassword DEL "expo ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: Using ...ay not be safe.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+  personalized-3: 185ms OK
+docker : Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+所在位置 E:\desktop\BiteBlog\测试脚本\recommend-test-verify.ps1:49 字符: 5
++     docker exec $redisContainer redis-cli -a $redisPassword DEL "expo ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: Using ...ay not be safe.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+  personalized-4: 197ms OK
+docker : Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+所在位置 E:\desktop\BiteBlog\测试脚本\recommend-test-verify.ps1:49 字符: 5
++     docker exec $redisContainer redis-cli -a $redisPassword DEL "expo ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: Using ...ay not be safe.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+  personalized-5: 187ms OK
+docker : Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+所在位置 E:\desktop\BiteBlog\测试脚本\recommend-test-verify.ps1:49 字符: 5
++     docker exec $redisContainer redis-cli -a $redisPassword DEL "expo ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: Using ...ay not be safe.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+  personalized-6: 179ms OK
+docker : Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+所在位置 E:\desktop\BiteBlog\测试脚本\recommend-test-verify.ps1:49 字符: 5
++     docker exec $redisContainer redis-cli -a $redisPassword DEL "expo ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: Using ...ay not be safe.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+  personalized-7: 166ms OK
+docker : Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+所在位置 E:\desktop\BiteBlog\测试脚本\recommend-test-verify.ps1:49 字符: 5
++     docker exec $redisContainer redis-cli -a $redisPassword DEL "expo ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: Using ...ay not be safe.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+  personalized-8: 242ms OK
+docker : Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+所在位置 E:\desktop\BiteBlog\测试脚本\recommend-test-verify.ps1:49 字符: 5
++     docker exec $redisContainer redis-cli -a $redisPassword DEL "expo ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: Using ...ay not be safe.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+  personalized-9: 226ms OK
+docker : Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+所在位置 E:\desktop\BiteBlog\测试脚本\recommend-test-verify.ps1:49 字符: 5
++     docker exec $redisContainer redis-cli -a $redisPassword DEL "expo ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: Using ...ay not be safe.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+  personalized-10: 230ms OK
+docker : Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+所在位置 E:\desktop\BiteBlog\测试脚本\recommend-test-verify.ps1:49 字符: 5
++     docker exec $redisContainer redis-cli -a $redisPassword DEL "expo ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: Using ...ay not be safe.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+  personalized latency avg=208ms, min=166ms, max=260ms, target<600ms
+  result count=20, hasMore=True, cursor=20
+
+===== 2.2 Tag recall latency: 10 requests, target avg < 600ms =====
+docker : Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+所在位置 E:\desktop\BiteBlog\测试脚本\recommend-test-verify.ps1:49 字符: 5
++     docker exec $redisContainer redis-cli -a $redisPassword DEL "expo ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: Using ...ay not be safe.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+  tag-recall-1: 190ms OK
+docker : Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+所在位置 E:\desktop\BiteBlog\测试脚本\recommend-test-verify.ps1:49 字符: 5
++     docker exec $redisContainer redis-cli -a $redisPassword DEL "expo ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: Using ...ay not be safe.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+  tag-recall-2: 180ms OK
+docker : Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+所在位置 E:\desktop\BiteBlog\测试脚本\recommend-test-verify.ps1:49 字符: 5
++     docker exec $redisContainer redis-cli -a $redisPassword DEL "expo ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: Using ...ay not be safe.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+  tag-recall-3: 185ms OK
+docker : Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+所在位置 E:\desktop\BiteBlog\测试脚本\recommend-test-verify.ps1:49 字符: 5
++     docker exec $redisContainer redis-cli -a $redisPassword DEL "expo ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: Using ...ay not be safe.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+  tag-recall-4: 234ms OK
+docker : Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+所在位置 E:\desktop\BiteBlog\测试脚本\recommend-test-verify.ps1:49 字符: 5
++     docker exec $redisContainer redis-cli -a $redisPassword DEL "expo ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: Using ...ay not be safe.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+  tag-recall-5: 204ms OK
+docker : Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+所在位置 E:\desktop\BiteBlog\测试脚本\recommend-test-verify.ps1:49 字符: 5
++     docker exec $redisContainer redis-cli -a $redisPassword DEL "expo ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: Using ...ay not be safe.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+  tag-recall-6: 238ms OK
+docker : Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+所在位置 E:\desktop\BiteBlog\测试脚本\recommend-test-verify.ps1:49 字符: 5
++     docker exec $redisContainer redis-cli -a $redisPassword DEL "expo ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: Using ...ay not be safe.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+  tag-recall-7: 231ms OK
+docker : Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+所在位置 E:\desktop\BiteBlog\测试脚本\recommend-test-verify.ps1:49 字符: 5
++     docker exec $redisContainer redis-cli -a $redisPassword DEL "expo ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: Using ...ay not be safe.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+  tag-recall-8: 177ms OK
+docker : Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+所在位置 E:\desktop\BiteBlog\测试脚本\recommend-test-verify.ps1:49 字符: 5
++     docker exec $redisContainer redis-cli -a $redisPassword DEL "expo ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: Using ...ay not be safe.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+  tag-recall-9: 211ms OK
+docker : Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+所在位置 E:\desktop\BiteBlog\测试脚本\recommend-test-verify.ps1:49 字符: 5
++     docker exec $redisContainer redis-cli -a $redisPassword DEL "expo ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: Using ...ay not be safe.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+  tag-recall-10: 230ms OK
+docker : Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+所在位置 E:\desktop\BiteBlog\测试脚本\recommend-test-verify.ps1:49 字符: 5
++     docker exec $redisContainer redis-cli -a $redisPassword DEL "expo ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: Using ...ay not be safe.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+  tag-recall latency avg=208ms, min=177ms, max=238ms, target<600ms
+  result count=20, hasMore=True, cursor=20
+
+===== 3. Pagination consistency =====
+docker : Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+所在位置 E:\desktop\BiteBlog\测试脚本\recommend-test-verify.ps1:49 字符: 5
++     docker exec $redisContainer redis-cli -a $redisPassword DEL "expo ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: Using ...ay not be safe.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+  page1 ids=[42,43,44,45,46,47,48,49,50,51] hasMore=True cursor=11
+  page2 ids=[53,59,54,60,55,61,56,62,57,58] hasMore=True cursor=22
+  pagination check: PASS, no duplicates in first two pages
+
+===== 4. Tag recall: ES first, MySQL fallback =====
+docker : Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+所在位置 E:\desktop\BiteBlog\测试脚本\recommend-test-verify.ps1:49 字符: 5
++     docker exec $redisContainer redis-cli -a $redisPassword DEL "expo ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: Using ...ay not be safe.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+  tag=Hotpot city=Guangzhou: 232ms OK
+  top titles=[Recommend Test 11 Hotpot | Recommend Test 21 Hotpot | Recommend Test 05 Noodles | Recommend Test 19 Cantonese | Recommend Test 02 BBQ]
+
+===== 5. Exposure Lua preclaim and idempotent report =====
+docker : Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+所在位置 E:\desktop\BiteBlog\测试脚本\recommend-test-verify.ps1:182 字符: 21
++ ... isMembers = docker exec $redisContainer redis-cli -a $redisPassword S ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: Using ...ay not be safe.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+docker : Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+所在位置 E:\desktop\BiteBlog\测试脚本\recommend-test-verify.ps1:183 字符: 17
++ ... $redisTtl = docker exec $redisContainer redis-cli -a $redisPassword T ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: Using ...ay not be safe.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+  after discover: exposure:65 members=["41","52"]
+  TTL=-1 seconds
+  exposures-post-1: 8ms OK
+  exposures-post-2-repeat: 5ms OK
+docker : Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+所在位置 E:\desktop\BiteBlog\测试脚本\recommend-test-verify.ps1:191 字符: 18
++ ...    $scard = docker exec $redisContainer redis-cli -a $redisPassword S ...
++                 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: Using ...ay not be safe.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+  repeated exposure ids=[42,43,44], Redis SCARD=5
+
+===== 6. ES item_sim_index ItemCF data =====
+  item_sim_index item_id=42 => [41:11.325,45:6.325]
+
+===== 7. Boundary parameters =====
+docker : Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+所在位置 E:\desktop\BiteBlog\测试脚本\recommend-test-verify.ps1:49 字符: 5
++     docker exec $redisContainer redis-cli -a $redisPassword DEL "expo ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: Using ...ay not be safe.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+  size=1: 21ms OK
+docker : Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+所在位置 E:\desktop\BiteBlog\测试脚本\recommend-test-verify.ps1:49 字符: 5
++     docker exec $redisContainer redis-cli -a $redisPassword DEL "expo ...
++     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Warning: Using ...ay not be safe.:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+  size=999 capped to 50: 261ms OK
+  size=1 count=1
+  size=999 count=29, expected <= 50
+
+===== 8. JMeter report note =====
+  Open after JMeter run: jmeter/recommendservice-report/index.html
+  Screenshot Dashboard and Statistics table.
+
+===== Done =====
+**********************
+Windows PowerShell 脚本结束
+结束时间: 20260519095351
+**********************

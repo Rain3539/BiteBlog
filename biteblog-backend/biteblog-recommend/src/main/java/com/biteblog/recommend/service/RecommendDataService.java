@@ -26,6 +26,7 @@ public class RecommendDataService {
 
     private static final int NORMAL_STATUS = 1;
     private static final int MAX_HOT_NOTES_SIZE = 100;
+    private static final int MAX_PRECOMPUTE_SIZE = 5000;
 
     private final NoteMapper noteMapper;
     private final NoteImageMapper noteImageMapper;
@@ -120,6 +121,24 @@ public class RecommendDataService {
                 .in(UserBehavior::getUserId, ids)
                 .orderByDesc(UserBehavior::getCreatedAt)
                 .last("LIMIT " + Math.max(1, limit)));
+    }
+
+    public List<UserBehavior> listRecentBehaviorsForPrecompute(int limit) {
+        int safeLimit = Math.max(1, Math.min(limit, MAX_PRECOMPUTE_SIZE));
+        return userBehaviorMapper.selectList(new LambdaQueryWrapper<UserBehavior>()
+                .orderByDesc(UserBehavior::getCreatedAt)
+                .last("LIMIT " + safeLimit));
+    }
+
+    public List<Note> listNormalNotesForPrecompute(int limit) {
+        int safeLimit = Math.max(1, Math.min(limit, MAX_PRECOMPUTE_SIZE));
+        return noteMapper.selectList(new LambdaQueryWrapper<Note>()
+                .eq(Note::getStatus, NORMAL_STATUS)
+                .orderByDesc(Note::getLikeCount)
+                .orderByDesc(Note::getCollectCount)
+                .orderByDesc(Note::getCommentCount)
+                .orderByDesc(Note::getCreatedAt)
+                .last("LIMIT " + safeLimit));
     }
 
     public Map<Long, Note> getNormalNotesByIds(Collection<Long> noteIds) {

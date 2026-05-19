@@ -1,4 +1,4 @@
-﻿$ErrorActionPreference = "Stop"
+$ErrorActionPreference = "Stop"
 
 $mysqlContainer = "biteblog-mysql"
 $redisContainer = "biteblog-redis"
@@ -6,27 +6,35 @@ $mysqlPassword = "root123456"
 $redisPassword = "redis123456"
 
 Write-Host "===== Init Recommend Service Test Data =====" -ForegroundColor Cyan
+Write-Host "This script reuses users from sql/init-data.ps1 and does not create extra users."
+
+function Assert-ContainerRunning($containerName) {
+    $running = docker inspect -f "{{.State.Running}}" $containerName 2>$null
+    if ($LASTEXITCODE -ne 0 -or $running.Trim() -ne "true") {
+        throw "Docker container '$containerName' is not running. Run 'docker compose up -d' first."
+    }
+}
+
+Assert-ContainerRunning $mysqlContainer
+Assert-ContainerRunning $redisContainer
 
 $sql = @"
 USE biteblog;
 
-INSERT INTO user (phone, username, password_hash, avatar, bio, status)
-VALUES
-('13900003001', 'recommend_user_foodie', '\$2a\$10\$recommend.demo.hash.0001', NULL, 'Recommend demo user: likes hotpot and bbq', 1),
-('13900003002', 'recommend_user_tea', '\$2a\$10\$recommend.demo.hash.0002', NULL, 'Recommend demo user: likes tea and dessert', 1),
-('13900003003', 'recommend_user_new', '\$2a\$10\$recommend.demo.hash.0003', NULL, 'Recommend cold start user', 1),
-('13900003004', 'recommend_author_01', '\$2a\$10\$recommend.demo.hash.0004', NULL, 'Recommend demo author', 1),
-('13900003005', 'recommend_user_neighbor', '\$2a\$10\$recommend.demo.hash.0005', NULL, 'Recommend similar user for ItemCF', 1)
-ON DUPLICATE KEY UPDATE
-  username = VALUES(username),
-  bio = VALUES(bio),
-  status = 1;
+SELECT id INTO @bigv_author FROM user WHERE phone = '13800000001';
+SELECT id INTO @normal_author FROM user WHERE phone = '13800000004';
+SELECT id INTO @foodie FROM user WHERE phone = '13800000005';
+SELECT id INTO @tea FROM user WHERE phone = '13800000006';
+SELECT id INTO @neighbor FROM user WHERE phone = '13800000007';
+SELECT id INTO @cold_user FROM user WHERE phone = '13800000060';
 
-SELECT id INTO @foodie FROM user WHERE phone = '13900003001';
-SELECT id INTO @tea FROM user WHERE phone = '13900003002';
-SELECT id INTO @new_user FROM user WHERE phone = '13900003003';
-SELECT id INTO @author FROM user WHERE phone = '13900003004';
-SELECT id INTO @neighbor FROM user WHERE phone = '13900003005';
+SET @missing =
+  IF(@bigv_author IS NULL, 1, 0) +
+  IF(@normal_author IS NULL, 1, 0) +
+  IF(@foodie IS NULL, 1, 0) +
+  IF(@tea IS NULL, 1, 0) +
+  IF(@neighbor IS NULL, 1, 0) +
+  IF(@cold_user IS NULL, 1, 0);
 
 DELETE ub FROM user_behavior ub
 JOIN note n ON ub.note_id = n.id
@@ -54,30 +62,109 @@ INSERT INTO note (
   author_id, title, content, shop_name, address, longitude, latitude,
   score_color, score_smell, score_taste, like_count, collect_count, comment_count,
   status, created_at, updated_at
-) VALUES
-(@author, 'Recommend Test 01 Hotpot', 'Tags: hotpot, spicy, friends. High interaction candidate for tag recommendation.', 'Demo Hotpot House', 'Guangzhou Tianhe', 113.3245200, 23.1291100, 5, 5, 5, 32, 16, 8, 1, NOW() - INTERVAL 1 HOUR, NOW()),
-(@author, 'Recommend Test 02 BBQ', 'Tags: bbq, night food. Similar item candidate for ItemCF.', 'Demo BBQ Shop', 'Guangzhou Yuexiu', 113.2643600, 23.1290800, 4, 5, 5, 24, 10, 6, 1, NOW() - INTERVAL 3 HOUR, NOW()),
-(@author, 'Recommend Test 03 Dessert', 'Tags: dessert, tea, afternoon. Candidate for another interest group.', 'Demo Dessert Bar', 'Guangzhou Haizhu', 113.3172000, 23.0833100, 5, 4, 4, 18, 14, 5, 1, NOW() - INTERVAL 6 HOUR, NOW()),
-(@author, 'Recommend Test 04 Tea', 'Tags: tea, quiet, work. Candidate for tag filtering.', 'Demo Tea Room', 'Guangzhou Liwan', 113.2442600, 23.1258600, 4, 4, 5, 15, 9, 4, 1, NOW() - INTERVAL 8 HOUR, NOW()),
-(@author, 'Recommend Test 05 Noodles', 'Tags: noodles, quick meal. Cold start fallback candidate.', 'Demo Noodle Shop', 'Guangzhou Panyu', 113.3839700, 22.9359900, 4, 4, 4, 12, 5, 3, 1, NOW() - INTERVAL 12 HOUR, NOW());
+)
+SELECT * FROM (
+  SELECT
+         CASE WHEN seed.n <= 18 THEN @bigv_author ELSE @normal_author END author_id,
+         CONCAT(
+           'Recommend Test ',
+           LPAD(seed.n, 2, '0'),
+           ' ',
+           CASE seed.n % 10
+             WHEN 1 THEN 'Hotpot'
+             WHEN 2 THEN 'BBQ'
+             WHEN 3 THEN 'Dessert'
+             WHEN 4 THEN 'Tea'
+             WHEN 5 THEN 'Noodles'
+             WHEN 6 THEN 'Coffee'
+             WHEN 7 THEN 'Sushi'
+             WHEN 8 THEN 'Brunch'
+             WHEN 9 THEN 'Cantonese'
+             ELSE 'Bakery'
+           END
+         ) title,
+         CONCAT(
+           'Tags: ',
+           CASE seed.n % 10
+             WHEN 1 THEN 'hotpot, spicy, friends'
+             WHEN 2 THEN 'bbq, night food, meat'
+             WHEN 3 THEN 'dessert, sweet, afternoon'
+             WHEN 4 THEN 'tea, quiet, work'
+             WHEN 5 THEN 'noodles, quick meal, comfort'
+             WHEN 6 THEN 'coffee, brunch, reading'
+             WHEN 7 THEN 'sushi, seafood, date'
+             WHEN 8 THEN 'brunch, bakery, weekend'
+             WHEN 9 THEN 'cantonese, dimsum, family'
+             ELSE 'bakery, bread, breakfast'
+           END,
+           '. Recommend paging sample #',
+           seed.n,
+           '.'
+         ) content,
+         CONCAT(
+           'Demo ',
+           CASE seed.n % 10
+             WHEN 1 THEN 'Hotpot House'
+             WHEN 2 THEN 'BBQ Shop'
+             WHEN 3 THEN 'Dessert Bar'
+             WHEN 4 THEN 'Tea Room'
+             WHEN 5 THEN 'Noodle Shop'
+             WHEN 6 THEN 'Coffee Lab'
+             WHEN 7 THEN 'Sushi Table'
+             WHEN 8 THEN 'Brunch Cafe'
+             WHEN 9 THEN 'Cantonese Kitchen'
+             ELSE 'Bakery'
+           END,
+           ' ',
+           seed.n
+         ) shop_name,
+         CASE seed.n % 6
+           WHEN 1 THEN 'Guangzhou Tianhe'
+           WHEN 2 THEN 'Guangzhou Yuexiu'
+           WHEN 3 THEN 'Guangzhou Haizhu'
+           WHEN 4 THEN 'Guangzhou Liwan'
+           WHEN 5 THEN 'Guangzhou Panyu'
+           ELSE 'Guangzhou Baiyun'
+         END address,
+         113.2000000 + seed.n / 1000.0 longitude,
+         23.0000000 + seed.n / 1000.0 latitude,
+         3 + seed.n % 3 score_color,
+         3 + (seed.n + 1) % 3 score_smell,
+         3 + (seed.n + 2) % 3 score_taste,
+         65 - seed.n like_count,
+         36 - FLOOR(seed.n / 2) collect_count,
+         18 - FLOOR(seed.n / 3) comment_count,
+         1 status,
+         NOW() - INTERVAL seed.n HOUR created_at,
+         NOW() updated_at
+  FROM (
+    SELECT 1 n UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL SELECT 5
+    UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL SELECT 10
+    UNION ALL SELECT 11 UNION ALL SELECT 12 UNION ALL SELECT 13 UNION ALL SELECT 14 UNION ALL SELECT 15
+    UNION ALL SELECT 16 UNION ALL SELECT 17 UNION ALL SELECT 18 UNION ALL SELECT 19 UNION ALL SELECT 20
+    UNION ALL SELECT 21 UNION ALL SELECT 22 UNION ALL SELECT 23 UNION ALL SELECT 24 UNION ALL SELECT 25
+    UNION ALL SELECT 26 UNION ALL SELECT 27 UNION ALL SELECT 28 UNION ALL SELECT 29 UNION ALL SELECT 30
+  ) seed
+) seed
+WHERE @missing = 0;
 
 INSERT INTO user_behavior (user_id, note_id, behavior_type, weight, dwell_time, created_at)
 SELECT @foodie, id, 'view', 1, 45, NOW() FROM note WHERE title IN ('Recommend Test 01 Hotpot', 'Recommend Test 02 BBQ');
 
 INSERT INTO user_behavior (user_id, note_id, behavior_type, weight, dwell_time, created_at)
-SELECT @foodie, id, 'like', 3, NULL, NOW() FROM note WHERE title IN ('Recommend Test 01 Hotpot', 'Recommend Test 02 BBQ');
+SELECT @foodie, id, 'like', 5, NULL, NOW() FROM note WHERE title IN ('Recommend Test 01 Hotpot', 'Recommend Test 02 BBQ');
 
 INSERT INTO user_behavior (user_id, note_id, behavior_type, weight, dwell_time, created_at)
-SELECT @foodie, id, 'collect', 5, NULL, NOW() FROM note WHERE title = 'Recommend Test 01 Hotpot';
+SELECT @foodie, id, 'collect', 8, NULL, NOW() FROM note WHERE title = 'Recommend Test 01 Hotpot';
 
 INSERT INTO user_behavior (user_id, note_id, behavior_type, weight, dwell_time, created_at)
 SELECT @tea, id, 'view', 1, 60, NOW() FROM note WHERE title IN ('Recommend Test 03 Dessert', 'Recommend Test 04 Tea');
 
 INSERT INTO user_behavior (user_id, note_id, behavior_type, weight, dwell_time, created_at)
-SELECT @tea, id, 'like', 3, NULL, NOW() FROM note WHERE title IN ('Recommend Test 03 Dessert', 'Recommend Test 04 Tea');
+SELECT @tea, id, 'like', 5, NULL, NOW() FROM note WHERE title IN ('Recommend Test 03 Dessert', 'Recommend Test 04 Tea');
 
 INSERT INTO user_behavior (user_id, note_id, behavior_type, weight, dwell_time, created_at)
-SELECT @tea, id, 'collect', 5, NULL, NOW() FROM note WHERE title = 'Recommend Test 03 Dessert';
+SELECT @tea, id, 'collect', 8, NULL, NOW() FROM note WHERE title = 'Recommend Test 03 Dessert';
 
 INSERT INTO user_behavior (user_id, note_id, behavior_type, weight, dwell_time, created_at)
 SELECT @neighbor, id, 'like', 5, NULL, NOW() FROM note WHERE title IN ('Recommend Test 01 Hotpot', 'Recommend Test 02 BBQ', 'Recommend Test 05 Noodles');
@@ -101,12 +188,14 @@ INSERT INTO note_favorite (note_id, user_id, created_at)
 SELECT id, @tea, NOW() FROM note WHERE title = 'Recommend Test 03 Dessert'
 ON DUPLICATE KEY UPDATE created_at = VALUES(created_at);
 
-SELECT 'foodie_user_id', @foodie;
-SELECT 'tea_user_id', @tea;
-SELECT 'cold_start_user_id', @new_user;
-SELECT 'author_user_id', @author;
-SELECT 'neighbor_user_id', @neighbor;
-SELECT id, title FROM note WHERE title LIKE 'Recommend Test%' ORDER BY id;
+SELECT 'missing_required_users', @missing;
+SELECT 'bigv_author_13800000001', @bigv_author;
+SELECT 'normal_author_13800000004', @normal_author;
+SELECT 'foodie_user_13800000005', @foodie;
+SELECT 'tea_user_13800000006', @tea;
+SELECT 'neighbor_user_13800000007', @neighbor;
+SELECT 'cold_start_user_13800000060', @cold_user;
+SELECT id, author_id, title FROM note WHERE title LIKE 'Recommend Test%' ORDER BY id;
 "@
 
 Write-Host "Writing MySQL recommend test data..." -ForegroundColor Cyan
@@ -115,32 +204,117 @@ $sql | docker exec -i $mysqlContainer mysql -uroot "-p$mysqlPassword" biteblog
 Write-Host ""
 Write-Host "Writing Redis recommend hot pool and exposure sample..." -ForegroundColor Cyan
 
+$missing = docker exec $mysqlContainer mysql -N -uroot "-p$mysqlPassword" biteblog -e "SELECT IF(COUNT(*) = 6, 0, 1) FROM user WHERE phone IN ('13800000001','13800000004','13800000005','13800000006','13800000007','13800000060');"
+if ($missing.Trim() -ne "0") {
+    throw "Required users are missing. Run .\sql\init-data.ps1 first."
+}
+
 $noteIds = docker exec $mysqlContainer mysql -N -uroot "-p$mysqlPassword" biteblog -e "SELECT id FROM note WHERE title LIKE 'Recommend Test%' ORDER BY id;"
-$foodieUserId = docker exec $mysqlContainer mysql -N -uroot "-p$mysqlPassword" biteblog -e "SELECT id FROM user WHERE phone='13900003001';"
+$foodieUserId = docker exec $mysqlContainer mysql -N -uroot "-p$mysqlPassword" biteblog -e "SELECT id FROM user WHERE phone='13800000005';"
 
 docker exec $redisContainer redis-cli -a $redisPassword DEL recommend:hot:pool "exposure:$foodieUserId" | Out-Null
 
-$score = 100
+$score = 300
 foreach ($id in $noteIds) {
     if ([string]::IsNullOrWhiteSpace($id)) {
         continue
     }
+    docker exec $redisContainer redis-cli -a $redisPassword DEL "recommend:itemcf:similar:$id" | Out-Null
     docker exec $redisContainer redis-cli -a $redisPassword ZADD recommend:hot:pool $score $id | Out-Null
-    $score -= 10
+    $score -= 5
 }
 
-if ($noteIds.Count -gt 0) {
-    docker exec $redisContainer redis-cli -a $redisPassword SADD "exposure:$foodieUserId" $noteIds[0] | Out-Null
+$noteIdList = @($noteIds | Where-Object { ![string]::IsNullOrWhiteSpace($_) })
+if ($noteIdList.Count -ge 9) {
+    docker exec $redisContainer redis-cli -a $redisPassword ZADD "recommend:itemcf:similar:$($noteIdList[0])" 0.93 $noteIdList[1] 0.81 $noteIdList[4] 0.72 $noteIdList[5] | Out-Null
+    docker exec $redisContainer redis-cli -a $redisPassword ZADD "recommend:itemcf:similar:$($noteIdList[1])" 0.93 $noteIdList[0] 0.86 $noteIdList[4] 0.68 $noteIdList[6] | Out-Null
+    docker exec $redisContainer redis-cli -a $redisPassword ZADD "recommend:itemcf:similar:$($noteIdList[2])" 0.90 $noteIdList[3] 0.77 $noteIdList[7] | Out-Null
+    docker exec $redisContainer redis-cli -a $redisPassword ZADD "recommend:itemcf:similar:$($noteIdList[3])" 0.90 $noteIdList[2] 0.74 $noteIdList[8] | Out-Null
+    docker exec $redisContainer redis-cli -a $redisPassword ZADD "recommend:itemcf:similar:$($noteIdList[4])" 0.81 $noteIdList[0] 0.86 $noteIdList[1] | Out-Null
+}
+
+if ($noteIdList.Count -gt 0) {
+    docker exec $redisContainer redis-cli -a $redisPassword SADD "exposure:$foodieUserId" $noteIdList[0] | Out-Null
     docker exec $redisContainer redis-cli -a $redisPassword EXPIRE "exposure:$foodieUserId" 604800 | Out-Null
 }
 
 Write-Host ""
+Write-Host "Syncing recommend samples to Elasticsearch post_index..." -ForegroundColor Cyan
+try {
+    $rows = docker exec $mysqlContainer mysql -N -B -uroot "-p$mysqlPassword" biteblog -e "SELECT id, author_id, title, content, shop_name, like_count, collect_count, comment_count, score_color, score_smell, score_taste, DATE_FORMAT(created_at, '%Y-%m-%dT%H:%i:%s') FROM note WHERE title LIKE 'Recommend Test%' ORDER BY id;"
+    foreach ($row in $rows) {
+        if ([string]::IsNullOrWhiteSpace($row)) {
+            continue
+        }
+        $cols = $row -split "`t"
+        if ($cols.Count -lt 12) {
+            continue
+        }
+        $doc = @{
+            postId = "$($cols[0])"
+            user_id = "$($cols[1])"
+            title = $cols[2]
+            content = $cols[3]
+            store_name = $cols[4]
+            shopName = $cols[4]
+            tags = @($cols[2] -replace '^Recommend Test \d+ ', '')
+            like_count = [long]$cols[5]
+            collect_count = [long]$cols[6]
+            comment_count = [long]$cols[7]
+            score_color = [int]$cols[8]
+            score_smell = [int]$cols[9]
+            score_taste = [int]$cols[10]
+            status = 1
+            created_at = $cols[11]
+        }
+        $body = $doc | ConvertTo-Json -Depth 8 -Compress
+        Invoke-RestMethod -Uri "http://localhost:9200/post_index/_doc/$($cols[0])" -Method Put -ContentType "application/json; charset=utf-8" -Body $body | Out-Null
+    }
+} catch {
+    Write-Host "[WARN] ES sync skipped or failed: $($_.Exception.Message)" -ForegroundColor Yellow
+}
+
+Write-Host ""
+Write-Host "Syncing Recommend ItemCF samples to Elasticsearch item_sim_index..." -ForegroundColor Cyan
+try {
+    if ($noteIdList.Count -ge 9) {
+        $relations = @(
+            @{ item_id = [long]$noteIdList[0]; similar_item_id = [long]$noteIdList[1]; score = 0.93 },
+            @{ item_id = [long]$noteIdList[0]; similar_item_id = [long]$noteIdList[4]; score = 0.81 },
+            @{ item_id = [long]$noteIdList[0]; similar_item_id = [long]$noteIdList[5]; score = 0.72 },
+            @{ item_id = [long]$noteIdList[1]; similar_item_id = [long]$noteIdList[0]; score = 0.93 },
+            @{ item_id = [long]$noteIdList[1]; similar_item_id = [long]$noteIdList[4]; score = 0.86 },
+            @{ item_id = [long]$noteIdList[1]; similar_item_id = [long]$noteIdList[6]; score = 0.68 },
+            @{ item_id = [long]$noteIdList[2]; similar_item_id = [long]$noteIdList[3]; score = 0.90 },
+            @{ item_id = [long]$noteIdList[2]; similar_item_id = [long]$noteIdList[7]; score = 0.77 },
+            @{ item_id = [long]$noteIdList[3]; similar_item_id = [long]$noteIdList[2]; score = 0.90 },
+            @{ item_id = [long]$noteIdList[3]; similar_item_id = [long]$noteIdList[8]; score = 0.74 },
+            @{ item_id = [long]$noteIdList[4]; similar_item_id = [long]$noteIdList[0]; score = 0.81 },
+            @{ item_id = [long]$noteIdList[4]; similar_item_id = [long]$noteIdList[1]; score = 0.86 }
+        )
+        foreach ($relation in $relations) {
+            $body = $relation | ConvertTo-Json -Depth 5 -Compress
+            $docId = "$($relation.item_id)_$($relation.similar_item_id)"
+            Invoke-RestMethod -Uri "http://localhost:9200/item_sim_index/_doc/$docId" -Method Put -ContentType "application/json; charset=utf-8" -Body $body | Out-Null
+        }
+    }
+} catch {
+    Write-Host "[WARN] ES item_sim_index sync skipped or failed: $($_.Exception.Message)" -ForegroundColor Yellow
+}
+
+Write-Host ""
 Write-Host "===== Recommend Test Data Ready =====" -ForegroundColor Green
-Write-Host "Users:" -ForegroundColor White
-Write-Host "  13900003001 recommend_user_foodie"
-Write-Host "  13900003002 recommend_user_tea"
-Write-Host "  13900003003 recommend_user_new"
-Write-Host "  13900003005 recommend_user_neighbor"
+Write-Host "Reused users:" -ForegroundColor White
+Write-Host "  13800000001 big-V author"
+Write-Host "  13800000004 normal author"
+Write-Host "  13800000005 foodie behavior user"
+Write-Host "  13800000006 tea behavior user"
+Write-Host "  13800000007 ItemCF neighbor user"
+Write-Host "  13800000060 cold-start user"
 Write-Host "Redis keys:" -ForegroundColor White
 Write-Host "  recommend:hot:pool"
-Write-Host "  exposure:<foodieUserId>"
+Write-Host "  recommend:itemcf:similar:<postId>"
+Write-Host "  exposure:<13800000005 userId>"
+Write-Host "Elasticsearch indexes:" -ForegroundColor White
+Write-Host "  post_index"
+Write-Host "  item_sim_index"
