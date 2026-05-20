@@ -133,7 +133,7 @@ spring:
 
 ### 5.1 性能
 
-| 场景与挑战 | 解决办法 | 测试 |
+| 问题 | 解决方案 | 测试 |
 |-----------|----------|------|
 | Feed 流读取需在 300ms 内返回 | 优先走 Redis ZSet（O(log N) 范围查询），inbox 已缓存笔记 ID 和发布时间戳，避免直接扫 MySQL；笔记详情查询使用子查询一次性获取封面图，避免 N+1 问题 | F-1 |
 | 大V 粉丝量大，实时拉取可能拉过多数据 | 大V 路径仅拉取 inbox 中全部笔记作为候选，在后续合并去重和排序后才分页，实际返回受 size 限制 | — |
@@ -143,7 +143,7 @@ spring:
 
 ### 5.2 一致性
 
-| 场景与挑战 | 解决办法 | 测试 |
+| 问题 | 解决方案 | 测试 |
 |-----------|----------|------|
 | 普通用户发布后，所有粉丝 inbox 必须包含该笔记 | FeedEventListener 消费 `note.published`，取出 `fans:{authorId}` 集合，逐个 `ZADD` 到粉丝 inbox，score 为发布时间戳。所有粉丝的 ZSCORE 一致 | F-6 (FC-1) |
 | 大V 笔记不应通过 fanout 推送到粉丝 inbox | 消费时读取 `cache:user:{authorId}` 的 `followerCount`，≥50 则标记为 bigv，仅写入自身 inbox 供拉取，不执行 fanout | F-7 (FC-2) |
@@ -154,7 +154,7 @@ spring:
 
 ### 5.3 可靠性
 
-| 场景与挑战 | 解决办法 | 测试 |
+| 问题 | 解决方案 | 测试 |
 |-----------|----------|------|
 | Redis 宕机或 inbox 被清空 | 自动降级到 `getTimelineFromDb` 直接查 MySQL，并将结果通过 `warmUpInbox` 回填到 inbox，保证下次请求恢复缓存命中 | F-8 |
 | RabbitMQ 消息丢失导致 inbox 长期为空 | 冷启动兜底：inbox 为空时自动走 MySQL 降级并回填；且 Queue/Exchange 声明为 durable、消息 PERSISTENT 投递，Broker 重启不丢 | F-8 |
@@ -163,7 +163,7 @@ spring:
 
 ### 5.4 安全性
 
-| 场景与挑战 | 解决办法 | 测试 |
+| 问题 | 解决方案 | 测试 |
 |-----------|----------|------|
 | 未登录用户不能访问 feed | 接口通过 Gateway 统一 JWT 鉴权，`X-User-Id` 由 Gateway 解析 Token 后注入，Feed Service 直接信任该请求头 | — |
 | 已删除或禁用笔记不能出现在 feed 中 | SQL 查询只取 `status=1` 的公开笔记；Redis 侧通过 `feed:deleted` Set 在读取路径中过滤 | F-9 |
@@ -171,7 +171,7 @@ spring:
 
 ### 5.5 可维护性
 
-| 场景与挑战 | 解决办法 | 测试 |
+| 问题 | 解决方案 | 测试 |
 |-----------|----------|------|
 | 大V 阈值可能需要调整 | 阈值定义在 `FeedEventListener` 常量 `BIG_V_THRESHOLD = 50`，一处修改全局生效 | — |
 | Redis Key 管理 | 统一前缀规范：`feed:inbox:` / `feed:bigv` / `feed:deleted` / `follow:` / `fans:`，便于运维定位和清理 | — |
