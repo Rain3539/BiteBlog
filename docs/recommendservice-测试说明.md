@@ -304,3 +304,5 @@ PS1 脚本测试结果截图：
 JMeter 压测截图：
 
 截图从 `jmeter/recommendservice-report/index.html` 的 Dashboard 和 Statistics 区域截取，保存为 `jmeter/recommend-service截图.png`。
+
+![Recommend JMeter 压测截图](../jmeter/recommend-service-截图.png)
