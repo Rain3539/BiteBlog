@@ -28,7 +28,7 @@ Transcript: E:\desktop\BiteBlog\测试脚本\recommend-test-result.txt
 ===== 1. Health and Gateway route =====
   Direct /recommend/health: 4ms OK
   Gateway /api/recommend/health: 9ms OK
-  Manual precompute hot pool and item_sim_index: 224ms OK
+  Manual precompute hot pool and Redis ItemCF: 224ms OK
   Redis rank daily key=rank:daily:2026-05-19, count=32
 
 ===== 1.1 MQ event consumption: publish and interaction =====
@@ -97,8 +97,8 @@ Transcript: E:\desktop\BiteBlog\测试脚本\recommend-test-result.txt
   exposures-post-2-repeat: 4ms OK
   repeated exposure ids=[80,81,82], Redis SCARD=5
 
-===== 6. ES item_sim_index ItemCF data =====
-  item_sim_index item_id=80 => [79:11.325,83:6.325]
+===== 6. Redis ItemCF similarity data =====
+  Redis recommend:itemcf:similar:80 => [79,11.325,83,6.325]
 
 ===== 7. Boundary parameters =====
   size=1: 21ms OK

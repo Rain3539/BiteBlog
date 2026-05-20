@@ -157,10 +157,6 @@ public class RecommendService {
             return;
         }
 
-        if (recallByEsItemCf(userId, interactedNoteIds, recallSize, candidates)) {
-            return;
-        }
-
         if (recallByRedisItemCf(userId, interactedNoteIds, recallSize, candidates)) {
             return;
         }
@@ -203,11 +199,6 @@ public class RecommendService {
                 candidate.reason = ITEM_CF_REASON;
             }
         }
-    }
-
-    private boolean recallByEsItemCf(Long userId, Set<Long> interactedNoteIds, int recallSize, Map<Long, Candidate> candidates) {
-        Map<Long, Double> itemCfScores = recommendSearchService.searchSimilarPostScores(interactedNoteIds, recallSize);
-        return fillItemCfCandidates(userId, itemCfScores, recallSize, candidates);
     }
 
     private boolean recallByRedisItemCf(Long userId, Set<Long> interactedNoteIds, int recallSize, Map<Long, Candidate> candidates) {

@@ -1,31 +1,30 @@
 # Recommend Service JMeter Report
 
-This directory is reserved for Recommend Service JMeter HTML report output.
+该目录用于保存 Recommend Service 的 JMeter HTML 压测报告。
 
-Current reference script covers:
+当前压测脚本：`jmeter/recommend-service-test.jmx`
 
-- `GET /api/recommend/discover?cursor=0&size=20`
-- `GET /api/recommend/discover?cursor=0&size=5`
-- `GET /api/recommend/discover?cursor=0&size=20&tag=火锅`
-- `POST /api/recommend/exposures`
-- `GET /api/recommend/health`
+压测覆盖接口：
 
-Suggested command:
+- `GET /recommend/discover?cursor=0&size=20`
+- `GET /recommend/discover?cursor=0&size=5`
+- `GET /recommend/discover?cursor=0&size=20&tag=Hotpot&city=Guangzhou`
+- `POST /recommend/exposures`
+- `GET /recommend/discover?cursor=20&size=20`
 
-```bash
-jmeter -n -t jmeter/recommend-service-test.jmx \
-  -Jhost=localhost \
-  -Jport=8080 \
-  -Jtoken=<token> \
-  -JuserId=1001 \
-  -l jmeter/recommend-service-result.jtl \
+压测规模：
+
+- 10 个并发用户
+- 每线程 200 轮
+- 每轮 5 个请求
+- 总请求数约 10,000
+
+运行命令：
+
+```powershell
+jmeter -n -f -t jmeter/recommend-service-test.jmx `
+  -Jhost=localhost `
+  -Jport=8084 `
+  -l jmeter/recommend-service-result.jtl `
   -e -o jmeter/recommendservice-report
-```
-
-If the directory already contains an old report, clean or move the old generated files before running JMeter again.
-
-Last code verification:
-
-```text
-2026-05-11 mvn -pl biteblog-recommend -am compile -DskipTests: PASS
 ```

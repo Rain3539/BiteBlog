@@ -283,34 +283,6 @@ try {
 }
 
 Write-Host ""
-Write-Host "Syncing Recommend ItemCF samples to Elasticsearch item_sim_index..." -ForegroundColor Cyan
-try {
-    if ($noteIdList.Count -ge 9) {
-        $relations = @(
-            @{ item_id = [long]$noteIdList[0]; similar_item_id = [long]$noteIdList[1]; score = 0.93 },
-            @{ item_id = [long]$noteIdList[0]; similar_item_id = [long]$noteIdList[4]; score = 0.81 },
-            @{ item_id = [long]$noteIdList[0]; similar_item_id = [long]$noteIdList[5]; score = 0.72 },
-            @{ item_id = [long]$noteIdList[1]; similar_item_id = [long]$noteIdList[0]; score = 0.93 },
-            @{ item_id = [long]$noteIdList[1]; similar_item_id = [long]$noteIdList[4]; score = 0.86 },
-            @{ item_id = [long]$noteIdList[1]; similar_item_id = [long]$noteIdList[6]; score = 0.68 },
-            @{ item_id = [long]$noteIdList[2]; similar_item_id = [long]$noteIdList[3]; score = 0.90 },
-            @{ item_id = [long]$noteIdList[2]; similar_item_id = [long]$noteIdList[7]; score = 0.77 },
-            @{ item_id = [long]$noteIdList[3]; similar_item_id = [long]$noteIdList[2]; score = 0.90 },
-            @{ item_id = [long]$noteIdList[3]; similar_item_id = [long]$noteIdList[8]; score = 0.74 },
-            @{ item_id = [long]$noteIdList[4]; similar_item_id = [long]$noteIdList[0]; score = 0.81 },
-            @{ item_id = [long]$noteIdList[4]; similar_item_id = [long]$noteIdList[1]; score = 0.86 }
-        )
-        foreach ($relation in $relations) {
-            $body = $relation | ConvertTo-Json -Depth 5 -Compress
-            $docId = "$($relation.item_id)_$($relation.similar_item_id)"
-            Invoke-RestMethod -Uri "http://localhost:9200/item_sim_index/_doc/$docId" -Method Put -ContentType "application/json; charset=utf-8" -Body $body | Out-Null
-        }
-    }
-} catch {
-    Write-Host "[WARN] ES item_sim_index sync skipped or failed: $($_.Exception.Message)" -ForegroundColor Yellow
-}
-
-Write-Host ""
 Write-Host "===== Recommend Test Data Ready =====" -ForegroundColor Green
 Write-Host "Reused users:" -ForegroundColor White
 Write-Host "  13800000001 big-V author"
@@ -325,4 +297,3 @@ Write-Host "  recommend:itemcf:similar:<postId>"
 Write-Host "  exposure:<13800000005 userId>"
 Write-Host "Elasticsearch indexes:" -ForegroundColor White
 Write-Host "  post_index"
-Write-Host "  item_sim_index"

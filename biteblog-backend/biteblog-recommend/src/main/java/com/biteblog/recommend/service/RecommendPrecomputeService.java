@@ -19,6 +19,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -29,6 +30,7 @@ public class RecommendPrecomputeService {
     private static final String HOT_POOL_KEY = "recommend:hot:pool";
     private static final String RANK_DAILY_KEY_PREFIX = "rank:daily:";
     private static final String BEHAVIOR_KEY_PREFIX = "behavior:";
+    private static final String ITEM_SIM_KEY_PREFIX = "recommend:itemcf:similar:";
     private static final int MAX_BEHAVIOR_SCAN = 2000;
     private static final int MAX_HOT_POOL_SIZE = 200;
     private static final int MAX_ITEMS_PER_USER = 30;
@@ -173,16 +175,39 @@ public class RecommendPrecomputeService {
             }
         }
 
-        List<RecommendSearchService.ItemSimilarityDocument> documents = new ArrayList<>();
+        Map<Long, List<Map.Entry<Long, Double>>> topSimilarities = new HashMap<>();
         for (Map.Entry<Long, Map<Long, Double>> entry : itemSimilarities.entrySet()) {
-            entry.getValue().entrySet().stream()
+            List<Map.Entry<Long, Double>> topItems = entry.getValue().entrySet().stream()
                     .sorted(Map.Entry.<Long, Double>comparingByValue().reversed())
                     .limit(MAX_SIMILAR_PER_ITEM)
-                    .map(similar -> new RecommendSearchService.ItemSimilarityDocument(
-                            entry.getKey(), similar.getKey(), roundScore(similar.getValue())))
-                    .forEach(documents::add);
+                    .map(similar -> Map.entry(similar.getKey(), roundScore(similar.getValue())))
+                    .toList();
+            if (!topItems.isEmpty()) {
+                topSimilarities.put(entry.getKey(), topItems);
+            }
         }
-        return recommendSearchService.rebuildItemSimilarityIndex(documents);
+        return saveItemSimilaritiesToRedis(topSimilarities);
+    }
+
+    private int saveItemSimilaritiesToRedis(Map<Long, List<Map.Entry<Long, Double>>> topSimilarities) {
+        int saved = 0;
+        try {
+            Set<String> oldKeys = redisTemplate.keys(ITEM_SIM_KEY_PREFIX + "*");
+            if (oldKeys != null && !oldKeys.isEmpty()) {
+                redisTemplate.delete(oldKeys);
+            }
+        } catch (Exception e) {
+            log.warn("Clean old Redis ItemCF similarities failed: {}", e.getMessage());
+        }
+
+        for (Map.Entry<Long, List<Map.Entry<Long, Double>>> entry : topSimilarities.entrySet()) {
+            String key = ITEM_SIM_KEY_PREFIX + entry.getKey();
+            for (Map.Entry<Long, Double> similar : entry.getValue()) {
+                redisTemplate.opsForZSet().add(key, similar.getKey(), similar.getValue());
+                saved++;
+            }
+        }
+        return saved;
     }
 
     private double calculateHotScore(Note note) {

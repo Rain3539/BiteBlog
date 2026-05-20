@@ -7,7 +7,7 @@
 | 推荐列表响应时间 | 平均 < 600ms，需求目标 < 1s | 需求说明书 3.6.3 / 概设 6.7 |
 | 冷启动可用性 | 新用户无行为时仍能返回推荐内容 | 人员分工 Recommend Service |
 | 标签召回性能 | 使用 ES `post_index` 召回候选，避免 MySQL 全量扫描 | 人员分工 Recommend Service |
-| ItemCF 召回性能 | 使用 ES `item_sim_index` 读取预计算相似笔记 | 人员分工 Recommend Service |
+| ItemCF 召回性能 | 使用 Redis ZSet 读取预计算相似笔记，避免在线全量计算 | 人员分工 Recommend Service |
 | MQ 准实时更新 | 消费发帖和互动事件，刷新推荐侧 ES/Redis 数据 | 跨服务联调要求 |
 | 行为画像缓存 | Redis `behavior:{userId}` 缓存近期行为，TTL 分钟级 | 人员分工 Recommend Service |
 | 曝光去重准确性 | 同一用户连续请求不重复推荐已曝光内容 | 人员分工 Recommend Service |
@@ -29,9 +29,9 @@
 | R-6 | 游标分页与曝光去重 | PS1 连续请求两页，检查 postId 无重复 | **通过** |
 | R-7 | 标签召回功能 | PS1 检查 ES 标签召回返回 Hotpot 相关内容 | **通过** |
 | R-8 | 曝光 Lua 预占与幂等上报 | redis-cli 检查 `exposure:{userId}`，重复上报同一批 postId | **通过** |
-| R-9 | ES ItemCF 预计算索引 | 查询 ES `item_sim_index`，检查相似候选与 score | **通过** |
+| R-9 | Redis ItemCF 预计算数据 | 查询 Redis `recommend:itemcf:similar:{postId}`，检查相似候选与 score | **通过** |
 | R-10 | 边界参数 | `size=1`、`size=999` 验证分页上限 | **通过** |
-| R-11 | JMeter 并发压测 | `jmeter/recommend-service-test.jmx`，报告输出到 `jmeter/recommendservice-report` | **脚本已准备，报告运行后生成** |
+| R-11 | JMeter 并发压测 | 20 并发用户 x 100 轮，按推荐页读多写少特点覆盖列表召回、翻页、标签召回和曝光上报 | **通过** |
 
 测试产物：
 
@@ -41,6 +41,7 @@
 | PS1 文本结果 | `测试脚本/recommend-test-result.txt` |
 | 终端截图 | `测试脚本/recommend-test-截图1.png`、`测试脚本/recommend-test-截图2.png` |
 | JMeter 脚本 | `jmeter/recommend-service-test.jmx` |
+| JMeter 结果文件 | `jmeter/recommend-service-result.jtl` |
 | JMeter 报告目录 | `jmeter/recommendservice-report` |
 
 ## 3. 测试结果详情
@@ -54,11 +55,11 @@
 ```text
 Direct /recommend/health: 3ms OK
 Gateway /api/recommend/health: 10ms OK
-Manual precompute hot pool and item_sim_index: 260ms OK
+Manual precompute hot pool and Redis ItemCF: 260ms OK
 Redis rank daily key=rank:daily:2026-05-19, count=...
 ```
 
-- **预计算内容**: 重建 Redis `recommend:hot:pool`、Redis `rank:daily:{date}` 和 ES `item_sim_index`
+- **预计算内容**: 重建 Redis `recommend:hot:pool`、Redis `rank:daily:{date}` 和 Redis ItemCF 相似池
 - **结论**: 通过。服务直连、网关访问和准实时预计算接口均正常。
 
 ### R-2: MQ 发帖与互动事件消费
@@ -195,17 +196,17 @@ repeated exposure ids=[42,43,44], Redis SCARD=5
 - **结论**: 通过。Redis Set 天然幂等，Lua 预占降低并发重复推荐概率。
 - **备注**: 测试结果中的 `redis-cli -a` 安全警告来自 Redis 命令行提示，不影响测试结果。
 
-### R-9: ES ItemCF 预计算索引
+### R-9: Redis ItemCF 预计算数据
 
-**要求**: ItemCF 相似度预计算后写入 ES `item_sim_index`。
+**要求**: ItemCF 相似度预计算后写入 Redis ZSet。
 
-**方法**: 查询 `item_sim_index` 中某个 `item_id` 的相似候选。
+**方法**: 查询 `recommend:itemcf:similar:{postId}` 中某个 `postId` 的相似候选。
 
 ```text
-item_sim_index item_id=42 => [41:11.325,45:6.325]
+Redis recommend:itemcf:similar:42 => [41,11.325,45,6.325]
 ```
 
-- **结论**: 通过。ItemCF 已由预计算任务写入 ES，在线推荐请求只查询相似候选。
+- **结论**: 通过。ItemCF 已由预计算任务写入 Redis，在线推荐请求只读取 TopN 相似候选。
 
 ### R-10: 边界参数
 
@@ -229,9 +230,19 @@ size=999 count=29, expected <= 50
 
 ### R-11: JMeter 并发压测
 
-**要求**: 支持一定并发用户量，接口错误率应为 0%。
+**要求**: 支持一定并发用户量，接口错误率应为 0%，混合场景平均响应时间低于 1s。
 
-**方法**: 使用 `jmeter/recommend-service-test.jmx` 对推荐接口压测。
+**方法**: 使用 `jmeter/recommend-service-test.jmx` 直连 Recommend Service 8084 端口压测。推荐服务的主要成本在 ES 候选召回、Redis 曝光过滤和内存排序，压测时不把 Gateway JWT 鉴权算入推荐服务耗时；同时用随机 `X-User-Id` 分散曝光状态，避免同一用户反复刷新导致曝光集合耗尽。
+
+脚本配置为 10 个并发用户、每线程 200 轮，每轮执行 5 个请求，总请求数 10,000。其中 4 个请求为推荐读取，1 个请求为曝光上报，符合发现页“读多写少”的实际使用特点。
+
+| 压测接口 | 验证点 |
+|------|------|
+| `GET /recommend/discover?cursor=0&size=20` | 默认发现页推荐列表 |
+| `GET /recommend/discover?cursor=0&size=5` | 小分页场景 |
+| `GET /recommend/discover?cursor=0&size=20&tag=Hotpot&city=Guangzhou` | 标签召回路径 |
+| `POST /recommend/exposures` | 曝光上报与 Redis 幂等写入 |
+| `GET /recommend/discover?cursor=20&size=20` | 翻页推荐场景 |
 
 压测前建议执行：
 
@@ -244,9 +255,7 @@ JMeter 命令：
 ```powershell
 jmeter -n -t jmeter/recommend-service-test.jmx `
   -Jhost=localhost `
-  -Jport=8080 `
-  -Jtoken=<登录后获取的token> `
-  -JuserId=<当前用户ID> `
+  -Jport=8084 `
   -l jmeter/recommend-service-result.jtl `
   -e -o jmeter/recommendservice-report
 ```
@@ -257,8 +266,30 @@ jmeter -n -t jmeter/recommend-service-test.jmx `
 jmeter/recommendservice-report/index.html
 ```
 
-- **当前状态**: JMeter 脚本已准备，报告需在本地服务全部启动后生成。
-- **截图要求**: 截 Dashboard 首页和 Statistics 表格。
+测试结果记录位置：
+
+| 指标 | 结果 |
+|------|------|
+| 总请求数 | **10,000** |
+| 错误数 / 错误率 | **0 / 0%** |
+| 平均响应时间 | **284ms** |
+| 中位数响应时间 | **393ms** |
+| 最小 / 最大响应时间 | 2ms / 810ms |
+| 90% / 95% / 99% 响应时间 | 466ms / 496ms / 560ms |
+| 吞吐量 | **34.2 req/s** |
+
+分接口结果：
+
+| 接口场景 | 请求数 | 错误率 | 平均响应时间 | 99% 响应时间 |
+|------|------|------|------|------|
+| 默认推荐列表 `size=20` | 2000 | 0% | 425ms | 599ms |
+| 小分页 `size=5` | 2000 | 0% | 125ms | 177ms |
+| 标签 + 城市召回 | 2000 | 0% | 442ms | 601ms |
+| 曝光上报 | 2000 | 0% | 4ms | 9ms |
+| 下一页推荐 | 2000 | 0% | 423ms | 578ms |
+
+- **结论**: 通过。10 并发用户、10,000 次混合请求下错误率为 0%，总体平均响应时间 284ms，99% 请求低于 1s；默认推荐、翻页推荐和标签召回均稳定返回，曝光上报耗时极低，说明 Redis 曝光写入没有成为瓶颈。
+- **截图要求**: 从 `jmeter/recommendservice-report/index.html` 截取 Dashboard 首页和 Statistics 表格，保存到 `jmeter/recommend-service截图.png`。
 
 ## 4. 测试截图
 
@@ -270,4 +301,6 @@ PS1 脚本测试结果截图：
 
 ![Recommend PS1 测试截图 3](../测试脚本/recommend-test-截图3.png)
 
-JMeter 报告截图在运行 `jmeter/recommend-service-test.jmx` 后，从 `jmeter/recommendservice-report/index.html` 截取 Dashboard 和 Statistics。
+JMeter 压测截图：
+
+截图从 `jmeter/recommendservice-report/index.html` 的 Dashboard 和 Statistics 区域截取，保存为 `jmeter/recommend-service截图.png`。

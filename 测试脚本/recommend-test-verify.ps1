@@ -80,7 +80,7 @@ try {
     Write-Host "===== 1. Health and Gateway route =====" -ForegroundColor Cyan
     Measure-Api "Direct /recommend/health" { Invoke-Json "$recommendBase/health" } | Out-Null
     Measure-Api "Gateway /api/recommend/health" { Invoke-Json "$gatewayBase/recommend/health" "GET" $null $coldUser.headers } | Out-Null
-    Measure-Api "Manual precompute hot pool and item_sim_index" {
+    Measure-Api "Manual precompute hot pool and Redis ItemCF" {
         Invoke-Json "$recommendBase/internal/precompute" "POST"
     } | Out-Null
     $rankDailyCount = docker exec -e "REDISCLI_AUTH=$redisPassword" $redisContainer redis-cli ZCARD $rankDailyKey 2>$null
@@ -239,20 +239,11 @@ try {
     }
 
     Write-Host ""
-    Write-Host "===== 6. ES item_sim_index ItemCF data =====" -ForegroundColor Cyan
+    Write-Host "===== 6. Redis ItemCF similarity data =====" -ForegroundColor Cyan
     if ($ids1.Count -gt 0) {
-        $query = @{
-            query = @{ term = @{ item_id = [long]$ids1[0] } }
-            sort = @(@{ score = @{ order = "desc" } })
-            size = 5
-        }
-        try {
-            $result = Invoke-Json "http://localhost:9200/item_sim_index/_search" "POST" $query
-            $pairs = @($result.hits.hits | ForEach-Object { "$($_._source.similar_item_id):$($_._source.score)" })
-            Write-Host "  item_sim_index item_id=$($ids1[0]) => [$($pairs -join ',')]" -ForegroundColor White
-        } catch {
-            Write-Host "  item_sim_index query failed: $($_.Exception.Message)" -ForegroundColor Yellow
-        }
+        $simKey = "recommend:itemcf:similar:$($ids1[0])"
+        $pairs = docker exec -e "REDISCLI_AUTH=$redisPassword" $redisContainer redis-cli ZREVRANGE $simKey 0 4 WITHSCORES 2>$null
+        Write-Host "  Redis $simKey => [$($pairs -join ',')]" -ForegroundColor White
     }
 
     Write-Host ""
