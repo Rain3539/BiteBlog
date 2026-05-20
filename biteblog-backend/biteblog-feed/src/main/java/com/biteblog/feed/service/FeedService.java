@@ -108,6 +108,11 @@ public class FeedService {
                 ? toTimestamp(items.get(items.size() - 1).getCreatedAt())
                 : null;
 
+        // 8.5 inbox 为空时回填，确保后续请求可直接命中缓存
+        if (inboxNoteIds == null || inboxNoteIds.isEmpty()) {
+            warmUpInbox(userId);
+        }
+
         Map<String, Object> result = new HashMap<>();
         result.put("list", items);
         result.put("cursor", nextCursor);
@@ -195,6 +200,25 @@ public class FeedService {
                 });
 
         return items;
+    }
+
+    /**
+     * inbox 被清空时回填：从 MySQL 查询关注用户的最新笔记并写入 Redis，
+     * 避免每次请求都走大V拉取/DB降级的慢路径。
+     */
+    private void warmUpInbox(Long userId) {
+        Set<String> following = redisTemplate.opsForSet().members(FOLLOW_PREFIX + userId);
+        if (following == null || following.isEmpty()) {
+            return;
+        }
+        String inClause = String.join(",", following);
+        jdbcTemplate.query(
+                "SELECT n.id, n.created_at FROM note n WHERE n.author_id IN (" + inClause + ") AND n.status = 1 ORDER BY n.created_at DESC LIMIT 100",
+                (rs) -> {
+                    long ts = rs.getTimestamp("created_at").toLocalDateTime()
+                            .atZone(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli();
+                    redisTemplate.opsForZSet().add(INBOX_PREFIX + userId, rs.getString("id"), ts);
+                });
     }
 
     private long toTimestamp(java.time.LocalDateTime dateTime) {

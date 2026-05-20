@@ -1,6 +1,6 @@
 ﻿**********************
 Windows PowerShell 脚本开始
-开始时间: 20260520100440
+开始时间: 20260520183854
 用户名: LAPTOP-0SABB5A1\丁欣雨
 RunAs 用户: LAPTOP-0SABB5A1\丁欣雨
 配置名称: 
@@ -20,21 +20,21 @@ SerializationVersion: 1.1.0.1
 用户: user_bbq (userId=7)
 
 ===== 1. Feed 流响应时间 (目标 < 300ms) =====
-  第1次: 82ms
-  第2次: 59ms
-  第3次: 47ms
-  第4次: 46ms
-  第5次: 43ms
-  第6次: 45ms
-  第7次: 39ms
-  第8次: 49ms
+  第1次: 1469ms
+  第2次: 48ms
+  第3次: 22ms
+  第4次: 18ms
+  第5次: 18ms
+  第6次: 16ms
+  第7次: 20ms
+  第8次: 19ms
   第9次: 33ms
-  第10次: 31ms
-  平均: 47ms (目标 <300ms)
+  第10次: 20ms
+  平均: 168ms (目标 <300ms)
 
 ===== 2. 游标分页一致性 =====
   第1页: postIds=[154,153,151] hasMore=True
-  第2页: postIds=[142,140,141] hasMore=True
+  第2页: postIds=[144,143,142] hasMore=True
   第3页: postIds=[139,107,106] hasMore=True
   第4页: postIds=[104,103,101] hasMore=True
   第5页: postIds=[102,100,99] hasMore=True
@@ -44,22 +44,62 @@ SerializationVersion: 1.1.0.1
   发布者: user_bbq (userId=7)
   粉丝: user_nightfood (userId=10)
   已确保粉丝关注了发布者
-  发布时间: 1779242684701
-  发布成功, postId=155
-  第1次: top3=[155,154,153] listCount=45
-  Fanout 延迟: 500ms (postId=155 已出现在粉丝feed)
+  发布时间: 1779273537189
+  发布成功, postId=159
+  第1次: top3=[159,157,156] listCount=48
+  Fanout 延迟: 500ms (postId=159 已出现在粉丝feed)
 
 ===== 4. Redis inbox 空间验证 =====
-  inbox:7 条数: 41 (建议上限 500)
+  inbox:7 条数: 2 (建议上限 500)
 
 ===== 5. 大V inbox 验证 =====
   feed:bigv: 4 12 13
   inbox:4 条数: 13
-  inbox:12 条数: 40
+  inbox:12 条数: 44
   inbox:13 条数: 3
+
+===== 6. FC-1: Fanout 写入一致性 =====
+  发布者粉丝: [5,9,11,12,29,30,31,33,34,35,42,53,60,65,67,70,72]
+  发布成功, postId=160
+  粉丝5 inbox: noteId=160 score=1779273538480 OK
+  粉丝9 inbox: noteId=160 score=1779273538480 OK
+  粉丝11 inbox: noteId=160 score=1779273538480 OK
+  粉丝12 inbox: noteId=160 score=1779273538480 OK
+  粉丝29 inbox: noteId=160 score=1779273538480 OK
+  粉丝30 inbox: noteId=160 score=1779273538480 OK
+  粉丝31 inbox: noteId=160 score=1779273538480 OK
+  粉丝33 inbox: noteId=160 score=1779273538480 OK
+  粉丝34 inbox: noteId=160 score=1779273538480 OK
+  粉丝35 inbox: noteId=160 score=1779273538480 OK
+  粉丝42 inbox: noteId=160 score=1779273538480 OK
+  粉丝53 inbox: noteId=160 score=1779273538480 OK
+  粉丝60 inbox: noteId=160 score=1779273538480 OK
+  粉丝65 inbox: noteId=160 score=1779273538480 OK
+  粉丝67 inbox: noteId=160 score=1779273538480 OK
+  粉丝70 inbox: noteId=160 score=1779273538480 OK
+  粉丝72 inbox: noteId=160 score=1779273538480 OK
+  FC-1 Fanout写入一致性: 通过
+
+===== 7. FC-2: 大V不Fanout =====
+  大V: userId=4
+  大V粉丝: userId=7
+  FC-2 大V不Fanout: 通过 (粉丝inbox无大V笔记交集)
+
+===== 8. FC-3 + 可靠性: Inbox预热 / 降级MySQL =====
+  清空前 inbox:7 条数: 3
+  删除后 inbox 条数: 0
+  降级查询返回: 20条
+  回填后 inbox 条数: 52
+  FC-3 + 降级验证: 通过 (MySQL降级成功并回填inbox)
+
+===== 9. FC-4: 删除笔记清理 =====
+  发布测试笔记, postId=161
+  删除成功
+  删除清理: feed:deleted 包含 noteId=161
+  FC-4 删除清理: 通过 (feed已过滤删除笔记)
 
 ===== 完成 =====
 **********************
 Windows PowerShell 脚本结束
-结束时间: 20260520100449
+结束时间: 20260520183904
 **********************

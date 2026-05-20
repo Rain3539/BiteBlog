@@ -1,0 +1,115 @@
+﻿**********************
+Windows PowerShell 脚本开始
+开始时间: 20260520123849
+用户名: FIGHTING\Cr
+RunAs 用户: FIGHTING\Cr
+配置名称: 
+计算机: FIGHTING (Microsoft Windows NT 10.0.26200.0)
+主机应用程序: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -noexit -command try { . "c:\Users\licha\AppData\Local\Programs\Microsoft VS Code\0958016b2a\resources\app\out\vs\workbench\contrib\terminal\common\scripts\shellIntegration.ps1" } catch {}
+进程 ID: 20340
+PSVersion: 5.1.26100.8457
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.8457
+BuildVersion: 10.0.26100.8457
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+============================================================
+  Post Service Verification
+  2026-05-20 12:38:49
+============================================================
+
+===== 0. Account Login =====
+  [PASS] author login: userId=2 (13800000001)
+
+===== 1. Service Reachability (Post Service has no /health, using /post/1) =====
+  [PASS] direct post/1: code=200 (service reachable)
+  [PASS] gateway -> post/1: code=200 (service reachable)
+
+===== 2. PC-1: Publish Transaction Atomicity (MySQL note + note_image) =====
+  [PASS] PC-1: published postId=22 (note + note_image in same transaction)
+  [PASS] PC-1: detail returns postId=22, title=PostVerify-123850
+
+===== 3. PC-2: Detail Cache Consistency (Redis Cache-Aside) =====
+  PC-2 cold (cache miss -> MySQL): 39ms
+  PC-2 hot  (cache hit  -> Redis): 29ms
+  [PASS] PC-2: cache cold=39ms hot=29ms (Cache-Aside works)
+  PC-2: Redis key post:cache:22 exists=1
+  [PASS] PC-2: Redis cache key present after detail query
+
+===== 4. PC-3: ES Search Consistency (publish -> ES index -> searchable) =====
+  wait 1/20 : search count=3 (need >= 1)
+  [PASS] PC-3: ES search returns postId=22 after publish (MQ async sync OK)
+
+===== 5. PC-4: ES Degradation (search gracefully handles ES issues) =====
+  PC-4: ES search code=200, returned 0 results
+  [PASS] PC-4: ES search functions correctly (degradation returns empty list on ES error)
+
+===== 6. PC-5: Logical Delete Filtering (status=0 posts hidden) =====
+  [PASS] PC-5: published deletable note postId=23
+  [PASS] PC-5: deleted postId=23
+  [PASS] PC-5: deleted post detail returns code=2001 (not found)
+
+===== 7. Post Detail RT (target P95 < 300ms, 20 samples) =====
+  GET http://localhost:8080/api/post/22
+  samples=20  avg=26.8ms  min=18ms  max=33ms
+  P90=33ms   P95=33ms   (target P95 < 300ms)
+  [PASS] detail P95=33ms < 300ms
+
+===== 8. ES Search RT (target P95 < 800ms, 20 samples) =====
+  GET http://localhost:8080/api/post/search?keyword=鐑х儰&page=1&size=20
+  samples=20  avg=30.5ms  min=16ms  max=67ms
+  P90=63ms   P95=67ms   (target P95 < 800ms)
+  [PASS] search P95=67ms < 800ms
+
+===== 9. Like Idempotency (UNIQUE KEY + atomic counter) =====
+  likeCount before toggle: 0
+  likeCount after 5 toggles: 1
+  [PASS] like idempotent: before=0 after=1 (delta=1, expected 0 or 1)
+
+===== 10. Comment Write and Pagination Consistency =====
+  [PASS] comments: wrote 2 comments on postId=22
+  [PASS] comments: pagination query returned 2 comments
+
+===== 11. Search Pagination: no cross-page duplicates =====
+  [PASS] search pagination: no duplicate postIds across page1 and page2
+
+===== 12. Auth and Privilege =====
+PS>TerminatingError(Invoke-RestMethod):“远程服务器返回错误: (401) 未经授权。”
+  [PASS] no-token: 401 Unauthorized
+  [SKIP] no other-user posts available for privilege test
+  [PASS] direct post with X-User-Id: code=200
+
+===== 13. Reliability: afterCommit MQ Publish =====
+  [WARN] reliability: published note not in user posts list (check Feed sync)
+
+===== 14. Like Toggle RT (target P95 < 300ms, 10 samples) =====
+  POST http://localhost:8080/api/post/22/like
+  samples=10  avg=35.8ms  min=24ms  max=45ms
+  P90=45ms   P95=45ms   (target P95 < 300ms)
+  [PASS] like P95=45ms < 300ms
+
+===== 15. ES Search Multi-field Matching (title + content + shopName) =====
+  [PASS] ES multiMatch: shopName field searchable (found postId=22 by shop name)
+
+===== Summary =====
+
+  Pass  : 22
+  Fail  : 0
+  Total : 22 checks
+
+  --- Response Time Results ---
+  Detail      avg=26.8ms  P90=33ms  P95=33ms  max=33ms
+  Search      avg=30.5ms  P90=63ms  P95=67ms  max=67ms
+  Like        avg=35.8ms  P90=45ms  P95=45ms  max=45ms
+  Cache       cold(DB)=39ms  hot(Redis)=29ms
+
+  All critical checks PASSED
+
+Result saved to: C:\Users\licha\Desktop\分布式\BiteBlog\测试脚本\post-test-result.txt
+**********************
+Windows PowerShell 脚本结束
+结束时间: 20260520123855
+**********************

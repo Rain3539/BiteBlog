@@ -127,6 +127,161 @@ foreach ($bvid in $bigVs -split "`n") {
     }
 }
 
+# 6. FC-1: Fanout 写入一致性 — 发布后检查粉丝 inbox
+Write-Host ""
+Write-Host "===== 6. FC-1: Fanout 写入一致性 =====" -ForegroundColor Cyan
+
+# 获取发布者的粉丝列表
+$fanSet = docker exec $redisContainer redis-cli -a $redisPassword SMEMBERS "fans:$userId" 2>$null
+$fans = $fanSet -split "`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ }
+Write-Host "  发布者粉丝: [$($fans -join ',')]" -ForegroundColor DarkGray
+
+if ($fans.Count -gt 0) {
+    # 发布一条测试笔记
+    $fc1Title = "FC1-Fanout一致性测试"
+    $fc1Body = @{ title = $fc1Title; content = "测试fanout写入一致性"; shopName = "FC1店铺" } | ConvertTo-Json -Compress
+    $fc1Bytes = [System.Text.Encoding]::UTF8.GetBytes($fc1Body)
+    try {
+        $fc1Resp = Invoke-RestMethod -Uri "$base/post/publish" -Method POST -Headers $headers -ContentType "application/json; charset=utf-8" -Body $fc1Bytes
+        $fc1NoteId = $fc1Resp.data.postId
+        Write-Host "  发布成功, postId=$fc1NoteId" -ForegroundColor Green
+    } catch { Write-Host "  发布失败: $($_.Exception.Message)" -ForegroundColor Red; $fc1NoteId = $null }
+
+    if ($fc1NoteId) {
+        Start-Sleep -Seconds 1
+        $allOk = $true
+        foreach ($fan in $fans) {
+            $zscore = docker exec $redisContainer redis-cli -a $redisPassword ZSCORE "feed:inbox:$fan" $fc1NoteId 2>$null
+            if ($zscore) {
+                Write-Host "  粉丝${fan} inbox: noteId=$fc1NoteId score=$zscore OK" -ForegroundColor DarkGray
+            } else {
+                Write-Host "  粉丝${fan} inbox: noteId=$fc1NoteId NOT FOUND" -ForegroundColor Red
+                $allOk = $false
+            }
+        }
+        if ($allOk) {
+            Write-Host "  FC-1 Fanout写入一致性: 通过" -ForegroundColor Green
+        } else {
+            Write-Host "  FC-1 Fanout写入一致性: 失败 (部分粉丝未收到)" -ForegroundColor Red
+        }
+    }
+} else {
+    Write-Host "  FC-1: 无粉丝，跳过" -ForegroundColor Yellow
+}
+
+# 7. FC-2: 大V不Fanout — 验证大V的帖子不会推送到粉丝inbox
+Write-Host ""
+Write-Host "===== 7. FC-2: 大V不Fanout =====" -ForegroundColor Cyan
+
+$bigVList = docker exec $redisContainer redis-cli -a $redisPassword SMEMBERS feed:bigv 2>$null
+$bigVId = ($bigVList -split "`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ } | Select-Object -First 1)
+if ($bigVId) {
+    Write-Host "  大V: userId=$bigVId" -ForegroundColor White
+    # 找大V的一个粉丝
+    $bigvFans = docker exec $redisContainer redis-cli -a $redisPassword SMEMBERS "fans:$bigVId" 2>$null
+    $bigvFan = ($bigvFans -split "`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ } | Select-Object -First 1)
+    if ($bigvFan) {
+        Write-Host "  大V粉丝: userId=$bigvFan" -ForegroundColor White
+        # 检查粉丝inbox中是否包含大V的笔记（大V笔记不应在粉丝inbox中）
+        $fanInbox = docker exec $redisContainer redis-cli -a $redisPassword ZRANGE "feed:inbox:$bigvFan" 0 -1 2>$null
+        $bigvInbox = docker exec $redisContainer redis-cli -a $redisPassword ZRANGE "feed:inbox:$bigVId" 0 -1 2>$null
+        $bigvNoteIds = ($bigvInbox -split "`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+        $fanNoteIds = ($fanInbox -split "`n" | ForEach-Object { $_.Trim() } | Where-Object { $_ })
+
+        # 大V的笔记不应该通过fanout出现在粉丝inbox中
+        $leaked = $bigvNoteIds | Where-Object { $_ -in $fanNoteIds }
+        if ($leaked) {
+            Write-Host "  FC-2 大V不Fanout: 失败 (大V笔记泄露到粉丝inbox: $($leaked -join ','))" -ForegroundColor Red
+        } else {
+            Write-Host "  FC-2 大V不Fanout: 通过 (粉丝inbox无大V笔记交集)" -ForegroundColor Green
+        }
+    } else {
+        Write-Host "  FC-2: 大V无粉丝，跳过验证" -ForegroundColor Yellow
+    }
+} else {
+    Write-Host "  FC-2: 无大V，跳过" -ForegroundColor Yellow
+}
+
+# 8. FC-3 + 可靠性: Inbox预热 / Redis降级MySQL — 清空inbox后验证降级并回填
+Write-Host ""
+Write-Host "===== 8. FC-3 + 可靠性: Inbox预热 / 降级MySQL =====" -ForegroundColor Cyan
+
+# 先记录当前inbox内容
+$inboxBefore = docker exec $redisContainer redis-cli -a $redisPassword ZCARD "feed:inbox:$userId" 2>$null
+Write-Host "  清空前 inbox:$userId 条数: $inboxBefore" -ForegroundColor DarkGray
+
+# 删除inbox key模拟缓存失效
+docker exec $redisContainer redis-cli -a $redisPassword DEL "feed:inbox:$userId" 2>$null | Out-Null
+$inboxAfterDel = docker exec $redisContainer redis-cli -a $redisPassword ZCARD "feed:inbox:$userId" 2>$null
+Write-Host "  删除后 inbox 条数: $inboxAfterDel" -ForegroundColor DarkGray
+
+# 请求feed（应触发MySQL降级 + 回填）
+try {
+    $fallbackResp = Invoke-RestMethod -Uri "$base/feed/timeline?size=20" -Headers $headers
+    $fallbackCount = $fallbackResp.data.list.Count
+    Write-Host "  降级查询返回: ${fallbackCount}条" -ForegroundColor White
+
+    # 验证inbox被回填
+    Start-Sleep -Milliseconds 500
+    $inboxAfterFill = docker exec $redisContainer redis-cli -a $redisPassword ZCARD "feed:inbox:$userId" 2>$null
+    Write-Host "  回填后 inbox 条数: $inboxAfterFill" -ForegroundColor White
+
+    if ($fallbackCount -gt 0 -and [int]$inboxAfterFill -gt 0) {
+        Write-Host "  FC-3 + 降级验证: 通过 (MySQL降级成功并回填inbox)" -ForegroundColor Green
+    } elseif ($fallbackCount -gt 0) {
+        Write-Host "  FC-3 + 降级验证: 部分通过 (降级成功但inbox未回填)" -ForegroundColor Yellow
+    } else {
+        Write-Host "  FC-3 + 降级验证: 失败" -ForegroundColor Red
+    }
+} catch {
+    Write-Host "  FC-3 + 降级验证: 失败 ($($_.Exception.Message))" -ForegroundColor Red
+}
+
+# 9. FC-4: 删除笔记清理 — 删除后检查 feed:deleted + feed过滤
+Write-Host ""
+Write-Host "===== 9. FC-4: 删除笔记清理 =====" -ForegroundColor Cyan
+
+# 发布一条临时笔记用于删除
+$fc4Title = "FC4-删除测试-$(Get-Date -Format 'HHmmss')"
+$fc4Body = @{ title = $fc4Title; content = "测试删除清理"; shopName = "FC4店铺" } | ConvertTo-Json -Compress
+$fc4Bytes = [System.Text.Encoding]::UTF8.GetBytes($fc4Body)
+try {
+    $fc4Resp = Invoke-RestMethod -Uri "$base/post/publish" -Method POST -Headers $headers -ContentType "application/json; charset=utf-8" -Body $fc4Bytes
+    $fc4NoteId = $fc4Resp.data.postId
+    Write-Host "  发布测试笔记, postId=$fc4NoteId" -ForegroundColor Green
+} catch { Write-Host "  发布失败: $($_.Exception.Message)" -ForegroundColor Red; $fc4NoteId = $null }
+
+if ($fc4NoteId) {
+    Start-Sleep -Seconds 1
+    # 删除笔记
+    try {
+        Invoke-RestMethod -Uri "$base/post/$fc4NoteId" -Method DELETE -Headers $headers | Out-Null
+        Write-Host "  删除成功" -ForegroundColor Green
+    } catch { Write-Host "  删除失败: $($_.Exception.Message)" -ForegroundColor Red }
+
+    Start-Sleep -Seconds 1
+    # 检查 feed:deleted 集合
+    $inDeleted = docker exec $redisContainer redis-cli -a $redisPassword SISMEMBER feed:deleted $fc4NoteId 2>$null
+    if ($inDeleted -eq 1) {
+        Write-Host "  删除清理: feed:deleted 包含 noteId=$fc4NoteId" -ForegroundColor Green
+    } else {
+        Write-Host "  删除清理: feed:deleted 不包含 noteId=$fc4NoteId" -ForegroundColor Yellow
+    }
+
+    # 请求feed，验证该笔记被过滤
+    try {
+        $feedAfterDel = Invoke-RestMethod -Uri "$base/feed/timeline?size=50" -Headers $headers
+        $foundDeleted = $feedAfterDel.data.list | Where-Object { $_.postId -eq $fc4NoteId }
+        if ($foundDeleted) {
+            Write-Host "  FC-4 删除清理: 失败 (feed仍返回已删除笔记)" -ForegroundColor Red
+        } else {
+            Write-Host "  FC-4 删除清理: 通过 (feed已过滤删除笔记)" -ForegroundColor Green
+        }
+    } catch { Write-Host "  FC-4: feed请求失败 - $($_.Exception.Message)" -ForegroundColor Red }
+} else {
+    Write-Host "  FC-4: 跳过 (发布失败)" -ForegroundColor Yellow
+}
+
 Write-Host ""
 Write-Host "===== 完成 =====" -ForegroundColor Cyan
 Stop-Transcript | Out-Null
