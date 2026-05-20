@@ -133,32 +133,48 @@ spring:
 
 ### 5.1 性能
 
-- Feed 流读取优先走 Redis ZSet（O(log N) 范围查询），不直接查 MySQL
-- 大V笔记实时拉取时限制每个大V最多拉 10 条，避免单次请求过大
-- 冷启动降级查询使用 `LIMIT` 限制结果集大小
-- 笔记详情查询使用子查询获取封面图，避免 N+1 问题
+| 场景与挑战 | 解决办法 | 测试 |
+|-----------|----------|------|
+| Feed 流读取需在 300ms 内返回 | 优先走 Redis ZSet（O(log N) 范围查询），inbox 已缓存笔记 ID 和发布时间戳，避免直接扫 MySQL；笔记详情查询使用子查询一次性获取封面图，避免 N+1 问题 | F-1 |
+| 大V 粉丝量大，实时拉取可能拉过多数据 | 大V 路径仅拉取 inbox 中全部笔记作为候选，在后续合并去重和排序后才分页，实际返回受 size 限制 | — |
+| 冷启动时 inbox 为空，需全量扫 MySQL | `getTimelineFromDb` 使用 `LIMIT` 限制结果集，仅查关注用户的最新笔记，并通过子查询一次获取封面图 | F-8 |
+| 高并发 800 线程同时请求 | 扩容 Tomcat threads.max→1000、HikariCP maximum-pool-size→200、Lettuce max-active→200，三层连接池匹配高并发量 | F-10 |
+| Fanout 推送需秒级完成 | 通过 RabbitMQ 异步事件驱动，发布者无需等待 fanout 完成即可返回；粉丝首次轮询（500ms）即命中 | F-3 |
 
-### 5.2 可用性
+### 5.2 一致性
 
-- RabbitMQ 不可用时，inbox 为空会自动降级到数据库查询，不阻塞用户使用
-- Redis 不可用时，降级查询直接走 MySQL
-- 冷启动查询结果会预热写入 inbox，下次读取走缓存
+| 场景与挑战 | 解决办法 | 测试 |
+|-----------|----------|------|
+| 普通用户发布后，所有粉丝 inbox 必须包含该笔记 | FeedEventListener 消费 `note.published`，取出 `fans:{authorId}` 集合，逐个 `ZADD` 到粉丝 inbox，score 为发布时间戳。所有粉丝的 ZSCORE 一致 | F-6 (FC-1) |
+| 大V 笔记不应通过 fanout 推送到粉丝 inbox | 消费时读取 `cache:user:{authorId}` 的 `followerCount`，≥50 则标记为 bigv，仅写入自身 inbox 供拉取，不执行 fanout | F-7 (FC-2) |
+| 删除笔记后需从 feed 中消失 | 消费 `note.deleted`，将 noteId 加入 `feed:deleted` Set，timeline 读取时惰性过滤。无需主动清理所有粉丝 inbox，降低写入代价 | F-9 (FC-4) |
+| 游标分页连续翻页不丢不重 | 基于时间戳游标 offset，按 `created_at DESC` 排序，过滤 `cursor` 之后的数据，每页 size 条无重叠 | F-2 |
+| inbox 容量需限制，防止无限增长 | `inbox:trim` 保留最新 500 条，ZSet score 为时间戳，自然淘汰老数据 | F-4 |
+| 大V 标记需与实际情况一致 | 大V 集合 `feed:bigv` 可被 redis-cli SMEMBERS 验证，每个大V 的 inbox 作为数据源独立维护 | F-5 |
 
-### 5.3 一致性
+### 5.3 可靠性
 
-- 推拉结合策略保证：普通用户的粉丝一定能通过 inbox 看到笔记（推送完成）
-- 大V的粉丝通过实时拉取保证数据一致性
-- 已删除笔记通过 `feed:deleted` 集合做惰性过滤，避免主动清理所有 inbox 的代价
-- 如果 RabbitMQ 事件丢失，冷启动兜底机制保证用户仍能看到内容
+| 场景与挑战 | 解决办法 | 测试 |
+|-----------|----------|------|
+| Redis 宕机或 inbox 被清空 | 自动降级到 `getTimelineFromDb` 直接查 MySQL，并将结果通过 `warmUpInbox` 回填到 inbox，保证下次请求恢复缓存命中 | F-8 |
+| RabbitMQ 消息丢失导致 inbox 长期为空 | 冷启动兜底：inbox 为空时自动走 MySQL 降级并回填；且 Queue/Exchange 声明为 durable、消息 PERSISTENT 投递，Broker 重启不丢 | F-8 |
+| 消息消费解析失败 | FeedEventListener 抛 RuntimeException，Spring AMQP 自动重试（AUTO ack 模式）；已知差距：未配置独立 DLQ，重试耗尽后消息丢弃 | — |
+| Fanout 中途 Redis 断连 | fanout 逐粉丝 ZADD 非事务操作，部分粉丝可能漏收；当前已记录为已知可靠性差距，后续建议加补偿重试 | — |
 
-### 5.4 可扩展性
+### 5.4 安全性
 
-- 大V阈值（50）可在 `FeedEventListener` 中通过常量调整
-- inbox 容量和 TTL 可按需配置
+| 场景与挑战 | 解决办法 | 测试 |
+|-----------|----------|------|
+| 未登录用户不能访问 feed | 接口通过 Gateway 统一 JWT 鉴权，`X-User-Id` 由 Gateway 解析 Token 后注入，Feed Service 直接信任该请求头 | — |
+| 已删除或禁用笔记不能出现在 feed 中 | SQL 查询只取 `status=1` 的公开笔记；Redis 侧通过 `feed:deleted` Set 在读取路径中过滤 | F-9 |
+| SQL 注入 | 所有查询使用 JdbcTemplate 参数绑定，不拼接用户输入 | — |
 
-### 5.5 安全性
+### 5.5 可维护性
 
-- 所有接口通过 Gateway 统一鉴权，`X-User-Id` 由 Gateway 注入
-- Feed 流只返回公开笔记（status=1），已删除笔记不可见
-- SQL 查询使用参数化，避免注入风险
+| 场景与挑战 | 解决办法 | 测试 |
+|-----------|----------|------|
+| 大V 阈值可能需要调整 | 阈值定义在 `FeedEventListener` 常量 `BIG_V_THRESHOLD = 50`，一处修改全局生效 | — |
+| Redis Key 管理 | 统一前缀规范：`feed:inbox:` / `feed:bigv` / `feed:deleted` / `follow:` / `fans:`，便于运维定位和清理 | — |
+| 代码分层 | Controller → Service（业务逻辑 + 降级）→ EventListener（MQ 消费），职责清晰，无跨层耦合 | — |
+| 配置集中 | 所有基础设施连接（MySQL/Redis/RabbitMQ/ES/Nacos）均在 `application.yml` 中统一管理，连接池参数可独立调优 | — |
 
