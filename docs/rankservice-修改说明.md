@@ -1,7 +1,3 @@
-![1778640869174](image/rankservice-修改说明/1778640869174.png)
-![1778640873106](image/rankservice-修改说明/1778640873106.png)
-![1778640877446](image/rankservice-修改说明/1778640877446.png)
-
 # Rank Service 修改说明
 
 ## 1. 服务定位
