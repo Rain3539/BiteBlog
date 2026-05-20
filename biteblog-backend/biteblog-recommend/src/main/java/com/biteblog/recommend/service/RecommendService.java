@@ -1,9 +1,7 @@
 package com.biteblog.recommend.service;
 
 import com.biteblog.common.result.Result;
-import com.biteblog.recommend.client.PostClient;
 import com.biteblog.recommend.client.UserClient;
-import com.biteblog.recommend.client.dto.PostDetailDTO;
 import com.biteblog.recommend.client.dto.UserProfileDTO;
 import com.biteblog.recommend.dto.RecommendItemVO;
 import com.biteblog.recommend.dto.RecommendResponse;
@@ -38,17 +36,21 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class RecommendService {
 
-    private static final String HOT_POOL_KEY = "recommend:hot:pool";
     private static final String RANK_DAILY_KEY_PREFIX = "rank:daily:";
     private static final String BEHAVIOR_KEY_PREFIX = "behavior:";
     private static final String EXPOSURE_KEY_PREFIX = "exposure:";
     private static final String ITEM_SIM_KEY_PREFIX = "recommend:itemcf:similar:";
+    private static final String USER_PROFILE_KEY_PREFIX = "recommend:user:profile:";
+    private static final String POST_SUMMARY_KEY_PREFIX = "recommend:post:summary:";
     private static final Duration EXPOSURE_TTL = Duration.ofDays(7);
     private static final Duration BEHAVIOR_TTL = Duration.ofMinutes(5);
+    private static final Duration USER_PROFILE_TTL = Duration.ofMinutes(30);
+    private static final Duration POST_SUMMARY_TTL = Duration.ofMinutes(30);
     private static final int DEFAULT_SIZE = 20;
     private static final int MAX_SIZE = 50;
     private static final int MIN_BEHAVIOR_COUNT = 5;
     private static final int RECALL_MULTIPLIER = 4;
+    private static final long REDIS_CIRCUIT_BREAK_MS = 10_000L;
     private static final String COLD_START_REASON = "近期热门";
     private static final String TAG_REASON = "兴趣标签相关";
     private static final String ITEM_CF_REASON = "相似用户喜欢";
@@ -56,8 +58,19 @@ public class RecommendService {
     private final RecommendDataService recommendDataService;
     private final RecommendSearchService recommendSearchService;
     private final RedisTemplate<String, Object> redisTemplate;
-    private final PostClient postClient;
     private final UserClient userClient;
+    private volatile long redisUnavailableUntilMillis = 0L;
+
+    public RecommendResponse discoverWithoutRedis(Long userId, Long cursor, int size, String tag, String city) {
+        long previousUnavailableUntil = redisUnavailableUntilMillis;
+        redisUnavailableUntilMillis = Math.max(redisUnavailableUntilMillis,
+                System.currentTimeMillis() + REDIS_CIRCUIT_BREAK_MS);
+        try {
+            return discover(userId, cursor, size, tag, city);
+        } finally {
+            redisUnavailableUntilMillis = previousUnavailableUntil;
+        }
+    }
 
     public RecommendResponse discover(Long userId, Long cursor, int size, String tag, String city) {
         int safeSize = normalizeSize(size);
@@ -82,12 +95,16 @@ public class RecommendService {
         if (userId == null || ids.isEmpty()) {
             return Map.of("saved", false, "count", 0);
         }
+        if (!isRedisAvailable()) {
+            return Map.of("saved", false, "count", ids.size());
+        }
         try {
             String key = exposureKey(userId);
             redisTemplate.opsForSet().add(key, ids.toArray());
             redisTemplate.expire(key, EXPOSURE_TTL);
             return Map.of("saved", true, "count", ids.size());
         } catch (Exception e) {
+            markRedisUnavailable(e);
             log.warn("Save recommend exposures failed, userId={}, count={}, reason={}", userId, ids.size(), e.getMessage());
             return Map.of("saved", false, "count", ids.size());
         }
@@ -101,7 +118,7 @@ public class RecommendService {
             recallByTag(userId, tag, city, recallSize, candidates);
         } catch (IllegalStateException e) {
             if (!isBlank(tag) || !isBlank(city)) {
-                log.warn("ES recall unavailable, fallback to Redis rank hot pool, userId={}, tag={}, city={}",
+                log.warn("ES recall unavailable, fallback to rank daily or MySQL hot notes, userId={}, tag={}, city={}",
                         userId, tag, city);
                 return coldStart(userId, offset, size);
             }
@@ -202,6 +219,9 @@ public class RecommendService {
     }
 
     private boolean recallByRedisItemCf(Long userId, Set<Long> interactedNoteIds, int recallSize, Map<Long, Candidate> candidates) {
+        if (!isRedisAvailable()) {
+            return false;
+        }
         Map<Long, Double> itemCfScores = new HashMap<>();
         try {
             for (Long noteId : interactedNoteIds) {
@@ -219,6 +239,7 @@ public class RecommendService {
                 }
             }
         } catch (Exception e) {
+            markRedisUnavailable(e);
             log.warn("Read precomputed ItemCF failed, fallback to online behavior scan: {}", e.getMessage());
             return false;
         }
@@ -281,11 +302,13 @@ public class RecommendService {
     }
 
     private RecommendResponse coldStartFromRedis(Long userId, int offset, int size) {
+        if (!isRedisAvailable()) {
+            return null;
+        }
         try {
             long end = Math.max(offset + (long) size * RECALL_MULTIPLIER, MAX_SIZE * (long) RECALL_MULTIPLIER);
-            String hotKey = resolveHotPoolKey();
             Set<ZSetOperations.TypedTuple<Object>> tuples =
-                    redisTemplate.opsForZSet().reverseRangeWithScores(hotKey, 0, end);
+                    redisTemplate.opsForZSet().reverseRangeWithScores(rankDailyKey(), 0, end);
             if (tuples == null || tuples.isEmpty()) {
                 return null;
             }
@@ -305,26 +328,14 @@ public class RecommendService {
                     .skip(offset)
                     .toList();
             List<Long> noteIds = selectAndReserveWithRefill(userId, filteredIds, size);
-            Map<Long, Note> noteMap = recommendDataService.getNormalNotesByIds(noteIds);
-            Map<Long, String> coverMap = recommendDataService.getCoverUrls(noteIds);
-
-            List<RecommendItemVO> items = new ArrayList<>();
-            for (Long noteId : noteIds) {
-                Note note = noteMap.get(noteId);
-                if (note == null) {
-                    continue;
-                }
-                items.add(toItem(note, coverMap.get(noteId), COLD_START_REASON));
-                if (items.size() >= size) {
-                    break;
-                }
-            }
+            List<RecommendItemVO> items = toItemsFromIds(noteIds, COLD_START_REASON);
 
             long nextOffset = offset + noteIds.size();
             boolean hasMore = filteredIds.size() > noteIds.size();
             return new RecommendResponse(diversifyItems(items), hasMore ? nextOffset : null, hasMore);
         } catch (Exception e) {
-            log.warn("Recommend hot pool unavailable, fallback to MySQL: {}", e.getMessage());
+            markRedisUnavailable(e);
+            log.warn("Rank daily unavailable, fallback to MySQL hot notes: {}", e.getMessage());
             return null;
         }
     }
@@ -335,39 +346,33 @@ public class RecommendService {
             return List.of();
         }
         String key = behaviorKey(userId);
-        try {
-            Object cached = redisTemplate.opsForValue().get(key);
-            if (cached instanceof List<?> list && !list.isEmpty()) {
-                return list.stream()
-                        .filter(UserBehavior.class::isInstance)
-                        .map(UserBehavior.class::cast)
-                        .limit(limit)
-                        .toList();
+        if (isRedisAvailable()) {
+            try {
+                Object cached = redisTemplate.opsForValue().get(key);
+                if (cached instanceof List<?> list && !list.isEmpty()) {
+                    return list.stream()
+                            .filter(UserBehavior.class::isInstance)
+                            .map(UserBehavior.class::cast)
+                            .limit(limit)
+                            .toList();
+                }
+            } catch (Exception e) {
+                markRedisUnavailable(e);
+                log.warn("Read behavior profile cache failed, userId={}, reason={}", userId, e.getMessage());
             }
-        } catch (Exception e) {
-            log.warn("Read behavior profile cache failed, userId={}, reason={}", userId, e.getMessage());
         }
 
         List<UserBehavior> behaviors = recommendDataService.listRecentUserBehaviors(userId, limit);
+        if (!isRedisAvailable()) {
+            return behaviors;
+        }
         try {
             redisTemplate.opsForValue().set(key, behaviors, BEHAVIOR_TTL);
         } catch (Exception e) {
+            markRedisUnavailable(e);
             log.warn("Write behavior profile cache failed, userId={}, reason={}", userId, e.getMessage());
         }
         return behaviors;
-    }
-
-    private String resolveHotPoolKey() {
-        String rankKey = rankDailyKey();
-        try {
-            Long rankSize = redisTemplate.opsForZSet().zCard(rankKey);
-            if (rankSize != null && rankSize > 0) {
-                return rankKey;
-            }
-        } catch (Exception e) {
-            log.warn("Read rank daily hot pool failed, fallback to recommend hot pool: {}", e.getMessage());
-        }
-        return HOT_POOL_KEY;
     }
 
     private RecommendResponse coldStartFromMysql(Long userId, int offset, int size) {
@@ -386,9 +391,7 @@ public class RecommendService {
         boolean hasMore = notes.size() > selectedIds.size();
         Map<Long, String> coverMap = recommendDataService.getCoverUrls(pageNotes.stream().map(Note::getId).toList());
 
-        List<RecommendItemVO> items = diversifyNotes(pageNotes).stream()
-                .map(note -> toItem(note, coverMap.get(note.getId()), COLD_START_REASON))
-                .toList();
+        List<RecommendItemVO> items = toItemsFromNotes(diversifyNotes(pageNotes), coverMap, COLD_START_REASON);
         return new RecommendResponse(items, hasMore ? (long) offset + Math.min(size, notes.size()) : null, hasMore);
     }
 
@@ -433,14 +436,105 @@ public class RecommendService {
     private List<RecommendItemVO> toItems(List<Candidate> candidates) {
         List<Long> noteIds = candidates.stream().map(candidate -> candidate.note.getId()).toList();
         Map<Long, String> coverMap = recommendDataService.getCoverUrls(noteIds);
-        return candidates.stream()
+        List<RecommendItemVO> items = candidates.stream()
                 .map(candidate -> toItem(candidate.note, coverMap.get(candidate.note.getId()),
                         candidate.reason == null ? COLD_START_REASON : candidate.reason))
                 .toList();
+        candidates.forEach(candidate -> cachePostSummary(candidate.note, coverMap.get(candidate.note.getId())));
+        enrichAuthorProfiles(items);
+        return items;
+    }
+
+    private List<RecommendItemVO> toItemsFromIds(List<Long> noteIds, String reason) {
+        if (noteIds == null || noteIds.isEmpty()) {
+            return List.of();
+        }
+        Map<Long, RecommendItemVO> cachedItems = getCachedPostSummaryItems(noteIds, reason);
+        List<Long> missingIds = noteIds.stream()
+                .filter(id -> !cachedItems.containsKey(id))
+                .toList();
+        if (!missingIds.isEmpty()) {
+            Map<Long, Note> noteMap = recommendDataService.getNormalNotesByIds(missingIds);
+            Map<Long, String> coverMap = recommendDataService.getCoverUrls(missingIds);
+            for (Long noteId : missingIds) {
+                Note note = noteMap.get(noteId);
+                if (note == null) {
+                    continue;
+                }
+                cachePostSummary(note, coverMap.get(noteId));
+                cachedItems.put(noteId, toItem(note, coverMap.get(noteId), reason));
+            }
+        }
+        List<RecommendItemVO> items = noteIds.stream()
+                .map(cachedItems::get)
+                .filter(Objects::nonNull)
+                .toList();
+        enrichAuthorProfiles(items);
+        return items;
+    }
+
+    private List<RecommendItemVO> toItemsFromNotes(List<Note> notes, Map<Long, String> coverMap, String reason) {
+        if (notes == null || notes.isEmpty()) {
+            return List.of();
+        }
+        List<RecommendItemVO> items = new ArrayList<>();
+        for (Note note : notes) {
+            String coverUrl = coverMap == null ? null : coverMap.get(note.getId());
+            cachePostSummary(note, coverUrl);
+            items.add(toItem(note, coverUrl, reason));
+        }
+        enrichAuthorProfiles(items);
+        return items;
+    }
+
+    private Map<Long, RecommendItemVO> getCachedPostSummaryItems(List<Long> noteIds, String reason) {
+        Map<Long, RecommendItemVO> items = new LinkedHashMap<>();
+        if (!isRedisAvailable()) {
+            return items;
+        }
+        try {
+            List<String> keys = noteIds.stream().map(this::postSummaryKey).toList();
+            List<Object> cachedValues = redisTemplate.opsForValue().multiGet(keys);
+            if (cachedValues == null) {
+                return items;
+            }
+            for (int i = 0; i < Math.min(noteIds.size(), cachedValues.size()); i++) {
+                RecommendItemVO item = toItemFromSummary(cachedValues.get(i), reason);
+                if (item != null) {
+                    items.put(noteIds.get(i), item);
+                }
+            }
+        } catch (Exception e) {
+            markRedisUnavailable(e);
+            log.warn("Read recommend post summary cache failed, count={}, reason={}", noteIds.size(), e.getMessage());
+        }
+        return items;
+    }
+
+    private RecommendItemVO toItemFromSummary(Object cached, String reason) {
+        if (!(cached instanceof Map<?, ?> map)) {
+            return null;
+        }
+        RecommendItemVO item = new RecommendItemVO();
+        item.setPostId(toLong(map.get("postId")));
+        item.setAuthorId(toLong(map.get("authorId")));
+        item.setTitle(toStringValue(map.get("title")));
+        item.setCoverUrl(toStringValue(map.get("coverUrl")));
+        item.setShopName(toStringValue(map.get("shopName")));
+        item.setTags(List.of());
+        item.setLikeCount(toLong(defaultZero(toInteger(map.get("likeCount")))));
+        item.setCollectCount(toLong(defaultZero(toInteger(map.get("collectCount")))));
+        item.setCommentCount(toLong(defaultZero(toInteger(map.get("commentCount")))));
+        item.setCreatedAt(toLocalDateTime(map.get("createdAt")));
+        item.setReason(reason);
+        return item.getPostId() == null ? null : item;
     }
 
     private Set<Long> getExposureIds(Long userId) {
         if (userId == null) {
+            return Set.of();
+        }
+        if (!isRedisAvailable()) {
             return Set.of();
         }
         try {
@@ -453,6 +547,7 @@ public class RecommendService {
                     .filter(Objects::nonNull)
                     .collect(Collectors.toSet());
         } catch (Exception e) {
+            markRedisUnavailable(e);
             log.warn("Read recommend exposures failed, userId={}, reason={}", userId, e.getMessage());
             return Set.of();
         }
@@ -471,58 +566,144 @@ public class RecommendService {
         item.setCommentCount(toLong(defaultZero(note.getCommentCount())));
         item.setReason(reason);
         item.setCreatedAt(note.getCreatedAt());
-        enrichFromPostService(item);
-        enrichFromUserService(item);
         return item;
     }
 
-    private void enrichFromPostService(RecommendItemVO item) {
+    private void cachePostSummary(Note note, String coverUrl) {
+        if (note == null || note.getId() == null) {
+            return;
+        }
+        if (!isRedisAvailable()) {
+            return;
+        }
+        Map<String, Object> summary = new LinkedHashMap<>();
+        summary.put("postId", note.getId());
+        summary.put("authorId", note.getAuthorId());
+        summary.put("title", note.getTitle());
+        summary.put("coverUrl", coverUrl);
+        summary.put("shopName", note.getShopName());
+        summary.put("likeCount", defaultZero(note.getLikeCount()));
+        summary.put("collectCount", defaultZero(note.getCollectCount()));
+        summary.put("commentCount", defaultZero(note.getCommentCount()));
+        summary.put("createdAt", note.getCreatedAt());
         try {
-            Result<PostDetailDTO> result = postClient.getPostDetail(item.getPostId());
-            if (result == null || result.getCode() != 200 || result.getData() == null) {
-                return;
-            }
-            PostDetailDTO detail = result.getData();
-            item.setAuthorId(detail.getAuthorId() == null ? item.getAuthorId() : detail.getAuthorId());
-            item.setAuthorName(firstNonBlank(detail.getAuthorName(), item.getAuthorName()));
-            item.setAuthorAvatar(firstNonBlank(detail.getAuthorAvatar(), item.getAuthorAvatar()));
-            item.setTitle(firstNonBlank(detail.getTitle(), item.getTitle()));
-            item.setShopName(firstNonBlank(detail.getShopName(), item.getShopName()));
-            if (detail.getImageUrls() != null && !detail.getImageUrls().isEmpty()) {
-                item.setCoverUrl(detail.getImageUrls().get(0));
-            }
-            if (detail.getLikeCount() != null) {
-                item.setLikeCount(toLong(detail.getLikeCount()));
-            }
-            if (detail.getCollectCount() != null) {
-                item.setCollectCount(toLong(detail.getCollectCount()));
-            }
-            if (detail.getCommentCount() != null) {
-                item.setCommentCount(toLong(detail.getCommentCount()));
-            }
-            if (detail.getCreatedAt() != null) {
-                item.setCreatedAt(detail.getCreatedAt());
-            }
+            redisTemplate.opsForValue().set(postSummaryKey(note.getId()), summary, POST_SUMMARY_TTL);
         } catch (Exception e) {
-            log.warn("Feign post-service enrich failed, postId={}, reason={}", item.getPostId(), e.getMessage());
+            markRedisUnavailable(e);
+            log.warn("Write recommend post summary cache failed, postId={}, reason={}", note.getId(), e.getMessage());
         }
     }
 
-    private void enrichFromUserService(RecommendItemVO item) {
-        if (item.getAuthorId() == null) {
+    private void enrichAuthorProfiles(List<RecommendItemVO> items) {
+        if (items == null || items.isEmpty()) {
+            return;
+        }
+        if (!isRedisAvailable()) {
+            return;
+        }
+        List<Long> authorIds = items.stream()
+                .map(RecommendItemVO::getAuthorId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+        if (authorIds.isEmpty()) {
+            return;
+        }
+
+        Map<Long, UserProfileDTO> profiles = getCachedUserProfiles(authorIds);
+        for (Long authorId : authorIds) {
+            if (profiles.containsKey(authorId)) {
+                continue;
+            }
+            UserProfileDTO profile = loadUserProfile(authorId);
+            if (profile != null) {
+                profiles.put(authorId, profile);
+            }
+        }
+
+        for (RecommendItemVO item : items) {
+            UserProfileDTO profile = profiles.get(item.getAuthorId());
+            if (profile != null) {
+                applyUserProfile(item, profile);
+            }
+        }
+    }
+
+    private Map<Long, UserProfileDTO> getCachedUserProfiles(List<Long> authorIds) {
+        Map<Long, UserProfileDTO> profiles = new HashMap<>();
+        if (!isRedisAvailable()) {
+            return profiles;
+        }
+        try {
+            List<String> keys = authorIds.stream().map(this::userProfileKey).toList();
+            List<Object> cachedValues = redisTemplate.opsForValue().multiGet(keys);
+            if (cachedValues == null) {
+                return profiles;
+            }
+            for (int i = 0; i < Math.min(authorIds.size(), cachedValues.size()); i++) {
+                UserProfileDTO profile = toUserProfile(cachedValues.get(i));
+                if (profile != null) {
+                    profiles.put(authorIds.get(i), profile);
+                }
+            }
+        } catch (Exception e) {
+            markRedisUnavailable(e);
+            log.warn("Read recommend user profile cache failed, count={}, reason={}", authorIds.size(), e.getMessage());
+        }
+        return profiles;
+    }
+
+    private UserProfileDTO loadUserProfile(Long authorId) {
+        if (authorId == null) {
+            return null;
+        }
+        try {
+            Result<UserProfileDTO> result = userClient.getUserProfile(authorId);
+            if (result == null || result.getCode() != 200 || result.getData() == null) {
+                return null;
+            }
+            UserProfileDTO profile = result.getData();
+            cacheUserProfile(authorId, profile);
+            return profile;
+        } catch (Exception e) {
+            log.warn("Feign user-service enrich failed, authorId={}, reason={}", authorId, e.getMessage());
+            return null;
+        }
+    }
+
+    private UserProfileDTO toUserProfile(Object cached) {
+        if (cached instanceof UserProfileDTO profile) {
+            return profile;
+        }
+        if (cached instanceof Map<?, ?> map) {
+            UserProfileDTO profile = new UserProfileDTO();
+            profile.setUserId(toLong(map.get("userId")));
+            profile.setUsername(toStringValue(map.get("username")));
+            profile.setAvatar(toStringValue(map.get("avatar")));
+            Object bigV = map.get("isBigV");
+            if (bigV instanceof Boolean value) {
+                profile.setIsBigV(value);
+            }
+            return profile;
+        }
+        return null;
+    }
+
+    private void cacheUserProfile(Long authorId, UserProfileDTO profile) {
+        if (!isRedisAvailable()) {
             return;
         }
         try {
-            Result<UserProfileDTO> result = userClient.getUserProfile(item.getAuthorId());
-            if (result == null || result.getCode() != 200 || result.getData() == null) {
-                return;
-            }
-            UserProfileDTO profile = result.getData();
-            item.setAuthorName(firstNonBlank(profile.getUsername(), item.getAuthorName()));
-            item.setAuthorAvatar(firstNonBlank(profile.getAvatar(), item.getAuthorAvatar()));
+            redisTemplate.opsForValue().set(userProfileKey(authorId), profile, USER_PROFILE_TTL);
         } catch (Exception e) {
-            log.warn("Feign user-service enrich failed, authorId={}, reason={}", item.getAuthorId(), e.getMessage());
+            markRedisUnavailable(e);
+            log.warn("Write recommend user profile cache failed, authorId={}, reason={}", authorId, e.getMessage());
         }
+    }
+
+    private void applyUserProfile(RecommendItemVO item, UserProfileDTO profile) {
+        item.setAuthorName(firstNonBlank(profile.getUsername(), item.getAuthorName()));
+        item.setAuthorAvatar(firstNonBlank(profile.getAvatar(), item.getAuthorAvatar()));
     }
 
     private List<Long> selectAndReserveWithRefill(Long userId, List<Long> orderedIds, int limit) {
@@ -550,6 +731,12 @@ public class RecommendService {
     private List<Long> selectAndReserveUnexposed(Long userId, List<Long> orderedIds, int limit) {
         if (userId == null || orderedIds == null || orderedIds.isEmpty() || limit <= 0) {
             return List.of();
+        }
+        if (!isRedisAvailable()) {
+            return orderedIds.stream()
+                    .filter(Objects::nonNull)
+                    .limit(limit)
+                    .toList();
         }
         String scriptText = """
                 local key = KEYS[1]
@@ -590,14 +777,23 @@ public class RecommendService {
                     .filter(Objects::nonNull)
                     .toList();
         } catch (Exception e) {
+            markRedisUnavailable(e);
             log.warn("Reserve recommend exposures failed, fallback to local exposure filtering, userId={}, reason={}",
                     userId, e.getMessage());
-            Set<Long> exposed = getExposureIds(userId);
             return orderedIds.stream()
-                    .filter(id -> id != null && !exposed.contains(id))
+                    .filter(Objects::nonNull)
                     .limit(limit)
                     .toList();
         }
+    }
+
+    private boolean isRedisAvailable() {
+        return System.currentTimeMillis() >= redisUnavailableUntilMillis;
+    }
+
+    private void markRedisUnavailable(Exception e) {
+        redisUnavailableUntilMillis = System.currentTimeMillis() + REDIS_CIRCUIT_BREAK_MS;
+        log.warn("Redis temporarily bypassed for {}ms, reason={}", REDIS_CIRCUIT_BREAK_MS, e.getMessage());
     }
 
     private Double calculateScore(Note note) {
@@ -666,6 +862,14 @@ public class RecommendService {
         return BEHAVIOR_KEY_PREFIX + userId;
     }
 
+    private String userProfileKey(Long authorId) {
+        return USER_PROFILE_KEY_PREFIX + authorId;
+    }
+
+    private String postSummaryKey(Long postId) {
+        return POST_SUMMARY_KEY_PREFIX + postId;
+    }
+
     private String rankDailyKey() {
         return RANK_DAILY_KEY_PREFIX + LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
     }
@@ -676,6 +880,38 @@ public class RecommendService {
 
     private String firstNonBlank(String preferred, String fallback) {
         return isBlank(preferred) ? fallback : preferred;
+    }
+
+    private String toStringValue(Object value) {
+        return value == null ? null : String.valueOf(value);
+    }
+
+    private Integer toInteger(Object value) {
+        if (value instanceof Number number) {
+            return number.intValue();
+        }
+        if (value == null) {
+            return null;
+        }
+        try {
+            return Integer.valueOf(String.valueOf(value));
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private LocalDateTime toLocalDateTime(Object value) {
+        if (value instanceof LocalDateTime dateTime) {
+            return dateTime;
+        }
+        if (value == null) {
+            return null;
+        }
+        try {
+            return LocalDateTime.parse(String.valueOf(value));
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     private List<Long> distinctIds(Collection<Long> ids) {

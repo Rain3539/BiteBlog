@@ -208,7 +208,7 @@ Write-Host "Writing MySQL recommend test data..." -ForegroundColor Cyan
 $sql | docker exec -i $mysqlContainer mysql -uroot "-p$mysqlPassword" biteblog
 
 Write-Host ""
-Write-Host "Writing Redis recommend hot pool and exposure sample..." -ForegroundColor Cyan
+Write-Host "Writing Redis rank daily and exposure sample..." -ForegroundColor Cyan
 
 $missing = docker exec $mysqlContainer mysql -N -uroot "-p$mysqlPassword" biteblog -e "SELECT IF(COUNT(*) = 6, 0, 1) FROM user WHERE phone IN ('13800000001','13800000004','13800000005','13800000006','13800000007','13800000060');"
 if ($missing.Trim() -ne "0") {
@@ -219,7 +219,7 @@ $noteIds = docker exec $mysqlContainer mysql -N -uroot "-p$mysqlPassword" bitebl
 $foodieUserId = docker exec $mysqlContainer mysql -N -uroot "-p$mysqlPassword" biteblog -e "SELECT id FROM user WHERE phone='13800000005';"
 
 $rankDailyKey = "rank:daily:$(Get-Date -Format 'yyyy-MM-dd')"
-docker exec -e "REDISCLI_AUTH=$redisPassword" $redisContainer redis-cli DEL recommend:hot:pool $rankDailyKey "behavior:$foodieUserId" "exposure:$foodieUserId" | Out-Null
+docker exec -e "REDISCLI_AUTH=$redisPassword" $redisContainer redis-cli DEL $rankDailyKey "behavior:$foodieUserId" "exposure:$foodieUserId" | Out-Null
 
 $score = 300
 foreach ($id in $noteIds) {
@@ -227,7 +227,6 @@ foreach ($id in $noteIds) {
         continue
     }
     docker exec -e "REDISCLI_AUTH=$redisPassword" $redisContainer redis-cli DEL "recommend:itemcf:similar:$id" | Out-Null
-    docker exec -e "REDISCLI_AUTH=$redisPassword" $redisContainer redis-cli ZADD recommend:hot:pool $score $id | Out-Null
     docker exec -e "REDISCLI_AUTH=$redisPassword" $redisContainer redis-cli ZADD $rankDailyKey $score $id | Out-Null
     $score -= 5
 }
@@ -292,7 +291,7 @@ Write-Host "  13800000006 tea behavior user"
 Write-Host "  13800000007 ItemCF neighbor user"
 Write-Host "  13800000060 cold-start user"
 Write-Host "Redis keys:" -ForegroundColor White
-Write-Host "  recommend:hot:pool"
+Write-Host "  $rankDailyKey"
 Write-Host "  recommend:itemcf:similar:<postId>"
 Write-Host "  exposure:<13800000005 userId>"
 Write-Host "Elasticsearch indexes:" -ForegroundColor White

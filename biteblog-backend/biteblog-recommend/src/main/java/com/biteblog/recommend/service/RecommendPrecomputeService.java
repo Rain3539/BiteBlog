@@ -27,12 +27,13 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class RecommendPrecomputeService {
 
-    private static final String HOT_POOL_KEY = "recommend:hot:pool";
     private static final String RANK_DAILY_KEY_PREFIX = "rank:daily:";
     private static final String BEHAVIOR_KEY_PREFIX = "behavior:";
     private static final String ITEM_SIM_KEY_PREFIX = "recommend:itemcf:similar:";
+    private static final String POST_SUMMARY_KEY_PREFIX = "recommend:post:summary:";
+    private static final Duration POST_SUMMARY_TTL = Duration.ofMinutes(30);
     private static final int MAX_BEHAVIOR_SCAN = 2000;
-    private static final int MAX_HOT_POOL_SIZE = 200;
+    private static final int MAX_RANK_DAILY_SIZE = 200;
     private static final int MAX_ITEMS_PER_USER = 30;
     private static final int MAX_SIMILAR_PER_ITEM = 20;
 
@@ -51,11 +52,11 @@ public class RecommendPrecomputeService {
 
     public Map<String, Object> precompute() {
         long started = System.currentTimeMillis();
-        int hotCount = rebuildHotPool();
+        int rankDailyCount = rebuildRankDaily();
         int itemSimCount = rebuildItemSimilarities();
         long elapsed = System.currentTimeMillis() - started;
         return Map.of(
-                "hotPoolCount", hotCount,
+                "rankDailyCount", rankDailyCount,
                 "itemSimilarityCount", itemSimCount,
                 "elapsedMs", elapsed
         );
@@ -75,17 +76,18 @@ public class RecommendPrecomputeService {
             return removeNote(noteId);
         }
 
-        List<String> coverUrls = new ArrayList<>(recommendDataService.getCoverUrls(List.of(noteId)).values());
+        Map<Long, String> coverMap = recommendDataService.getCoverUrls(List.of(noteId));
+        List<String> coverUrls = new ArrayList<>(coverMap.values());
         boolean esSaved = recommendSearchService.indexPost(note, coverUrls);
         double score = calculateHotScore(note);
-        redisTemplate.opsForZSet().add(HOT_POOL_KEY, note.getId(), score);
+        writePostSummary(note, coverMap.get(noteId));
         if (shouldJoinDailyRank(note)) {
             redisTemplate.opsForZSet().add(rankDailyKey(), note.getId().toString(), score);
         }
         return Map.of(
                 "noteId", noteId,
                 "esPostIndexed", esSaved,
-                "hotPoolUpdated", true,
+                "rankDailyUpdated", shouldJoinDailyRank(note),
                 "elapsedMs", System.currentTimeMillis() - started
         );
     }
@@ -100,13 +102,12 @@ public class RecommendPrecomputeService {
             );
         }
         boolean esDeleted = recommendSearchService.deletePostFromIndex(noteId);
-        Long removed = redisTemplate.opsForZSet().remove(HOT_POOL_KEY, noteId);
         Long rankRemoved = redisTemplate.opsForZSet().remove(rankDailyKey(), noteId.toString(), noteId);
+        redisTemplate.delete(POST_SUMMARY_KEY_PREFIX + noteId);
         int itemSimCount = rebuildItemSimilarities();
         return Map.of(
                 "noteId", noteId,
                 "esPostDeleted", esDeleted,
-                "hotPoolRemoved", removed == null ? 0L : removed,
                 "rankDailyRemoved", rankRemoved == null ? 0L : rankRemoved,
                 "itemSimilarityCount", itemSimCount,
                 "elapsedMs", System.currentTimeMillis() - started
@@ -126,19 +127,19 @@ public class RecommendPrecomputeService {
         );
     }
 
-    private int rebuildHotPool() {
-        List<Note> notes = recommendDataService.listNormalNotesForPrecompute(MAX_HOT_POOL_SIZE);
-        redisTemplate.delete(HOT_POOL_KEY);
+    private int rebuildRankDaily() {
+        List<Note> notes = recommendDataService.listNormalNotesForPrecompute(MAX_RANK_DAILY_SIZE);
         String rankKey = rankDailyKey();
         redisTemplate.delete(rankKey);
+        Map<Long, String> coverMap = recommendDataService.getCoverUrls(notes.stream().map(Note::getId).toList());
         int saved = 0;
         for (Note note : notes) {
             double score = calculateHotScore(note);
-            redisTemplate.opsForZSet().add(HOT_POOL_KEY, note.getId(), score);
+            writePostSummary(note, coverMap.get(note.getId()));
             if (shouldJoinDailyRank(note)) {
                 redisTemplate.opsForZSet().add(rankKey, note.getId().toString(), score);
+                saved++;
             }
-            saved++;
         }
         return saved;
     }
@@ -257,6 +258,27 @@ public class RecommendPrecomputeService {
     private boolean shouldJoinDailyRank(Note note) {
         return note != null && note.getCreatedAt() != null
                 && note.getCreatedAt().isAfter(LocalDateTime.now().minusDays(1));
+    }
+
+    private void writePostSummary(Note note, String coverUrl) {
+        if (note == null || note.getId() == null) {
+            return;
+        }
+        Map<String, Object> summary = new LinkedHashMap<>();
+        summary.put("postId", note.getId());
+        summary.put("authorId", note.getAuthorId());
+        summary.put("title", note.getTitle());
+        summary.put("coverUrl", coverUrl);
+        summary.put("shopName", note.getShopName());
+        summary.put("likeCount", defaultZero(note.getLikeCount()));
+        summary.put("collectCount", defaultZero(note.getCollectCount()));
+        summary.put("commentCount", defaultZero(note.getCommentCount()));
+        summary.put("createdAt", note.getCreatedAt());
+        try {
+            redisTemplate.opsForValue().set(POST_SUMMARY_KEY_PREFIX + note.getId(), summary, POST_SUMMARY_TTL);
+        } catch (Exception e) {
+            log.warn("Write recommend post summary failed, noteId={}, reason={}", note.getId(), e.getMessage());
+        }
     }
 
     private String rankDailyKey() {

@@ -1,12 +1,12 @@
 ﻿**********************
-Windows PowerShell 脚本开始
-开始时间: 20260519205245
-用户名: NIU\Zijun Liu
-RunAs 用户: NIU\Zijun Liu
-配置名称: 
-计算机: NIU (Microsoft Windows NT 10.0.26200.0)
-主机应用程序: C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe -NoLogo -NoExit -Command chcp.com 65001
-进程 ID: 29460
+Windows PowerShell transcript start
+Start time: 20260521010418
+Username: NIU\Zijun Liu
+RunAs User: NIU\Zijun Liu
+Configuration Name:
+Machine: NIU (Microsoft Windows NT 10.0.26200.0)
+Host Application: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\测试脚本\recommend-test-verify.ps1 -RunDestructiveReliabilityTests
+Process ID: 43952
 PSVersion: 5.1.26100.8457
 PSEdition: Desktop
 PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.8457
@@ -17,7 +17,7 @@ PSRemotingProtocolVersion: 2.3
 SerializationVersion: 1.1.0.1
 **********************
 ===== Recommend Service verification =====
-Time: 2026-05-19 20:52:45
+Time: 2026-05-21 01:04:18
 Transcript: E:\desktop\BiteBlog\测试脚本\recommend-test-result.txt
 
 ===== 0. Login test users =====
@@ -26,92 +26,104 @@ Transcript: E:\desktop\BiteBlog\测试脚本\recommend-test-result.txt
   MQ author user: bb_bigv_01, phone=13800000001, userId=6
 
 ===== 1. Health and Gateway route =====
-  Direct /recommend/health: 4ms OK
-  Gateway /api/recommend/health: 9ms OK
-  Manual precompute hot pool and Redis ItemCF: 224ms OK
-  Redis rank daily key=rank:daily:2026-05-19, count=32
+  Direct /recommend/health: 78ms OK
+  Gateway /api/recommend/health: 21ms OK
+  Manual precompute rank daily and Redis ItemCF: 713ms OK
+  Redis rank daily key=rank:daily:2026-05-21, count=24
+  post summary cache key=recommend:post:summary:"215", TTL=1799 seconds
 
 ===== 1.1 MQ event consumption: publish and interaction =====
-  publish note via Post Service: 36ms OK
-  MQ note.published -> ES post_index: 6ms OK
-  note.published consumed: postId=143, ES found=True, hotScore=28.333
-  like note to publish interaction.like: 29ms OK
-  interaction.like consumed: hotScoreBefore=28.333, hotScoreAfter=31.333
+  publish note via Post Service: 276ms OK
+  MQ note.published -> ES post_index: 67ms OK
+  note.published consumed: postId=284, ES found=True, rankDailyScore=28.333333333333332
+  like note to publish interaction.like: 42ms OK
+  interaction.like consumed: rankDailyScoreBefore=28.333333333333332, rankDailyScoreAfter=31.333333333333332
 
-===== 2. Cold-start latency: 10 requests, target avg < 600ms =====
-  cold-start-1: 233ms OK
-  cold-start-2: 225ms OK
-  cold-start-3: 182ms OK
-  cold-start-4: 196ms OK
-  cold-start-5: 179ms OK
-  cold-start-6: 170ms OK
-  cold-start-7: 182ms OK
-  cold-start-8: 190ms OK
-  cold-start-9: 194ms OK
-  cold-start-10: 194ms OK
-  cold-start latency avg=194ms, min=170ms, max=233ms, target<600ms
+===== 2. Cold-start availability smoke: 3 requests =====
+  cold-start-1: 108ms OK
+  cold-start-2: 38ms OK
+  cold-start-3: 23ms OK
+  cold-start smoke latency avg=56ms, min=23ms, max=108ms, target<1000ms
   result count=20, hasMore=True, cursor=20
 
-===== 2.1 Personalized latency: 10 requests, target avg < 600ms =====
-  personalized-1: 220ms OK
-  personalized-2: 175ms OK
-  personalized-3: 172ms OK
-  personalized-4: 185ms OK
-  personalized-5: 192ms OK
-  personalized-6: 192ms OK
-  personalized-7: 180ms OK
-  personalized-8: 196ms OK
-  personalized-9: 188ms OK
-  personalized-10: 209ms OK
-  personalized latency avg=191ms, min=172ms, max=220ms, target<600ms
+===== 2.1 Personalized availability smoke: 3 requests =====
+  personalized-1: 58ms OK
+  personalized-2: 41ms OK
+  personalized-3: 42ms OK
+  personalized smoke latency avg=47ms, min=41ms, max=58ms, target<1000ms
   result count=20, hasMore=True, cursor=20
-  behavior cache key=behavior:10, TTL=297 seconds
+  behavior cache key=behavior:10, TTL=-2 seconds
+  user profile cache key=recommend:user:profile:6, TTL=1380 seconds
+  user profile cache key=recommend:user:profile:9, TTL=878 seconds
 
-===== 2.2 Tag recall latency: 10 requests, target avg < 600ms =====
-  tag-recall-1: 201ms OK
-  tag-recall-2: 232ms OK
-  tag-recall-3: 225ms OK
-  tag-recall-4: 218ms OK
-  tag-recall-5: 197ms OK
-  tag-recall-6: 189ms OK
-  tag-recall-7: 190ms OK
-  tag-recall-8: 209ms OK
-  tag-recall-9: 208ms OK
-  tag-recall-10: 200ms OK
-  tag-recall latency avg=207ms, min=189ms, max=232ms, target<600ms
+===== 2.2 Tag recall availability smoke: 3 requests =====
+  tag-recall-1: 340ms OK
+  tag-recall-2: 63ms OK
+  tag-recall-3: 62ms OK
+  tag-recall smoke latency avg=155ms, min=62ms, max=340ms, target<1000ms
   result count=20, hasMore=True, cursor=20
 
 ===== 3. Pagination consistency =====
-  page1 ids=[80,81,82,83,84,85,86,87,88,89] hasMore=True cursor=10
-  page2 ids=[90,91,92,93,94,95,96,97,98,99] hasMore=True cursor=20
+  page1 ids=[215,216,217,218,219,220,221,222,223,224] hasMore=True cursor=10
+  page2 ids=[225,226,227,228,229,230,231,232,233,234] hasMore=True cursor=20
   pagination check: PASS, no duplicates in first two pages
 
 ===== 4. Tag recall: ES first, MySQL fallback =====
-  tag=Hotpot city=Guangzhou: 189ms OK
-  top titles=[Recommend Test 11 Hotpot | Recommend Test 31 Hotpot | Recommend Test 21 Hotpot | Recommend Test 41 Hotpot | Recommend MQ Test 0519205246]
+  tag=Hotpot city=Guangzhou: 68ms OK
+  top titles=[Recommend Test 01 Hotpot | Recommend Test 31 Hotpot | Recommend Test 11 Hotpot | Recommend Test 41 Hotpot | Recommend Test 21 Hotpot]
 
 ===== 5. Exposure Lua preclaim and idempotent report =====
-  after discover: exposure:65 members=["79","89"]
-  TTL=-1 seconds
-  exposures-post-1: 4ms OK
-  exposures-post-2-repeat: 4ms OK
-  repeated exposure ids=[80,81,82], Redis SCARD=5
+  after discover: exposure:65 members=[]
+  TTL=-2 seconds
+  exposures-post-1: 10ms OK
+  exposures-post-2-repeat: 3ms OK
+  repeated exposure ids=[215,216,217], Redis SCARD=0
 
 ===== 6. Redis ItemCF similarity data =====
-  Redis recommend:itemcf:similar:80 => [79,11.325,83,6.325]
+  Redis recommend:itemcf:similar:215 => [216,11.325,219,6.325]
 
 ===== 7. Boundary parameters =====
-  size=1: 21ms OK
-  size=999 capped to 50: 304ms OK
+  size=1: 13ms OK
+  size=999 capped to 50: 21ms OK
   size=1 count=1
-  size=999 count=33, expected <= 50
+  size=999 count=50, expected <= 50
 
-===== 8. JMeter report note =====
+
+===== 8. Destructive reliability tests =====
+  Running destructive tests. ES/Redis containers will be stopped and restarted during this section.
+  8.1 rank:daily empty -> MySQL hot notes fallback
+  rank daily deleted, cold-start fallback: 19ms OK
+  fallback result count=10, hasMore=True
+  manual precompute self-heals rank daily: 138ms OK
+  rank daily after self-heal: key=rank:daily:2026-05-21, count=25
+  8.2 Redis ItemCF empty -> MySQL behavior fallback
+  Redis ItemCF deleted, personalized fallback: 42ms OK
+  ItemCF fallback result count=10, hasMore=True
+  manual precompute self-heals Redis ItemCF: 139ms OK
+  Redis ItemCF keys after self-heal: 5
+  8.3 ES stopped -> tag request fallback
+  ES stopped, tag request fallback: 22ms OK
+  ES fallback result count=10, hasMore=True
+PS>TerminatingError(Invoke-RestMethod): "基础连接已经关闭: 连接被意外关闭。"
+PS>TerminatingError(Invoke-RestMethod): "基础连接已经关闭: 连接被意外关闭。"
+PS>TerminatingError(Invoke-RestMethod): "基础连接已经关闭: 连接被意外关闭。"
+PS>TerminatingError(Invoke-RestMethod): "基础连接已经关闭: 连接被意外关闭。"
+PS>TerminatingError(Invoke-RestMethod): "基础连接已经关闭: 连接被意外关闭。"
+PS>TerminatingError(Invoke-RestMethod): "基础连接已经关闭: 连接被意外关闭。"
+  Elasticsearch ready
+  8.4 Redis stopped -> MySQL fallback and local exposure filtering
+  Redis stopped, cold-start MySQL fallback: 14ms OK
+  Redis fallback result count=10, hasMore=True
+  Redis restarted, manual precompute restore: 95ms OK
+
+===== 9. JMeter report note =====
+  PS1 keeps only low-volume smoke, consistency, and reliability checks.
+  Use JMeter as the formal concurrent performance test.
   Open after JMeter run: jmeter/recommendservice-report/index.html
   Screenshot Dashboard and Statistics table.
 
 ===== Done =====
 **********************
-Windows PowerShell 脚本结束
-结束时间: 20260519205302
+Windows PowerShell transcript end
+End time: 20260521010503
 **********************

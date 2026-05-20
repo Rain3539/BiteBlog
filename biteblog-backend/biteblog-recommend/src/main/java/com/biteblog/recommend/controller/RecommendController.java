@@ -26,12 +26,16 @@ public class RecommendController {
 
     @GetMapping("/discover")
     public Result<RecommendResponse> discover(@RequestHeader(value = "X-User-Id", required = false) Long userId,
+                                              @RequestHeader(value = "X-Recommend-Bypass-Redis", required = false) Boolean bypassRedis,
                                               @RequestParam(name = "cursor", required = false) Long cursor,
                                               @RequestParam(name = "size", defaultValue = "20") int size,
                                               @RequestParam(name = "tag", required = false) String tag,
                                               @RequestParam(name = "city", required = false) String city) {
         if (userId == null) {
             return Result.fail(400, "missing X-User-Id");
+        }
+        if (Boolean.TRUE.equals(bypassRedis)) {
+            return Result.success(recommendService.discoverWithoutRedis(userId, cursor, size, tag, city));
         }
         return Result.success(recommendService.discover(userId, cursor, size, tag, city));
     }
