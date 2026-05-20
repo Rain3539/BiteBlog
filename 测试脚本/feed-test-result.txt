@@ -1,16 +1,16 @@
 ﻿**********************
 Windows PowerShell 脚本开始
-开始时间: 20260513195809
+开始时间: 20260520100440
 用户名: LAPTOP-0SABB5A1\丁欣雨
 RunAs 用户: LAPTOP-0SABB5A1\丁欣雨
 配置名称: 
 计算机: LAPTOP-0SABB5A1 (Microsoft Windows NT 10.0.26200.0)
-主机应用程序: C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe -noexit -command try { . "d:\VSCode\Microsoft VS Code\8b640eef5a\resources\app\out\vs\workbench\contrib\terminal\common\scripts\shellIntegration.ps1" } catch {}
-进程 ID: 45768
-PSVersion: 5.1.26100.8115
+主机应用程序: C:\WINDOWS\System32\WindowsPowerShell\v1.0\powershell.exe -noexit -command try { . "d:\VSCode\Microsoft VS Code\0958016b2a\resources\app\out\vs\workbench\contrib\terminal\common\scripts\shellIntegration.ps1" } catch {}
+进程 ID: 15572
+PSVersion: 5.1.26100.8457
 PSEdition: Desktop
-PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.8115
-BuildVersion: 10.0.26100.8115
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.26100.8457
+BuildVersion: 10.0.26100.8457
 CLRVersion: 4.0.30319.42000
 WSManStackVersion: 3.0
 PSRemotingProtocolVersion: 2.3
@@ -20,47 +20,46 @@ SerializationVersion: 1.1.0.1
 用户: user_bbq (userId=7)
 
 ===== 1. Feed 流响应时间 (目标 < 300ms) =====
-  第1次: 20ms
-  第2次: 14ms
-  第3次: 14ms
-  第4次: 15ms
-  第5次: 16ms
-  第6次: 13ms
-  第7次: 15ms
-  第8次: 15ms
-  第9次: 15ms
-  第10次: 15ms
-  平均: 15ms (目标 <300ms)
+  第1次: 82ms
+  第2次: 59ms
+  第3次: 47ms
+  第4次: 46ms
+  第5次: 43ms
+  第6次: 45ms
+  第7次: 39ms
+  第8次: 49ms
+  第9次: 33ms
+  第10次: 31ms
+  平均: 47ms (目标 <300ms)
 
 ===== 2. 游标分页一致性 =====
-  第1页: postIds=[96,95,94] hasMore=True
-  第2页: postIds=[93,92,91] hasMore=True
-  第3页: postIds=[90,89,88] hasMore=True
-  第4页: postIds=[87,86,85] hasMore=True
-  第5页: postIds=[83,82,81] hasMore=True
+  第1页: postIds=[154,153,151] hasMore=True
+  第2页: postIds=[142,140,141] hasMore=True
+  第3页: postIds=[139,107,106] hasMore=True
+  第4页: postIds=[104,103,101] hasMore=True
+  第5页: postIds=[102,100,99] hasMore=True
   分页验证: 通过 (无重复)
 
 ===== 3. Fanout 延迟 (目标秒级) =====
   发布者: user_bbq (userId=7)
   粉丝: user_nightfood (userId=10)
   已确保粉丝关注了发布者
-  发布时间: 1778673489725
-  发布成功, postId=97
-  第1次: top3=[97,54,55] listCount=9
-  Fanout 延迟: 500ms (postId=97 已出现在粉丝feed)
+  发布时间: 1779242684701
+  发布成功, postId=155
+  第1次: top3=[155,154,153] listCount=45
+  Fanout 延迟: 500ms (postId=155 已出现在粉丝feed)
 
 ===== 4. Redis inbox 空间验证 =====
-  inbox:7 条数: 25 (建议上限 500)
+  inbox:7 条数: 41 (建议上限 500)
 
 ===== 5. 大V inbox 验证 =====
   feed:bigv: 4 12 13
-  inbox:4 条数: 2
-  inbox:12 条数: 3
+  inbox:4 条数: 13
+  inbox:12 条数: 40
   inbox:13 条数: 3
-
 
 ===== 完成 =====
 **********************
 Windows PowerShell 脚本结束
-结束时间: 20260513195810
+结束时间: 20260520100449
 **********************

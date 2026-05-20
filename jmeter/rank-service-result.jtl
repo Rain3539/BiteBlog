@@ -799,3 +799,403 @@ timeStamp,elapsed,label,responseCode,responseMessage,threadName,dataType,success
 1779149768175,13,GET /rank/top10 daily,200,,Rank Service Users 1-10,text,true,,1349,137,1,1,http://localhost:8086/rank/top10?type=daily,13,0,0
 1779149768189,13,GET /rank/list weekly page,200,,Rank Service Users 1-10,text,true,,1364,152,1,1,http://localhost:8086/rank/list?type=weekly&page=1&size=10,13,0,0
 1779149768189,13,GET /rank/list weekly page,200,,Rank Service Users 1-10,text,true,,1364,152,1,1,http://localhost:8086/rank/list?type=weekly&page=1&size=10,13,0,0
+1779243113154,43,GET /rank/health,200,,Rank Service Users 1-1,text,true,,308,128,1,1,http://localhost:8086/rank/health,37,0,22
+1779243113201,93,POST /rank/rebuild daily,200,,Rank Service Users 1-1,text,true,,299,224,1,1,http://localhost:8086/rank/rebuild?type=daily,93,0,0
+1779243113295,31,GET /rank/top10 daily,200,,Rank Service Users 1-1,text,true,,2402,138,1,1,http://localhost:8086/rank/top10?type=daily,31,0,0
+1779243113328,32,GET /rank/list weekly page,200,,Rank Service Users 1-1,text,true,,2533,153,1,1,http://localhost:8086/rank/list?type=weekly&page=1&size=10,32,0,0
+1779243113361,4,GET /rank/health,200,,Rank Service Users 1-1,text,true,,308,128,1,1,http://localhost:8086/rank/health,4,0,0
+1779243113365,60,POST /rank/rebuild daily,200,,Rank Service Users 1-1,text,true,,299,224,1,1,http://localhost:8086/rank/rebuild?type=daily,60,0,0
+1779243113425,20,GET /rank/top10 daily,200,,Rank Service Users 1-1,text,true,,2402,138,1,1,http://localhost:8086/rank/top10?type=daily,20,0,0
+1779243113446,22,GET /rank/list weekly page,200,,Rank Service Users 1-1,text,true,,2534,153,1,1,http://localhost:8086/rank/list?type=weekly&page=1&size=10,22,0,0
+1779243113469,4,GET /rank/health,200,,Rank Service Users 1-1,text,true,,308,128,1,1,http://localhost:8086/rank/health,4,0,0
+1779243113473,64,POST /rank/rebuild daily,200,,Rank Service Users 1-1,text,true,,299,224,1,1,http://localhost:8086/rank/rebuild?type=daily,64,0,0
+1779243113545,5,GET /rank/health,200,,Rank Service Users 1-2,text,true,,308,128,2,2,http://localhost:8086/rank/health,5,0,1
+1779243113538,31,GET /rank/top10 daily,200,,Rank Service Users 1-1,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,31,0,0
+1779243113570,25,GET /rank/list weekly page,200,,Rank Service Users 1-1,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,25,0,0
+1779243113596,4,GET /rank/health,200,,Rank Service Users 1-1,text,true,,308,128,2,2,http://localhost:8086/rank/health,4,0,0
+1779243113551,81,POST /rank/rebuild daily,200,,Rank Service Users 1-2,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,81,0,0
+1779243113632,20,GET /rank/top10 daily,200,,Rank Service Users 1-2,text,true,,2419,138,2,2,http://localhost:8086/rank/top10?type=daily,20,0,0
+1779243113600,63,POST /rank/rebuild daily,200,,Rank Service Users 1-1,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,63,0,0
+1779243113653,18,GET /rank/list weekly page,200,,Rank Service Users 1-2,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,18,0,0
+1779243113672,2,GET /rank/health,200,,Rank Service Users 1-2,text,true,,308,128,2,2,http://localhost:8086/rank/health,2,0,0
+1779243113663,18,GET /rank/top10 daily,200,,Rank Service Users 1-1,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,18,0,0
+1779243113682,20,GET /rank/list weekly page,200,,Rank Service Users 1-1,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,20,0,0
+1779243113703,3,GET /rank/health,200,,Rank Service Users 1-1,text,true,,308,128,2,2,http://localhost:8086/rank/health,3,0,0
+1779243113675,61,POST /rank/rebuild daily,200,,Rank Service Users 1-2,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,61,0,0
+1779243113736,20,GET /rank/top10 daily,200,,Rank Service Users 1-2,text,true,,2410,138,2,2,http://localhost:8086/rank/top10?type=daily,20,0,0
+1779243113707,65,POST /rank/rebuild daily,200,,Rank Service Users 1-1,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,64,0,0
+1779243113757,19,GET /rank/list weekly page,200,,Rank Service Users 1-2,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,19,0,0
+1779243113777,3,GET /rank/health,200,,Rank Service Users 1-2,text,true,,308,128,2,2,http://localhost:8086/rank/health,2,0,0
+1779243113772,21,GET /rank/top10 daily,200,,Rank Service Users 1-1,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,21,0,0
+1779243113794,20,GET /rank/list weekly page,200,,Rank Service Users 1-1,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,20,0,0
+1779243113815,4,GET /rank/health,200,,Rank Service Users 1-1,text,true,,308,128,2,2,http://localhost:8086/rank/health,4,0,0
+1779243113780,68,POST /rank/rebuild daily,200,,Rank Service Users 1-2,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,68,0,0
+1779243113849,20,GET /rank/top10 daily,200,,Rank Service Users 1-2,text,true,,2410,138,2,2,http://localhost:8086/rank/top10?type=daily,20,0,0
+1779243113820,63,POST /rank/rebuild daily,200,,Rank Service Users 1-1,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,62,0,0
+1779243113870,16,GET /rank/list weekly page,200,,Rank Service Users 1-2,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,16,0,0
+1779243113887,2,GET /rank/health,200,,Rank Service Users 1-2,text,true,,308,128,2,2,http://localhost:8086/rank/health,2,0,0
+1779243113883,17,GET /rank/top10 daily,200,,Rank Service Users 1-1,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,17,0,0
+1779243113900,18,GET /rank/list weekly page,200,,Rank Service Users 1-1,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,18,0,0
+1779243113919,3,GET /rank/health,200,,Rank Service Users 1-1,text,true,,308,128,2,2,http://localhost:8086/rank/health,3,0,0
+1779243113890,62,POST /rank/rebuild daily,200,,Rank Service Users 1-2,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,61,0,0
+1779243113952,22,GET /rank/top10 daily,200,,Rank Service Users 1-2,text,true,,2411,138,2,2,http://localhost:8086/rank/top10?type=daily,22,0,0
+1779243113922,68,POST /rank/rebuild daily,200,,Rank Service Users 1-1,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,67,0,0
+1779243113975,19,GET /rank/list weekly page,200,,Rank Service Users 1-2,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,18,0,0
+1779243113994,5,GET /rank/health,200,,Rank Service Users 1-2,text,true,,308,128,2,2,http://localhost:8086/rank/health,4,0,0
+1779243113990,25,GET /rank/top10 daily,200,,Rank Service Users 1-1,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,25,0,0
+1779243114016,25,GET /rank/list weekly page,200,,Rank Service Users 1-1,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,25,0,0
+1779243114041,4,GET /rank/health,200,,Rank Service Users 1-1,text,true,,308,128,3,3,http://localhost:8086/rank/health,3,0,0
+1779243114043,4,GET /rank/health,200,,Rank Service Users 1-3,text,true,,307,128,3,3,http://localhost:8086/rank/health,4,0,1
+1779243113999,75,POST /rank/rebuild daily,200,,Rank Service Users 1-2,text,true,,299,224,3,3,http://localhost:8086/rank/rebuild?type=daily,75,0,0
+1779243114075,20,GET /rank/top10 daily,200,,Rank Service Users 1-2,text,true,,2411,138,3,3,http://localhost:8086/rank/top10?type=daily,20,0,0
+1779243114045,66,POST /rank/rebuild daily,200,,Rank Service Users 1-1,text,true,,299,224,3,3,http://localhost:8086/rank/rebuild?type=daily,66,0,0
+1779243114048,63,POST /rank/rebuild daily,200,,Rank Service Users 1-3,text,true,,299,224,3,3,http://localhost:8086/rank/rebuild?type=daily,63,0,0
+1779243114096,19,GET /rank/list weekly page,200,,Rank Service Users 1-2,text,true,,2534,153,3,3,http://localhost:8086/rank/list?type=weekly&page=1&size=10,19,0,0
+1779243114115,2,GET /rank/health,200,,Rank Service Users 1-2,text,true,,308,128,3,3,http://localhost:8086/rank/health,2,0,0
+1779243114111,22,GET /rank/top10 daily,200,,Rank Service Users 1-1,text,true,,2402,138,3,3,http://localhost:8086/rank/top10?type=daily,22,0,0
+1779243114112,21,GET /rank/top10 daily,200,,Rank Service Users 1-3,text,true,,2402,138,3,3,http://localhost:8086/rank/top10?type=daily,21,0,0
+1779243114134,19,GET /rank/list weekly page,200,,Rank Service Users 1-1,text,true,,2534,153,3,3,http://localhost:8086/rank/list?type=weekly&page=1&size=10,19,0,0
+1779243114134,20,GET /rank/list weekly page,200,,Rank Service Users 1-3,text,true,,2534,153,3,3,http://localhost:8086/rank/list?type=weekly&page=1&size=10,19,0,0
+1779243114154,3,GET /rank/health,200,,Rank Service Users 1-1,text,true,,308,128,3,3,http://localhost:8086/rank/health,3,0,0
+1779243114155,3,GET /rank/health,200,,Rank Service Users 1-3,text,true,,308,128,3,3,http://localhost:8086/rank/health,2,0,0
+1779243114117,67,POST /rank/rebuild daily,200,,Rank Service Users 1-2,text,true,,298,224,3,3,http://localhost:8086/rank/rebuild?type=daily,66,0,0
+1779243114184,18,GET /rank/top10 daily,200,,Rank Service Users 1-2,text,true,,2411,138,3,3,http://localhost:8086/rank/top10?type=daily,18,0,0
+1779243114158,56,POST /rank/rebuild daily,200,,Rank Service Users 1-3,text,true,,299,224,3,3,http://localhost:8086/rank/rebuild?type=daily,56,0,0
+1779243114158,58,POST /rank/rebuild daily,200,,Rank Service Users 1-1,text,true,,299,224,3,3,http://localhost:8086/rank/rebuild?type=daily,57,0,0
+1779243114203,18,GET /rank/list weekly page,200,,Rank Service Users 1-2,text,true,,2534,153,3,3,http://localhost:8086/rank/list?type=weekly&page=1&size=10,18,0,0
+1779243114222,2,GET /rank/health,200,,Rank Service Users 1-2,text,true,,308,128,3,3,http://localhost:8086/rank/health,2,0,0
+1779243114216,19,GET /rank/top10 daily,200,,Rank Service Users 1-1,text,true,,2402,138,3,3,http://localhost:8086/rank/top10?type=daily,19,0,0
+1779243114215,21,GET /rank/top10 daily,200,,Rank Service Users 1-3,text,true,,2402,138,3,3,http://localhost:8086/rank/top10?type=daily,20,0,0
+1779243114237,16,GET /rank/list weekly page,200,,Rank Service Users 1-3,text,true,,2534,153,3,3,http://localhost:8086/rank/list?type=weekly&page=1&size=10,16,0,0
+1779243114236,18,GET /rank/list weekly page,200,,Rank Service Users 1-1,text,true,,2534,153,3,3,http://localhost:8086/rank/list?type=weekly&page=1&size=10,17,0,0
+1779243114254,2,GET /rank/health,200,,Rank Service Users 1-1,text,true,,308,128,3,3,http://localhost:8086/rank/health,2,0,0
+1779243114254,2,GET /rank/health,200,,Rank Service Users 1-3,text,true,,308,128,3,3,http://localhost:8086/rank/health,2,0,0
+1779243114225,54,POST /rank/rebuild daily,200,,Rank Service Users 1-2,text,true,,299,224,3,3,http://localhost:8086/rank/rebuild?type=daily,54,0,0
+1779243114280,17,GET /rank/top10 daily,200,,Rank Service Users 1-2,text,true,,2408,138,3,3,http://localhost:8086/rank/top10?type=daily,17,0,0
+1779243114256,54,POST /rank/rebuild daily,200,,Rank Service Users 1-3,text,true,,299,224,3,3,http://localhost:8086/rank/rebuild?type=daily,54,0,0
+1779243114256,55,POST /rank/rebuild daily,200,,Rank Service Users 1-1,text,true,,299,224,3,3,http://localhost:8086/rank/rebuild?type=daily,55,0,0
+1779243114298,16,GET /rank/list weekly page,200,,Rank Service Users 1-2,text,true,,2534,153,3,3,http://localhost:8086/rank/list?type=weekly&page=1&size=10,16,0,0
+1779243114314,2,GET /rank/health,200,,Rank Service Users 1-2,text,true,,308,128,3,3,http://localhost:8086/rank/health,2,0,0
+1779243114311,15,GET /rank/top10 daily,200,,Rank Service Users 1-3,text,true,,2402,138,3,3,http://localhost:8086/rank/top10?type=daily,15,0,0
+1779243114311,16,GET /rank/top10 daily,200,,Rank Service Users 1-1,text,true,,2402,138,3,3,http://localhost:8086/rank/top10?type=daily,16,0,0
+1779243114327,16,GET /rank/list weekly page,200,,Rank Service Users 1-3,text,true,,2534,153,3,3,http://localhost:8086/rank/list?type=weekly&page=1&size=10,16,0,0
+1779243114327,16,GET /rank/list weekly page,200,,Rank Service Users 1-1,text,true,,2533,153,3,3,http://localhost:8086/rank/list?type=weekly&page=1&size=10,16,0,0
+1779243114343,3,GET /rank/health,200,,Rank Service Users 1-3,text,true,,308,128,2,2,http://localhost:8086/rank/health,3,0,0
+1779243114316,52,POST /rank/rebuild daily,200,,Rank Service Users 1-2,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,52,0,0
+1779243114369,19,GET /rank/top10 daily,200,,Rank Service Users 1-2,text,true,,2397,138,2,2,http://localhost:8086/rank/top10?type=daily,18,0,0
+1779243114388,19,GET /rank/list weekly page,200,,Rank Service Users 1-2,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,18,0,0
+1779243114346,62,POST /rank/rebuild daily,200,,Rank Service Users 1-3,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,62,0,0
+1779243114407,3,GET /rank/health,200,,Rank Service Users 1-2,text,true,,308,128,2,2,http://localhost:8086/rank/health,2,0,0
+1779243114409,7,GET /rank/top10 daily,200,,Rank Service Users 1-3,text,true,,323,138,2,2,http://localhost:8086/rank/top10?type=daily,7,0,0
+1779243114417,17,GET /rank/list weekly page,200,,Rank Service Users 1-3,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,17,0,0
+1779243114435,2,GET /rank/health,200,,Rank Service Users 1-3,text,true,,308,128,2,2,http://localhost:8086/rank/health,2,0,0
+1779243114410,58,POST /rank/rebuild daily,200,,Rank Service Users 1-2,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,58,0,0
+1779243114468,15,GET /rank/top10 daily,200,,Rank Service Users 1-2,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,15,0,0
+1779243114438,56,POST /rank/rebuild daily,200,,Rank Service Users 1-3,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,56,0,0
+1779243114483,15,GET /rank/list weekly page,200,,Rank Service Users 1-2,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,15,0,0
+1779243114499,1,GET /rank/health,200,,Rank Service Users 1-2,text,true,,308,128,2,2,http://localhost:8086/rank/health,1,0,0
+1779243114494,15,GET /rank/top10 daily,200,,Rank Service Users 1-3,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,15,0,0
+1779243114510,16,GET /rank/list weekly page,200,,Rank Service Users 1-3,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,16,0,0
+1779243114526,2,GET /rank/health,200,,Rank Service Users 1-3,text,true,,308,128,2,2,http://localhost:8086/rank/health,2,0,0
+1779243114541,3,GET /rank/health,200,,Rank Service Users 1-4,text,true,,308,128,3,3,http://localhost:8086/rank/health,3,0,1
+1779243114501,56,POST /rank/rebuild daily,200,,Rank Service Users 1-2,text,true,,299,224,3,3,http://localhost:8086/rank/rebuild?type=daily,56,0,0
+1779243114558,13,GET /rank/top10 daily,200,,Rank Service Users 1-2,text,true,,2408,138,3,3,http://localhost:8086/rank/top10?type=daily,13,0,0
+1779243114529,50,POST /rank/rebuild daily,200,,Rank Service Users 1-3,text,true,,299,224,3,3,http://localhost:8086/rank/rebuild?type=daily,50,0,0
+1779243114572,16,GET /rank/list weekly page,200,,Rank Service Users 1-2,text,true,,2534,153,3,3,http://localhost:8086/rank/list?type=weekly&page=1&size=10,15,0,0
+1779243114545,48,POST /rank/rebuild daily,200,,Rank Service Users 1-4,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,48,0,0
+1779243114579,14,GET /rank/top10 daily,200,,Rank Service Users 1-3,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,14,0,0
+1779243114594,15,GET /rank/list weekly page,200,,Rank Service Users 1-3,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,15,0,0
+1779243114593,16,GET /rank/top10 daily,200,,Rank Service Users 1-4,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,16,0,0
+1779243114609,3,GET /rank/health,200,,Rank Service Users 1-3,text,true,,308,128,2,2,http://localhost:8086/rank/health,3,0,0
+1779243114609,17,GET /rank/list weekly page,200,,Rank Service Users 1-4,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,17,0,0
+1779243114627,3,GET /rank/health,200,,Rank Service Users 1-4,text,true,,308,128,2,2,http://localhost:8086/rank/health,3,0,0
+1779243114612,60,POST /rank/rebuild daily,200,,Rank Service Users 1-3,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,60,0,0
+1779243114672,18,GET /rank/top10 daily,200,,Rank Service Users 1-3,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,18,0,0
+1779243114630,61,POST /rank/rebuild daily,200,,Rank Service Users 1-4,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,61,0,0
+1779243114691,19,GET /rank/list weekly page,200,,Rank Service Users 1-3,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,19,0,0
+1779243114692,18,GET /rank/top10 daily,200,,Rank Service Users 1-4,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,18,0,0
+1779243114711,2,GET /rank/health,200,,Rank Service Users 1-3,text,true,,308,128,2,2,http://localhost:8086/rank/health,2,0,0
+1779243114711,25,GET /rank/list weekly page,200,,Rank Service Users 1-4,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,25,0,0
+1779243114737,3,GET /rank/health,200,,Rank Service Users 1-4,text,true,,307,128,2,2,http://localhost:8086/rank/health,3,0,0
+1779243114714,73,POST /rank/rebuild daily,200,,Rank Service Users 1-3,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,73,0,0
+1779243114788,18,GET /rank/top10 daily,200,,Rank Service Users 1-3,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,18,0,0
+1779243114741,67,POST /rank/rebuild daily,200,,Rank Service Users 1-4,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,67,0,0
+1779243114807,19,GET /rank/list weekly page,200,,Rank Service Users 1-3,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,19,0,0
+1779243114808,18,GET /rank/top10 daily,200,,Rank Service Users 1-4,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,18,0,0
+1779243114826,3,GET /rank/health,200,,Rank Service Users 1-3,text,true,,308,128,2,2,http://localhost:8086/rank/health,3,0,0
+1779243114827,20,GET /rank/list weekly page,200,,Rank Service Users 1-4,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,20,0,0
+1779243114848,3,GET /rank/health,200,,Rank Service Users 1-4,text,true,,308,128,2,2,http://localhost:8086/rank/health,3,0,0
+1779243114830,71,POST /rank/rebuild daily,200,,Rank Service Users 1-3,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,71,0,0
+1779243114852,68,POST /rank/rebuild daily,200,,Rank Service Users 1-4,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,67,0,0
+1779243114902,19,GET /rank/top10 daily,200,,Rank Service Users 1-3,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,19,0,0
+1779243114922,18,GET /rank/list weekly page,200,,Rank Service Users 1-3,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,18,0,0
+1779243114921,19,GET /rank/top10 daily,200,,Rank Service Users 1-4,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,19,0,0
+1779243114941,2,GET /rank/health,200,,Rank Service Users 1-3,text,true,,308,128,2,2,http://localhost:8086/rank/health,2,0,0
+1779243114941,18,GET /rank/list weekly page,200,,Rank Service Users 1-4,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,18,0,0
+1779243114960,2,GET /rank/health,200,,Rank Service Users 1-4,text,true,,308,128,2,2,http://localhost:8086/rank/health,2,0,0
+1779243114944,63,POST /rank/rebuild daily,200,,Rank Service Users 1-3,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,63,0,0
+1779243115008,25,GET /rank/top10 daily,200,,Rank Service Users 1-3,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,25,0,0
+1779243114963,71,POST /rank/rebuild daily,200,,Rank Service Users 1-4,text,true,,297,224,2,2,http://localhost:8086/rank/rebuild?type=daily,71,0,0
+1779243115040,3,GET /rank/health,200,,Rank Service Users 1-5,text,true,,308,128,3,3,http://localhost:8086/rank/health,3,0,1
+1779243115033,17,GET /rank/list weekly page,200,,Rank Service Users 1-3,text,true,,2534,153,3,3,http://localhost:8086/rank/list?type=weekly&page=1&size=10,17,0,0
+1779243115034,16,GET /rank/top10 daily,200,,Rank Service Users 1-4,text,true,,2402,138,3,3,http://localhost:8086/rank/top10?type=daily,16,0,0
+1779243115051,13,GET /rank/list weekly page,200,,Rank Service Users 1-4,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,13,0,0
+1779243115065,2,GET /rank/health,200,,Rank Service Users 1-4,text,true,,307,128,2,2,http://localhost:8086/rank/health,2,0,0
+1779243115044,62,POST /rank/rebuild daily,200,,Rank Service Users 1-5,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,62,0,0
+1779243115107,16,GET /rank/top10 daily,200,,Rank Service Users 1-5,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,16,0,0
+1779243115067,70,POST /rank/rebuild daily,200,,Rank Service Users 1-4,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,70,0,0
+1779243115123,18,GET /rank/list weekly page,200,,Rank Service Users 1-5,text,true,,2533,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,17,0,0
+1779243115141,2,GET /rank/health,200,,Rank Service Users 1-5,text,true,,308,128,2,2,http://localhost:8086/rank/health,2,0,0
+1779243115138,17,GET /rank/top10 daily,200,,Rank Service Users 1-4,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,17,0,0
+1779243115156,15,GET /rank/list weekly page,200,,Rank Service Users 1-4,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,15,0,0
+1779243115171,3,GET /rank/health,200,,Rank Service Users 1-4,text,true,,307,128,2,2,http://localhost:8086/rank/health,3,0,0
+1779243115144,54,POST /rank/rebuild daily,200,,Rank Service Users 1-5,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,54,0,0
+1779243115199,15,GET /rank/top10 daily,200,,Rank Service Users 1-5,text,true,,2407,138,2,2,http://localhost:8086/rank/top10?type=daily,15,0,0
+1779243115174,50,POST /rank/rebuild daily,200,,Rank Service Users 1-4,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,50,0,0
+1779243115214,15,GET /rank/list weekly page,200,,Rank Service Users 1-5,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,15,0,0
+1779243115229,2,GET /rank/health,200,,Rank Service Users 1-5,text,true,,308,128,2,2,http://localhost:8086/rank/health,2,0,0
+1779243115225,16,GET /rank/top10 daily,200,,Rank Service Users 1-4,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,16,0,0
+1779243115242,14,GET /rank/list weekly page,200,,Rank Service Users 1-4,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,14,0,0
+1779243115256,3,GET /rank/health,200,,Rank Service Users 1-4,text,true,,308,128,2,2,http://localhost:8086/rank/health,3,0,0
+1779243115232,51,POST /rank/rebuild daily,200,,Rank Service Users 1-5,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,51,0,0
+1779243115284,15,GET /rank/top10 daily,200,,Rank Service Users 1-5,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,15,0,0
+1779243115259,51,POST /rank/rebuild daily,200,,Rank Service Users 1-4,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,51,0,0
+1779243115299,19,GET /rank/list weekly page,200,,Rank Service Users 1-5,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,18,0,0
+1779243115318,2,GET /rank/health,200,,Rank Service Users 1-5,text,true,,308,128,2,2,http://localhost:8086/rank/health,2,0,0
+1779243115310,17,GET /rank/top10 daily,200,,Rank Service Users 1-4,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,16,0,0
+1779243115327,16,GET /rank/list weekly page,200,,Rank Service Users 1-4,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,15,0,0
+1779243115343,2,GET /rank/health,200,,Rank Service Users 1-4,text,true,,308,128,2,2,http://localhost:8086/rank/health,2,0,0
+1779243115321,52,POST /rank/rebuild daily,200,,Rank Service Users 1-5,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,52,0,0
+1779243115373,16,GET /rank/top10 daily,200,,Rank Service Users 1-5,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,16,0,0
+1779243115345,52,POST /rank/rebuild daily,200,,Rank Service Users 1-4,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,52,0,0
+1779243115389,15,GET /rank/list weekly page,200,,Rank Service Users 1-5,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,15,0,0
+1779243115405,3,GET /rank/health,200,,Rank Service Users 1-5,text,true,,308,128,2,2,http://localhost:8086/rank/health,3,0,0
+1779243115397,15,GET /rank/top10 daily,200,,Rank Service Users 1-4,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,15,0,0
+1779243115412,16,GET /rank/list weekly page,200,,Rank Service Users 1-4,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,16,0,0
+1779243115428,3,GET /rank/health,200,,Rank Service Users 1-4,text,true,,307,128,2,2,http://localhost:8086/rank/health,3,0,0
+1779243115408,54,POST /rank/rebuild daily,200,,Rank Service Users 1-5,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,54,0,0
+1779243115462,16,GET /rank/top10 daily,200,,Rank Service Users 1-5,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,16,0,0
+1779243115431,52,POST /rank/rebuild daily,200,,Rank Service Users 1-4,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,52,0,0
+1779243115478,15,GET /rank/list weekly page,200,,Rank Service Users 1-5,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,15,0,0
+1779243115493,2,GET /rank/health,200,,Rank Service Users 1-5,text,true,,308,128,2,2,http://localhost:8086/rank/health,2,0,0
+1779243115483,16,GET /rank/top10 daily,200,,Rank Service Users 1-4,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,15,0,0
+1779243115499,15,GET /rank/list weekly page,200,,Rank Service Users 1-4,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,15,0,0
+1779243115540,4,GET /rank/health,200,,Rank Service Users 1-6,text,true,,308,128,2,2,http://localhost:8086/rank/health,3,0,0
+1779243115496,55,POST /rank/rebuild daily,200,,Rank Service Users 1-5,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,55,0,0
+1779243115552,12,GET /rank/top10 daily,200,,Rank Service Users 1-5,text,true,,515,138,2,2,http://localhost:8086/rank/top10?type=daily,12,0,0
+1779243115564,16,GET /rank/list weekly page,200,,Rank Service Users 1-5,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,16,0,0
+1779243115581,2,GET /rank/health,200,,Rank Service Users 1-5,text,true,,308,128,2,2,http://localhost:8086/rank/health,2,0,0
+1779243115544,61,POST /rank/rebuild daily,200,,Rank Service Users 1-6,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,61,0,0
+1779243115606,18,GET /rank/top10 daily,200,,Rank Service Users 1-6,text,true,,2413,138,2,2,http://localhost:8086/rank/top10?type=daily,18,0,0
+1779243115624,15,GET /rank/list weekly page,200,,Rank Service Users 1-6,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,15,0,0
+1779243115584,58,POST /rank/rebuild daily,200,,Rank Service Users 1-5,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,57,0,0
+1779243115640,3,GET /rank/health,200,,Rank Service Users 1-6,text,true,,308,128,2,2,http://localhost:8086/rank/health,3,0,0
+1779243115642,10,GET /rank/top10 daily,200,,Rank Service Users 1-5,text,true,,323,138,2,2,http://localhost:8086/rank/top10?type=daily,10,0,0
+1779243115653,19,GET /rank/list weekly page,200,,Rank Service Users 1-5,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,19,0,0
+1779243115672,3,GET /rank/health,200,,Rank Service Users 1-5,text,true,,308,128,2,2,http://localhost:8086/rank/health,3,0,0
+1779243115643,63,POST /rank/rebuild daily,200,,Rank Service Users 1-6,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,63,0,0
+1779243115707,15,GET /rank/top10 daily,200,,Rank Service Users 1-6,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,15,0,0
+1779243115675,55,POST /rank/rebuild daily,200,,Rank Service Users 1-5,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,55,0,0
+1779243115722,16,GET /rank/list weekly page,200,,Rank Service Users 1-6,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,16,0,0
+1779243115739,2,GET /rank/health,200,,Rank Service Users 1-6,text,true,,308,128,2,2,http://localhost:8086/rank/health,2,0,0
+1779243115730,16,GET /rank/top10 daily,200,,Rank Service Users 1-5,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,16,0,0
+1779243115746,16,GET /rank/list weekly page,200,,Rank Service Users 1-5,text,true,,2533,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,16,0,0
+1779243115762,2,GET /rank/health,200,,Rank Service Users 1-5,text,true,,308,128,2,2,http://localhost:8086/rank/health,2,0,0
+1779243115741,52,POST /rank/rebuild daily,200,,Rank Service Users 1-6,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,52,0,0
+1779243115794,15,GET /rank/top10 daily,200,,Rank Service Users 1-6,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,15,0,0
+1779243115764,52,POST /rank/rebuild daily,200,,Rank Service Users 1-5,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,52,0,0
+1779243115810,15,GET /rank/list weekly page,200,,Rank Service Users 1-6,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,15,0,0
+1779243115825,3,GET /rank/health,200,,Rank Service Users 1-6,text,true,,308,128,2,2,http://localhost:8086/rank/health,3,0,0
+1779243115816,15,GET /rank/top10 daily,200,,Rank Service Users 1-5,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,15,0,0
+1779243115831,26,GET /rank/list weekly page,200,,Rank Service Users 1-5,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,26,0,0
+1779243115858,2,GET /rank/health,200,,Rank Service Users 1-5,text,true,,308,128,2,2,http://localhost:8086/rank/health,2,0,0
+1779243115829,71,POST /rank/rebuild daily,200,,Rank Service Users 1-6,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,71,0,0
+1779243115900,15,GET /rank/top10 daily,200,,Rank Service Users 1-6,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,15,0,0
+1779243115861,55,POST /rank/rebuild daily,200,,Rank Service Users 1-5,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,55,0,0
+1779243115916,16,GET /rank/top10 daily,200,,Rank Service Users 1-5,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,15,0,0
+1779243115915,17,GET /rank/list weekly page,200,,Rank Service Users 1-6,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,16,0,0
+1779243115932,3,GET /rank/health,200,,Rank Service Users 1-6,text,true,,308,128,2,2,http://localhost:8086/rank/health,2,0,0
+1779243115932,18,GET /rank/list weekly page,200,,Rank Service Users 1-5,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,18,0,0
+1779243115935,51,POST /rank/rebuild daily,200,,Rank Service Users 1-6,text,true,,299,224,1,1,http://localhost:8086/rank/rebuild?type=daily,51,0,0
+1779243115986,17,GET /rank/top10 daily,200,,Rank Service Users 1-6,text,true,,2402,138,1,1,http://localhost:8086/rank/top10?type=daily,17,0,0
+1779243116004,16,GET /rank/list weekly page,200,,Rank Service Users 1-6,text,true,,2534,153,1,1,http://localhost:8086/rank/list?type=weekly&page=1&size=10,16,0,0
+1779243116020,3,GET /rank/health,200,,Rank Service Users 1-6,text,true,,308,128,1,1,http://localhost:8086/rank/health,3,0,0
+1779243116039,4,GET /rank/health,200,,Rank Service Users 1-7,text,true,,308,128,2,2,http://localhost:8086/rank/health,4,0,1
+1779243116023,69,POST /rank/rebuild daily,200,,Rank Service Users 1-6,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,68,0,0
+1779243116043,67,POST /rank/rebuild daily,200,,Rank Service Users 1-7,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,67,0,0
+1779243116092,18,GET /rank/top10 daily,200,,Rank Service Users 1-6,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,18,0,0
+1779243116110,18,GET /rank/list weekly page,200,,Rank Service Users 1-6,text,true,,2533,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,18,0,0
+1779243116110,18,GET /rank/top10 daily,200,,Rank Service Users 1-7,text,true,,2401,138,2,2,http://localhost:8086/rank/top10?type=daily,18,0,0
+1779243116129,3,GET /rank/health,200,,Rank Service Users 1-6,text,true,,308,128,2,2,http://localhost:8086/rank/health,3,0,0
+1779243116129,21,GET /rank/list weekly page,200,,Rank Service Users 1-7,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,21,0,0
+1779243116150,3,GET /rank/health,200,,Rank Service Users 1-7,text,true,,308,128,2,2,http://localhost:8086/rank/health,3,0,0
+1779243116132,70,POST /rank/rebuild daily,200,,Rank Service Users 1-6,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,70,0,0
+1779243116153,64,POST /rank/rebuild daily,200,,Rank Service Users 1-7,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,64,0,0
+1779243116202,16,GET /rank/top10 daily,200,,Rank Service Users 1-6,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,16,0,0
+1779243116217,16,GET /rank/top10 daily,200,,Rank Service Users 1-7,text,true,,2401,138,2,2,http://localhost:8086/rank/top10?type=daily,15,0,0
+1779243116218,15,GET /rank/list weekly page,200,,Rank Service Users 1-6,text,true,,2533,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,14,0,0
+1779243116233,3,GET /rank/health,200,,Rank Service Users 1-6,text,true,,308,128,2,2,http://localhost:8086/rank/health,2,0,0
+1779243116233,17,GET /rank/list weekly page,200,,Rank Service Users 1-7,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,17,0,0
+1779243116251,3,GET /rank/health,200,,Rank Service Users 1-7,text,true,,308,128,2,2,http://localhost:8086/rank/health,2,0,0
+1779243116236,59,POST /rank/rebuild daily,200,,Rank Service Users 1-6,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,59,0,0
+1779243116254,58,POST /rank/rebuild daily,200,,Rank Service Users 1-7,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,58,0,0
+1779243116295,18,GET /rank/top10 daily,200,,Rank Service Users 1-6,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,17,0,0
+1779243116313,20,GET /rank/list weekly page,200,,Rank Service Users 1-6,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,19,0,0
+1779243116312,21,GET /rank/top10 daily,200,,Rank Service Users 1-7,text,true,,2401,138,2,2,http://localhost:8086/rank/top10?type=daily,21,0,0
+1779243116333,3,GET /rank/health,200,,Rank Service Users 1-6,text,true,,308,128,2,2,http://localhost:8086/rank/health,2,0,0
+1779243116333,16,GET /rank/list weekly page,200,,Rank Service Users 1-7,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,16,0,0
+1779243116349,3,GET /rank/health,200,,Rank Service Users 1-7,text,true,,308,128,2,2,http://localhost:8086/rank/health,2,0,0
+1779243116336,58,POST /rank/rebuild daily,200,,Rank Service Users 1-6,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,58,0,0
+1779243116395,19,GET /rank/top10 daily,200,,Rank Service Users 1-6,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,18,0,0
+1779243116352,62,POST /rank/rebuild daily,200,,Rank Service Users 1-7,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,62,0,0
+1779243116414,19,GET /rank/list weekly page,200,,Rank Service Users 1-6,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,19,0,0
+1779243116414,19,GET /rank/top10 daily,200,,Rank Service Users 1-7,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,19,0,0
+1779243116433,3,GET /rank/health,200,,Rank Service Users 1-6,text,true,,307,128,2,2,http://localhost:8086/rank/health,3,0,0
+1779243116433,16,GET /rank/list weekly page,200,,Rank Service Users 1-7,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,16,0,0
+1779243116449,4,GET /rank/health,200,,Rank Service Users 1-7,text,true,,308,128,2,2,http://localhost:8086/rank/health,4,0,0
+1779243116436,59,POST /rank/rebuild daily,200,,Rank Service Users 1-6,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,59,0,0
+1779243116454,58,POST /rank/rebuild daily,200,,Rank Service Users 1-7,text,true,,298,224,2,2,http://localhost:8086/rank/rebuild?type=daily,57,0,0
+1779243116496,18,GET /rank/top10 daily,200,,Rank Service Users 1-6,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,18,0,0
+1779243116514,16,GET /rank/list weekly page,200,,Rank Service Users 1-6,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,16,0,0
+1779243116512,18,GET /rank/top10 daily,200,,Rank Service Users 1-7,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,18,0,0
+1779243116539,5,GET /rank/health,200,,Rank Service Users 1-8,text,true,,308,128,2,2,http://localhost:8086/rank/health,5,0,1
+1779243116531,17,GET /rank/list weekly page,200,,Rank Service Users 1-7,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,17,0,0
+1779243116549,2,GET /rank/health,200,,Rank Service Users 1-7,text,true,,308,128,2,2,http://localhost:8086/rank/health,2,0,0
+1779243116545,47,POST /rank/rebuild daily,200,,Rank Service Users 1-8,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,47,0,0
+1779243116551,47,POST /rank/rebuild daily,200,,Rank Service Users 1-7,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,47,0,0
+1779243116592,15,GET /rank/top10 daily,200,,Rank Service Users 1-8,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,15,0,0
+1779243116599,14,GET /rank/top10 daily,200,,Rank Service Users 1-7,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,14,0,0
+1779243116608,13,GET /rank/list weekly page,200,,Rank Service Users 1-8,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,13,0,0
+1779243116622,1,GET /rank/health,200,,Rank Service Users 1-8,text,true,,308,128,2,2,http://localhost:8086/rank/health,1,0,0
+1779243116614,13,GET /rank/list weekly page,200,,Rank Service Users 1-7,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,13,0,0
+1779243116627,2,GET /rank/health,200,,Rank Service Users 1-7,text,true,,308,128,2,2,http://localhost:8086/rank/health,2,0,0
+1779243116624,60,POST /rank/rebuild daily,200,,Rank Service Users 1-8,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,60,0,0
+1779243116629,58,POST /rank/rebuild daily,200,,Rank Service Users 1-7,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,58,0,0
+1779243116685,14,GET /rank/top10 daily,200,,Rank Service Users 1-8,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,14,0,0
+1779243116688,14,GET /rank/top10 daily,200,,Rank Service Users 1-7,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,14,0,0
+1779243116700,13,GET /rank/list weekly page,200,,Rank Service Users 1-8,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,13,0,0
+1779243116702,12,GET /rank/list weekly page,200,,Rank Service Users 1-7,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,12,0,0
+1779243116713,2,GET /rank/health,200,,Rank Service Users 1-8,text,true,,308,128,2,2,http://localhost:8086/rank/health,2,0,0
+1779243116714,1,GET /rank/health,200,,Rank Service Users 1-7,text,true,,308,128,2,2,http://localhost:8086/rank/health,1,0,0
+1779243116715,78,POST /rank/rebuild daily,200,,Rank Service Users 1-7,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,77,0,0
+1779243116715,78,POST /rank/rebuild daily,200,,Rank Service Users 1-8,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,77,0,0
+1779243116793,19,GET /rank/top10 daily,200,,Rank Service Users 1-8,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,19,0,0
+1779243116793,20,GET /rank/top10 daily,200,,Rank Service Users 1-7,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,20,0,0
+1779243116813,19,GET /rank/list weekly page,200,,Rank Service Users 1-8,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,19,0,0
+1779243116813,19,GET /rank/list weekly page,200,,Rank Service Users 1-7,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,19,0,0
+1779243116833,1,GET /rank/health,200,,Rank Service Users 1-8,text,true,,308,128,2,2,http://localhost:8086/rank/health,1,0,0
+1779243116833,1,GET /rank/health,200,,Rank Service Users 1-7,text,true,,308,128,2,2,http://localhost:8086/rank/health,1,0,0
+1779243116835,69,POST /rank/rebuild daily,200,,Rank Service Users 1-8,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,69,0,0
+1779243116835,69,POST /rank/rebuild daily,200,,Rank Service Users 1-7,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,69,0,0
+1779243116904,15,GET /rank/top10 daily,200,,Rank Service Users 1-7,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,15,0,0
+1779243116904,15,GET /rank/top10 daily,200,,Rank Service Users 1-8,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,15,0,0
+1779243116920,15,GET /rank/list weekly page,200,,Rank Service Users 1-7,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,15,0,0
+1779243116920,15,GET /rank/list weekly page,200,,Rank Service Users 1-8,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,15,0,0
+1779243116935,2,GET /rank/health,200,,Rank Service Users 1-7,text,true,,308,128,2,2,http://localhost:8086/rank/health,2,0,0
+1779243116935,2,GET /rank/health,200,,Rank Service Users 1-8,text,true,,308,128,2,2,http://localhost:8086/rank/health,2,0,0
+1779243116937,57,POST /rank/rebuild daily,200,,Rank Service Users 1-7,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,57,0,0
+1779243116937,58,POST /rank/rebuild daily,200,,Rank Service Users 1-8,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,57,0,0
+1779243116995,16,GET /rank/top10 daily,200,,Rank Service Users 1-8,text,true,,2401,138,2,2,http://localhost:8086/rank/top10?type=daily,15,0,0
+1779243116994,17,GET /rank/top10 daily,200,,Rank Service Users 1-7,text,true,,2401,138,2,2,http://localhost:8086/rank/top10?type=daily,17,0,0
+1779243117011,15,GET /rank/list weekly page,200,,Rank Service Users 1-7,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,15,0,0
+1779243117011,15,GET /rank/list weekly page,200,,Rank Service Users 1-8,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,15,0,0
+1779243117026,2,GET /rank/health,200,,Rank Service Users 1-8,text,true,,308,128,1,1,http://localhost:8086/rank/health,2,0,0
+1779243117039,4,GET /rank/health,200,,Rank Service Users 1-9,text,true,,308,128,2,2,http://localhost:8086/rank/health,4,0,1
+1779243117029,70,POST /rank/rebuild daily,200,,Rank Service Users 1-8,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,70,0,0
+1779243117043,67,POST /rank/rebuild daily,200,,Rank Service Users 1-9,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,67,0,0
+1779243117099,18,GET /rank/top10 daily,200,,Rank Service Users 1-8,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,18,0,0
+1779243117111,17,GET /rank/top10 daily,200,,Rank Service Users 1-9,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,16,0,0
+1779243117118,18,GET /rank/list weekly page,200,,Rank Service Users 1-8,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,18,0,0
+1779243117137,1,GET /rank/health,200,,Rank Service Users 1-8,text,true,,308,128,2,2,http://localhost:8086/rank/health,1,0,0
+1779243117128,17,GET /rank/list weekly page,200,,Rank Service Users 1-9,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,17,0,0
+1779243117145,2,GET /rank/health,200,,Rank Service Users 1-9,text,true,,308,128,2,2,http://localhost:8086/rank/health,2,0,0
+1779243117138,58,POST /rank/rebuild daily,200,,Rank Service Users 1-8,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,58,0,0
+1779243117147,64,POST /rank/rebuild daily,200,,Rank Service Users 1-9,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,64,0,0
+1779243117196,21,GET /rank/top10 daily,200,,Rank Service Users 1-8,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,21,0,0
+1779243117211,13,GET /rank/top10 daily,200,,Rank Service Users 1-9,text,true,,2401,138,2,2,http://localhost:8086/rank/top10?type=daily,13,0,0
+1779243117217,13,GET /rank/list weekly page,200,,Rank Service Users 1-8,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,13,0,0
+1779243117230,1,GET /rank/health,200,,Rank Service Users 1-8,text,true,,308,128,2,2,http://localhost:8086/rank/health,1,0,0
+1779243117225,12,GET /rank/list weekly page,200,,Rank Service Users 1-9,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,12,0,0
+1779243117238,1,GET /rank/health,200,,Rank Service Users 1-9,text,true,,308,128,2,2,http://localhost:8086/rank/health,1,0,0
+1779243117231,67,POST /rank/rebuild daily,200,,Rank Service Users 1-8,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,67,0,0
+1779243117239,67,POST /rank/rebuild daily,200,,Rank Service Users 1-9,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,67,0,0
+1779243117299,16,GET /rank/top10 daily,200,,Rank Service Users 1-8,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,16,0,0
+1779243117307,14,GET /rank/top10 daily,200,,Rank Service Users 1-9,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,14,0,0
+1779243117315,15,GET /rank/list weekly page,200,,Rank Service Users 1-8,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,15,0,0
+1779243117330,2,GET /rank/health,200,,Rank Service Users 1-8,text,true,,307,128,2,2,http://localhost:8086/rank/health,2,0,0
+1779243117321,14,GET /rank/list weekly page,200,,Rank Service Users 1-9,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,14,0,0
+1779243117336,1,GET /rank/health,200,,Rank Service Users 1-9,text,true,,308,128,2,2,http://localhost:8086/rank/health,1,0,0
+1779243117332,49,POST /rank/rebuild daily,200,,Rank Service Users 1-8,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,49,0,0
+1779243117337,47,POST /rank/rebuild daily,200,,Rank Service Users 1-9,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,47,0,0
+1779243117381,14,GET /rank/top10 daily,200,,Rank Service Users 1-8,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,14,0,0
+1779243117385,13,GET /rank/top10 daily,200,,Rank Service Users 1-9,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,13,0,0
+1779243117395,14,GET /rank/list weekly page,200,,Rank Service Users 1-8,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,14,0,0
+1779243117409,2,GET /rank/health,200,,Rank Service Users 1-8,text,true,,308,128,2,2,http://localhost:8086/rank/health,1,0,0
+1779243117399,12,GET /rank/list weekly page,200,,Rank Service Users 1-9,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,12,0,0
+1779243117411,2,GET /rank/health,200,,Rank Service Users 1-9,text,true,,308,128,2,2,http://localhost:8086/rank/health,2,0,0
+1779243117413,63,POST /rank/rebuild daily,200,,Rank Service Users 1-9,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,63,0,0
+1779243117411,65,POST /rank/rebuild daily,200,,Rank Service Users 1-8,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,65,0,0
+1779243117476,17,GET /rank/top10 daily,200,,Rank Service Users 1-9,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,17,0,0
+1779243117476,17,GET /rank/top10 daily,200,,Rank Service Users 1-8,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,17,0,0
+1779243117493,18,GET /rank/list weekly page,200,,Rank Service Users 1-8,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,18,0,0
+1779243117493,18,GET /rank/list weekly page,200,,Rank Service Users 1-9,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,18,0,0
+1779243117512,1,GET /rank/health,200,,Rank Service Users 1-9,text,true,,306,128,1,1,http://localhost:8086/rank/health,1,0,0
+1779243117539,3,GET /rank/health,200,,Rank Service Users 1-10,text,true,,308,128,2,2,http://localhost:8086/rank/health,3,0,1
+1779243117514,54,POST /rank/rebuild daily,200,,Rank Service Users 1-9,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,53,0,0
+1779243117568,15,GET /rank/top10 daily,200,,Rank Service Users 1-9,text,true,,2406,138,2,2,http://localhost:8086/rank/top10?type=daily,15,0,0
+1779243117543,54,POST /rank/rebuild daily,200,,Rank Service Users 1-10,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,54,0,0
+1779243117583,15,GET /rank/list weekly page,200,,Rank Service Users 1-9,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,14,0,0
+1779243117598,1,GET /rank/health,200,,Rank Service Users 1-9,text,true,,308,128,2,2,http://localhost:8086/rank/health,1,0,0
+1779243117598,14,GET /rank/top10 daily,200,,Rank Service Users 1-10,text,true,,2400,138,2,2,http://localhost:8086/rank/top10?type=daily,14,0,0
+1779243117612,15,GET /rank/list weekly page,200,,Rank Service Users 1-10,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,15,0,0
+1779243117627,2,GET /rank/health,200,,Rank Service Users 1-10,text,true,,308,128,2,2,http://localhost:8086/rank/health,2,0,0
+1779243117600,57,POST /rank/rebuild daily,200,,Rank Service Users 1-9,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,57,0,0
+1779243117657,14,GET /rank/top10 daily,200,,Rank Service Users 1-9,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,13,0,0
+1779243117630,54,POST /rank/rebuild daily,200,,Rank Service Users 1-10,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,54,0,0
+1779243117671,13,GET /rank/list weekly page,200,,Rank Service Users 1-9,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,13,0,0
+1779243117684,2,GET /rank/health,200,,Rank Service Users 1-9,text,true,,308,128,2,2,http://localhost:8086/rank/health,2,0,0
+1779243117684,14,GET /rank/top10 daily,200,,Rank Service Users 1-10,text,true,,2400,138,2,2,http://localhost:8086/rank/top10?type=daily,14,0,0
+1779243117698,13,GET /rank/list weekly page,200,,Rank Service Users 1-10,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,12,0,0
+1779243117711,1,GET /rank/health,200,,Rank Service Users 1-10,text,true,,308,128,2,2,http://localhost:8086/rank/health,1,0,0
+1779243117686,51,POST /rank/rebuild daily,200,,Rank Service Users 1-9,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,51,0,0
+1779243117737,15,GET /rank/top10 daily,200,,Rank Service Users 1-9,text,true,,2406,138,2,2,http://localhost:8086/rank/top10?type=daily,15,0,0
+1779243117753,15,GET /rank/list weekly page,200,,Rank Service Users 1-9,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,15,0,0
+1779243117769,1,GET /rank/health,200,,Rank Service Users 1-9,text,true,,308,128,2,2,http://localhost:8086/rank/health,1,0,0
+1779243117713,57,POST /rank/rebuild daily,200,,Rank Service Users 1-10,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,57,0,0
+1779243117771,5,GET /rank/top10 daily,200,,Rank Service Users 1-10,text,true,,322,138,2,2,http://localhost:8086/rank/top10?type=daily,5,0,0
+1779243117777,13,GET /rank/list weekly page,200,,Rank Service Users 1-10,text,true,,2533,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,13,0,0
+1779243117790,2,GET /rank/health,200,,Rank Service Users 1-10,text,true,,307,128,2,2,http://localhost:8086/rank/health,2,0,0
+1779243117770,54,POST /rank/rebuild daily,200,,Rank Service Users 1-9,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,54,0,0
+1779243117824,13,GET /rank/top10 daily,200,,Rank Service Users 1-9,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,13,0,0
+1779243117792,51,POST /rank/rebuild daily,200,,Rank Service Users 1-10,text,true,,298,224,2,2,http://localhost:8086/rank/rebuild?type=daily,51,0,0
+1779243117838,12,GET /rank/list weekly page,200,,Rank Service Users 1-9,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,12,0,0
+1779243117850,2,GET /rank/health,200,,Rank Service Users 1-9,text,true,,308,128,2,2,http://localhost:8086/rank/health,2,0,0
+1779243117843,12,GET /rank/top10 daily,200,,Rank Service Users 1-10,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,12,0,0
+1779243117856,12,GET /rank/list weekly page,200,,Rank Service Users 1-10,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,12,0,0
+1779243117868,2,GET /rank/health,200,,Rank Service Users 1-10,text,true,,308,128,2,2,http://localhost:8086/rank/health,2,0,0
+1779243117852,48,POST /rank/rebuild daily,200,,Rank Service Users 1-9,text,true,,298,224,2,2,http://localhost:8086/rank/rebuild?type=daily,48,0,0
+1779243117901,13,GET /rank/top10 daily,200,,Rank Service Users 1-9,text,true,,2402,138,2,2,http://localhost:8086/rank/top10?type=daily,13,0,0
+1779243117870,49,POST /rank/rebuild daily,200,,Rank Service Users 1-10,text,true,,299,224,2,2,http://localhost:8086/rank/rebuild?type=daily,49,0,0
+1779243117914,14,GET /rank/list weekly page,200,,Rank Service Users 1-9,text,true,,2534,153,2,2,http://localhost:8086/rank/list?type=weekly&page=1&size=10,14,0,0
+1779243117919,14,GET /rank/top10 daily,200,,Rank Service Users 1-10,text,true,,2402,138,1,1,http://localhost:8086/rank/top10?type=daily,14,0,0
+1779243117933,15,GET /rank/list weekly page,200,,Rank Service Users 1-10,text,true,,2534,153,1,1,http://localhost:8086/rank/list?type=weekly&page=1&size=10,15,0,0
+1779243117948,1,GET /rank/health,200,,Rank Service Users 1-10,text,true,,308,128,1,1,http://localhost:8086/rank/health,1,0,0
+1779243117950,52,POST /rank/rebuild daily,200,,Rank Service Users 1-10,text,true,,299,224,1,1,http://localhost:8086/rank/rebuild?type=daily,52,0,0
+1779243118003,18,GET /rank/top10 daily,200,,Rank Service Users 1-10,text,true,,2401,138,1,1,http://localhost:8086/rank/top10?type=daily,18,0,0
+1779243118022,17,GET /rank/list weekly page,200,,Rank Service Users 1-10,text,true,,2533,153,1,1,http://localhost:8086/rank/list?type=weekly&page=1&size=10,17,0,0
+1779243118040,4,GET /rank/health,200,,Rank Service Users 1-10,text,true,,308,128,1,1,http://localhost:8086/rank/health,3,0,0
+1779243118044,64,POST /rank/rebuild daily,200,,Rank Service Users 1-10,text,true,,299,224,1,1,http://localhost:8086/rank/rebuild?type=daily,64,0,0
+1779243118109,18,GET /rank/top10 daily,200,,Rank Service Users 1-10,text,true,,2402,138,1,1,http://localhost:8086/rank/top10?type=daily,17,0,0
+1779243118128,19,GET /rank/list weekly page,200,,Rank Service Users 1-10,text,true,,2534,153,1,1,http://localhost:8086/rank/list?type=weekly&page=1&size=10,19,0,0
+1779243118148,4,GET /rank/health,200,,Rank Service Users 1-10,text,true,,308,128,1,1,http://localhost:8086/rank/health,3,0,0
+1779243118152,60,POST /rank/rebuild daily,200,,Rank Service Users 1-10,text,true,,299,224,1,1,http://localhost:8086/rank/rebuild?type=daily,60,0,0
+1779243118212,16,GET /rank/top10 daily,200,,Rank Service Users 1-10,text,true,,2402,138,1,1,http://localhost:8086/rank/top10?type=daily,16,0,0
+1779243118228,19,GET /rank/list weekly page,200,,Rank Service Users 1-10,text,true,,2534,153,1,1,http://localhost:8086/rank/list?type=weekly&page=1&size=10,18,0,0
+1779243118247,2,GET /rank/health,200,,Rank Service Users 1-10,text,true,,308,128,1,1,http://localhost:8086/rank/health,1,0,0
+1779243118249,61,POST /rank/rebuild daily,200,,Rank Service Users 1-10,text,true,,299,224,1,1,http://localhost:8086/rank/rebuild?type=daily,61,0,0
+1779243118310,17,GET /rank/top10 daily,200,,Rank Service Users 1-10,text,true,,2402,138,1,1,http://localhost:8086/rank/top10?type=daily,17,0,0
+1779243118327,15,GET /rank/list weekly page,200,,Rank Service Users 1-10,text,true,,2534,153,1,1,http://localhost:8086/rank/list?type=weekly&page=1&size=10,15,0,0
+1779243118343,1,GET /rank/health,200,,Rank Service Users 1-10,text,true,,308,128,1,1,http://localhost:8086/rank/health,1,0,0
+1779243118344,75,POST /rank/rebuild daily,200,,Rank Service Users 1-10,text,true,,299,224,1,1,http://localhost:8086/rank/rebuild?type=daily,75,0,0
+1779243118419,17,GET /rank/top10 daily,200,,Rank Service Users 1-10,text,true,,2402,138,1,1,http://localhost:8086/rank/top10?type=daily,17,0,0
+1779243118436,20,GET /rank/list weekly page,200,,Rank Service Users 1-10,text,true,,2533,153,1,1,http://localhost:8086/rank/list?type=weekly&page=1&size=10,20,0,0

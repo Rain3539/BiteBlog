@@ -270,4 +270,4 @@ PS1 脚本测试结果截图：
 
 ![Recommend PS1 测试截图 3](../测试脚本/recommend-test-截图3.png)
 
-JMeter 报告截图在运行 `jmeter/recommend-service-test.jmx` 后，从 `jmeter/recommendservice-report/index.html` 截取 Dashboard 和 Statistics。
+![alt text](../jmeter/recommend-service-截图.png)
