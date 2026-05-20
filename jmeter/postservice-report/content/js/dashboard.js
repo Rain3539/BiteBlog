@@ -133,7 +133,7 @@ $(document).ready(function() {
         widgets: ['zebra']
     });
 
-    var data = {"OkPercent": 100.0, "KoPercent": 0.0};
+    var data = {"OkPercent": 99.97701281535544, "KoPercent": 0.02298718464456066};
     var dataset = [
         {
             "label" : "FAIL",
@@ -173,7 +173,7 @@ $(document).ready(function() {
     });
 
     // Creates APDEX table
-    createTable($("#apdexTable"), {"supportsControllersDiscrimination": true, "overall": {"data": [0.48985772241586195, 500, 1500, "Total"], "isController": false}, "titles": ["Apdex", "T (Toleration threshold)", "F (Frustration threshold)", "Label"], "items": [{"data": [1.0, 500, 1500, "setUp: POST /api/user/login"], "isController": false}, {"data": [0.371, 500, 1500, "GET /api/post/1/comments?page=1&size=20"], "isController": false}, {"data": [0.7869, 500, 1500, "GET /api/post/search?keyword=烧烤"], "isController": false}, {"data": [0.2614, 500, 1500, "POST /api/post/1/like"], "isController": false}, {"data": [0.4258, 500, 1500, "GET /api/post/1"], "isController": false}]}, function(index, item){
+    createTable($("#apdexTable"), {"supportsControllersDiscrimination": true, "overall": {"data": [0.31926326073214184, 500, 1500, "Total"], "isController": false}, "titles": ["Apdex", "T (Toleration threshold)", "F (Frustration threshold)", "Label"], "items": [{"data": [1.0, 500, 1500, "setUp: POST /api/user/login"], "isController": false}, {"data": [0.1172, 500, 1500, "GET /api/post/1/comments?page=1&size=20"], "isController": false}, {"data": [0.6633, 500, 1500, "GET /api/post/search?keyword=烧烤"], "isController": false}, {"data": [0.1073, 500, 1500, "GET /api/post/1"], "isController": false}, {"data": [0.46479166666666666, 500, 1500, "POST /api/post/1/like"], "isController": false}]}, function(index, item){
         switch(index){
             case 0:
                 item = item.toFixed(3);
@@ -187,7 +187,7 @@ $(document).ready(function() {
     }, [[0, 0]], 3);
 
     // Create statistics table
-    createTable($("#statisticsTable"), {"supportsControllersDiscrimination": true, "overall": {"data": ["Total", 17501, 0, 0.0, 1308.625792811841, 26, 8420, 904.0, 3067.0, 4476.699999999993, 6445.899999999998, 186.63950772643412, 138.28031893869507, 66.89001653998123], "isController": false}, "titles": ["Label", "#Samples", "FAIL", "Error %", "Average", "Min", "Max", "Median", "90th pct", "95th pct", "99th pct", "Transactions/s", "Received", "Sent"], "items": [{"data": ["setUp: POST /api/user/login", 1, 0, 0.0, 274.0, 274, 274, 274.0, 274.0, 274.0, 274.0, 3.6496350364963503, 2.077868385036496, 0.8660755018248174], "isController": false}, {"data": ["GET /api/post/1/comments?page=1&size=20", 5000, 0, 0.0, 1542.8343999999945, 200, 6804, 924.0, 3712.9000000000005, 4531.499999999998, 5722.849999999997, 59.916117435590174, 38.728818716297184, 20.596165368484122], "isController": false}, {"data": ["GET /api/post/search?keyword=烧烤", 5000, 0, 0.0, 442.2273999999997, 33, 2801, 173.0, 1179.800000000001, 1493.8999999999996, 2188.5999999999913, 94.66828233868526, 74.50349444297183, 34.668560426764614], "isController": false}, {"data": ["POST /api/post/1/like", 2500, 0, 0.0, 1693.8039999999964, 136, 5445, 1397.5, 2690.7000000000003, 2962.8499999999995, 4227.799999999996, 46.49778670535282, 16.866599884220513, 19.57084577149128], "isController": false}, {"data": ["GET /api/post/1", 5000, 0, 0.0, 1748.4333999999985, 26, 8420, 1105.0, 4863.500000000003, 5968.499999999998, 7276.98, 53.99159890721004, 52.82637162282549, 18.03235041627523], "isController": false}]}, function(index, item){
+    createTable($("#statisticsTable"), {"supportsControllersDiscrimination": true, "overall": {"data": ["Total", 17401, 4, 0.02298718464456066, 1615.5183610137392, 8, 3890, 1663.0, 2951.0, 3123.0, 3396.0, 237.71533175776287, 176.6870260267961, 85.10976786092404], "isController": false}, "titles": ["Label", "#Samples", "FAIL", "Error %", "Average", "Min", "Max", "Median", "90th pct", "95th pct", "99th pct", "Transactions/s", "Received", "Sent"], "items": [{"data": ["setUp: POST /api/user/login", 1, 0, 0.0, 297.0, 297, 297, 297.0, 297.0, 297.0, 297.0, 3.3670033670033668, 1.9169560185185186, 0.7990056818181819], "isController": false}, {"data": ["GET /api/post/1/comments?page=1&size=20", 5000, 0, 0.0, 1962.435999999999, 22, 3252, 2148.0, 2553.0, 2623.0, 2767.0, 74.47901926027438, 48.14166700802884, 25.60216287071932], "isController": false}, {"data": ["GET /api/post/search?keyword=烧烤", 5000, 0, 0.0, 718.2892000000007, 8, 1813, 863.0, 1550.0, 1599.0, 1693.9799999999996, 104.11677737750662, 81.93972077832497, 38.128702652895484], "isController": false}, {"data": ["GET /api/post/1", 5000, 0, 0.0, 2419.855799999996, 23, 3890, 2726.0, 3227.0, 3325.95, 3516.959999999999, 69.00454049876483, 67.56525673139292, 23.046438330642154], "isController": false}, {"data": ["POST /api/post/1/like", 2400, 4, 0.16666666666666666, 1086.847083333335, 24, 2338, 1191.5, 1928.0, 1986.0, 2090.909999999998, 66.82444661005151, 24.237810846791035, 28.12630516497285], "isController": false}]}, function(index, item){
         switch(index){
             // Errors pct
             case 3:
@@ -217,7 +217,7 @@ $(document).ready(function() {
     }, [[0, 0]], 0, summaryTableHeader);
 
     // Create error table
-    createTable($("#errorsTable"), {"supportsControllersDiscrimination": false, "titles": ["Type of error", "Number of errors", "% in errors", "% in all samples"], "items": []}, function(index, item){
+    createTable($("#errorsTable"), {"supportsControllersDiscrimination": false, "titles": ["Type of error", "Number of errors", "% in errors", "% in all samples"], "items": [{"data": ["Value in json path '$.code' expected to be '200', but found '500'", 4, 100.0, 0.02298718464456066], "isController": false}]}, function(index, item){
         switch(index){
             case 2:
             case 3:
@@ -228,7 +228,7 @@ $(document).ready(function() {
     }, [[1, 1]]);
 
         // Create top5 errors by sampler
-    createTable($("#top5ErrorsBySamplerTable"), {"supportsControllersDiscrimination": false, "overall": {"data": ["Total", 17501, 0, "", "", "", "", "", "", "", "", "", ""], "isController": false}, "titles": ["Sample", "#Samples", "#Errors", "Error", "#Errors", "Error", "#Errors", "Error", "#Errors", "Error", "#Errors", "Error", "#Errors"], "items": [{"data": [], "isController": false}, {"data": [], "isController": false}, {"data": [], "isController": false}, {"data": [], "isController": false}, {"data": [], "isController": false}]}, function(index, item){
+    createTable($("#top5ErrorsBySamplerTable"), {"supportsControllersDiscrimination": false, "overall": {"data": ["Total", 17401, 4, "Value in json path '$.code' expected to be '200', but found '500'", 4, "", "", "", "", "", "", "", ""], "isController": false}, "titles": ["Sample", "#Samples", "#Errors", "Error", "#Errors", "Error", "#Errors", "Error", "#Errors", "Error", "#Errors", "Error", "#Errors"], "items": [{"data": [], "isController": false}, {"data": [], "isController": false}, {"data": [], "isController": false}, {"data": [], "isController": false}, {"data": ["POST /api/post/1/like", 2400, 4, "Value in json path '$.code' expected to be '200', but found '500'", 4, "", "", "", "", "", "", "", ""], "isController": false}]}, function(index, item){
         return item;
     }, [[0, 0]], 0);
 

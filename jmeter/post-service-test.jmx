@@ -131,19 +131,19 @@ if (token == null || token == "TOKEN_NOT_FOUND") {
 
       <!-- ================================================================
            Thread Group 1: 笔记详情查询（核心读接口）
-           100 线程 × 50 循环 = 5000 样本
+           200 线程 × 25 循环 = 5000 样本
            目标：平均响应 &lt; 300ms，错误率 = 0%
            测试 Redis 缓存命中率
            ================================================================ -->
       <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup"
-          testname="[1] 笔记详情 GET /api/post/1 (100x50)" enabled="true">
+          testname="[1] 笔记详情 GET /api/post/1 (200x25)" enabled="true">
         <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
         <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller" enabled="true">
           <boolProp name="LoopController.continue_forever">false</boolProp>
-          <stringProp name="LoopController.loops">50</stringProp>
+          <stringProp name="LoopController.loops">25</stringProp>
         </elementProp>
-        <stringProp name="ThreadGroup.num_threads">100</stringProp>
-        <stringProp name="ThreadGroup.ramp_time">10</stringProp>
+        <stringProp name="ThreadGroup.num_threads">200</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">15</stringProp>
         <boolProp name="ThreadGroup.scheduler">false</boolProp>
       </ThreadGroup>
       <hashTree>
@@ -207,18 +207,18 @@ if (token == null || token == "TOKEN_NOT_FOUND") {
 
       <!-- ================================================================
            Thread Group 2: ES 全文搜索
-           100 线程 × 50 循环 = 5000 样本
+           200 线程 × 25 循环 = 5000 样本
            目标：平均响应 &lt; 800ms，错误率 = 0%
            ================================================================ -->
       <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup"
-          testname="[2] ES 搜索 GET /api/post/search (100x50)" enabled="true">
+          testname="[2] ES 搜索 GET /api/post/search (200x25)" enabled="true">
         <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
         <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller" enabled="true">
           <boolProp name="LoopController.continue_forever">false</boolProp>
-          <stringProp name="LoopController.loops">50</stringProp>
+          <stringProp name="LoopController.loops">25</stringProp>
         </elementProp>
-        <stringProp name="ThreadGroup.num_threads">100</stringProp>
-        <stringProp name="ThreadGroup.ramp_time">10</stringProp>
+        <stringProp name="ThreadGroup.num_threads">200</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">15</stringProp>
         <boolProp name="ThreadGroup.scheduler">false</boolProp>
       </ThreadGroup>
       <hashTree>
@@ -277,19 +277,19 @@ if (token == null || token == "TOKEN_NOT_FOUND") {
 
       <!-- ================================================================
            Thread Group 3: 点赞并发测试
-           100 线程 × 25 循环 = 2500 样本
+           200 线程 × 12 循环 = 2500 样本
            目标：平均响应 &lt; 300ms，错误率 = 0%
            同一用户反复点赞/取消 idempotent，验证唯一约束不报 DuplicateKeyException
            ================================================================ -->
       <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup"
-          testname="[3] 点赞切换 POST /api/post/1/like (100x25)" enabled="true">
+          testname="[3] 点赞切换 POST /api/post/1/like (200x12)" enabled="true">
         <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
         <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller" enabled="true">
           <boolProp name="LoopController.continue_forever">false</boolProp>
-          <stringProp name="LoopController.loops">25</stringProp>
+          <stringProp name="LoopController.loops">12</stringProp>
         </elementProp>
-        <stringProp name="ThreadGroup.num_threads">100</stringProp>
-        <stringProp name="ThreadGroup.ramp_time">10</stringProp>
+        <stringProp name="ThreadGroup.num_threads">200</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">15</stringProp>
         <boolProp name="ThreadGroup.scheduler">false</boolProp>
       </ThreadGroup>
       <hashTree>
@@ -342,18 +342,18 @@ if (token == null || token == "TOKEN_NOT_FOUND") {
 
       <!-- ================================================================
            Thread Group 4: 评论分页查询
-           100 线程 × 50 循环 = 5000 样本
+           200 线程 × 25 循环 = 5000 样本
            目标：平均响应 &lt; 300ms，错误率 = 0%
            ================================================================ -->
       <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup"
-          testname="[4] 评论分页 GET /api/post/1/comments (100x50)" enabled="true">
+          testname="[4] 评论分页 GET /api/post/1/comments (200x25)" enabled="true">
         <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
         <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller" enabled="true">
           <boolProp name="LoopController.continue_forever">false</boolProp>
-          <stringProp name="LoopController.loops">50</stringProp>
+          <stringProp name="LoopController.loops">25</stringProp>
         </elementProp>
-        <stringProp name="ThreadGroup.num_threads">100</stringProp>
-        <stringProp name="ThreadGroup.ramp_time">10</stringProp>
+        <stringProp name="ThreadGroup.num_threads">200</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">15</stringProp>
         <boolProp name="ThreadGroup.scheduler">false</boolProp>
       </ThreadGroup>
       <hashTree>
