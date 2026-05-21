@@ -22,6 +22,8 @@ import org.springframework.data.geo.Point;
 import org.springframework.data.redis.connection.RedisGeoCommands.GeoLocation;
 import org.springframework.data.redis.connection.RedisGeoCommands.GeoRadiusCommandArgs;
 import org.springframework.data.redis.core.RedisTemplate;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
@@ -195,6 +197,32 @@ public class LocationService {
         redisTemplate.opsForGeo().add(GEO_KEY, point, noteId.toString());
         log.info("Added note location to GEO: noteId={}, lng={}, lat={}",
                 noteId, note.getLongitude(), note.getLatitude());
+    }
+
+    @Scheduled(cron = "0 0/10 * * * ?")
+    public void scheduledRebuildGeo() {
+        log.info("Scheduled GEO rebuild starting...");
+        rebuildGeo();
+        log.info("Scheduled GEO rebuild completed");
+    }
+
+    public int rebuildGeo() {
+        redisTemplate.delete(GEO_KEY);
+        LambdaQueryWrapper<Note> wrapper = new LambdaQueryWrapper<Note>()
+                .eq(Note::getStatus, 1)
+                .isNotNull(Note::getLongitude)
+                .isNotNull(Note::getLatitude);
+        List<Note> notes = noteMapper.selectList(wrapper);
+        int count = 0;
+        for (Note note : notes) {
+            if (note.getLongitude() != null && note.getLatitude() != null) {
+                Point point = new Point(note.getLongitude().doubleValue(), note.getLatitude().doubleValue());
+                redisTemplate.opsForGeo().add(GEO_KEY, point, note.getId().toString());
+                count++;
+            }
+        }
+        log.info("GEO rebuilt: {} notes from MySQL", count);
+        return count;
     }
 
     private List<PoiItemVO> parsePoiResponse(String response) {
