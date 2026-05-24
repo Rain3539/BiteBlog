@@ -4,7 +4,8 @@
     <TestPlan guiclass="TestPlanGui" testclass="TestPlan" testname="Notify Service Test Plan" enabled="true">
       <stringProp name="TestPlan.comments">
         Notify Service 压测：经网关登录后压测 /api/notify/health、list、unread-count。
-        前置：运行 sql/init-notify-data.ps1 创建测试账号（13900004001 / 12345678）。
+        前置：init-data.ps1 + init-notify-data.ps1；账号 13800000001 / 12345678。
+        并发：200 线程 × 25 循环 × 2 读接口（list + unread-count），ramp-up 10s。
         执行：jmeter -n -t jmeter/notify-service-test.jmx -l jmeter/notify-service-result.jtl -e -o jmeter/notifyservice-report
       </stringProp>
       <boolProp name="TestPlan.functional_mode">false</boolProp>
@@ -14,7 +15,7 @@
         <collectionProp name="Arguments.arguments">
           <elementProp name="HOST"     elementType="Argument"><stringProp name="Argument.name">HOST</stringProp><stringProp name="Argument.value">localhost</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>
           <elementProp name="PORT"     elementType="Argument"><stringProp name="Argument.name">PORT</stringProp><stringProp name="Argument.value">8080</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>
-          <elementProp name="PHONE"    elementType="Argument"><stringProp name="Argument.name">PHONE</stringProp><stringProp name="Argument.value">13900004001</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>
+          <elementProp name="PHONE"    elementType="Argument"><stringProp name="Argument.name">PHONE</stringProp><stringProp name="Argument.value">13800000001</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>
           <elementProp name="PASSWORD" elementType="Argument"><stringProp name="Argument.name">PASSWORD</stringProp><stringProp name="Argument.value">12345678</stringProp><stringProp name="Argument.metadata">=</stringProp></elementProp>
         </collectionProp>
       </elementProp>
@@ -138,14 +139,14 @@ if (token == null || token == "TOKEN_NOT_FOUND") {
            10 threads x 20 loops = 200 samples per endpoint
            ====================================================== -->
       <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup"
-          testname="Notify Service Load Test (10 threads x 20 loops)" enabled="true">
+          testname="Notify Service Load Test (200 threads x 25 loops)" enabled="true">
         <stringProp name="ThreadGroup.on_sample_error">continue</stringProp>
         <elementProp name="ThreadGroup.main_controller" elementType="LoopController" guiclass="LoopControlPanel" testclass="LoopController" testname="Loop Controller" enabled="true">
           <boolProp name="LoopController.continue_forever">false</boolProp>
-          <stringProp name="LoopController.loops">20</stringProp>
+          <stringProp name="LoopController.loops">25</stringProp>
         </elementProp>
-        <stringProp name="ThreadGroup.num_threads">10</stringProp>
-        <stringProp name="ThreadGroup.ramp_time">5</stringProp>
+        <stringProp name="ThreadGroup.num_threads">200</stringProp>
+        <stringProp name="ThreadGroup.ramp_time">10</stringProp>
         <boolProp name="ThreadGroup.scheduler">false</boolProp>
       </ThreadGroup>
       <hashTree>
@@ -168,7 +169,7 @@ if (token == null || token == "TOKEN_NOT_FOUND") {
 
         <!-- ===== 1. Health (no auth required at notify side, but gateway needs JWT) ===== -->
         <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy"
-            testname="GET /api/notify/health" enabled="true">
+            testname="GET /api/notify/health" enabled="false">
           <stringProp name="HTTPSampler.domain">${HOST}</stringProp>
           <stringProp name="HTTPSampler.port">${PORT}</stringProp>
           <stringProp name="HTTPSampler.protocol">http</stringProp>

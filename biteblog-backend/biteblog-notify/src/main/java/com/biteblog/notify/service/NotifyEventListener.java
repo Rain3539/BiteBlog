@@ -29,6 +29,29 @@ public class NotifyEventListener {
     private final NotifyService notifyService;
     private final ObjectMapper objectMapper;
 
+    @RabbitListener(queues = NotifyRabbitConfig.NOTIFY_NOTE_PUBLISHED_QUEUE,
+                    ackMode = "MANUAL")
+    public void onNotePublished(Message message,
+                                Channel channel,
+                                @Header(AmqpHeaders.DELIVERY_TAG) long deliveryTag) {
+        Map<String, Object> event = null;
+        try {
+            event = parseEvent(message);
+            Long noteId = toLong(event.get("noteId"));
+            Long authorId = toLong(event.get("authorId"));
+            notifyService.handleNotePublished(noteId, authorId);
+            log.info("Notify consumed note.published noteId={}, authorId={}", noteId, authorId);
+            channel.basicAck(deliveryTag, false);
+        } catch (Exception e) {
+            log.error("Notify note.published failed, routing to DLQ. event={}", event, e);
+            try {
+                channel.basicNack(deliveryTag, false, false);
+            } catch (IOException ioException) {
+                log.error("basicNack failed", ioException);
+            }
+        }
+    }
+
     @RabbitListener(queues = NotifyRabbitConfig.NOTIFY_INTERACTION_QUEUE,
                     ackMode = "MANUAL")
     public void onInteraction(Message message,
@@ -59,6 +82,12 @@ public class NotifyEventListener {
             return objectMapper.readValue(text, EVENT_TYPE);
         }
         return deserializeMap(body);
+    }
+
+    private static Long toLong(Object value) {
+        if (value == null) return null;
+        if (value instanceof Number number) return number.longValue();
+        return Long.valueOf(String.valueOf(value));
     }
 
     private Map<String, Object> deserializeMap(byte[] body) throws Exception {

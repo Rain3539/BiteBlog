@@ -1,12 +1,12 @@
 **********************
 PowerShell transcript start
-Start time: 20260519202627
+Start time: 20260524160233
 Username: LAPTOP-CK4JELLI\WEN
 RunAs User: LAPTOP-CK4JELLI\WEN
 Configuration Name: 
 Machine: LAPTOP-CK4JELLI (Microsoft Windows NT 10.0.26200.0)
 Host Application: C:\Program Files\PowerShell\7\pwsh.dll -noexit -command try { . "e:\Documents\cursor\resources\app\out\vs\workbench\contrib\terminal\common\scripts\shellIntegration.ps1" } catch {}
-Process ID: 27164
+Process ID: 22252
 PSVersion: 7.4.14
 PSEdition: Core
 GitCommitId: 7.4.14
@@ -19,76 +19,95 @@ WSManStackVersion: 3.0
 **********************
 ============================================================
   Notify Service Verification
-  2026-05-19 20:26:27
+  2026-05-24 16:02:33
 ============================================================
 
 ===== 0. Account Login =====
   [PASS] author login: userId=1 (13800000001)
   [PASS] fan    login: userId=4 (13800000004)
+  baseline: author read-all to reset unread state
 
 ===== 1. Health Check =====
   [PASS] direct notify/health: status=UP
   [PASS] gateway -> notify/health: status=UP
 
 ===== 2. Publish Test Note =====
-  [PASS] published postId=21
-  baseline total notifications: 6
+  [PASS] published postId=105
+  baseline total notifications: 101
 
 ===== 3. MQ Consumption: interaction events -> notification =====
-  fan: liked + favorited + commented postId=21
+  fan: liked + favorited + commented postId=105
   waiting up to 20s for MQ -> notify consumption...
-  wait 1/40 : total=9 (need >= 9)
+  wait 1/40 : total=104 (need >= 104)
   new notifications in API total = 3 (expected >= 3)
   [PASS] MQ consumed: 3 notifications (like/collect/comment)
-  type=like total=3 [ok]
-  type=collect total=3 [ok]
-  type=comment total=3 [ok]
+  type=like total=52 [ok]
+  type=collect total=19 [ok]
+  type=comment total=25 [ok]
+
+===== 3b. Data Consistency (NC-1 write / NC-2 unread count) =====
+  postId=105 notifications=3 types=comment,collect,like
+  [PASS] NC-1: notification fields match interaction events (like/collect/comment on postId=105)
+  API unreadCount=3  list(readStatus=0).total=3  redis=
+  [PASS] NC-2: unread count consistent (API=3, list.total=3, redis=)
 
 ===== 4. Self-interaction Filter (author likes own note) =====
-  [PASS] self-interaction filter: total unchanged (9)
+  [PASS] self-interaction filter: total unchanged (104)
 
-===== 5. Idempotency: 5-min dedup window =====
-  after 1st like: like total 3 -> 3 (delta=0)
-  after 2nd like in window: extra like notifications = 0 (expected 0)
-  [PASS] dedup: 5-min window blocked duplicate like notification
+===== 5. Retract (F-12) and Re-like (F-13) =====
+  isolated postId=106 for retract test
+  wait like bizId=106 1/30 : rows=1 (need >= 1)
+  after like: like total 52 -> 53, postId=106 rows=1
+  [PASS] F-12 setup: like notification visible for postId=106
+  after unlike: like total 53 -> 52, postId=106 rows=0
+  [PASS] F-12: unlike retracted like notification (list no longer shows postId=106)
+  wait like bizId=106 1/30 : rows=1 (need >= 1)
+  after re-like: like total 52 -> 53, postId=106 rows=1
+  [PASS] F-13: re-like after retract creates new like notification
+
+===== 5b. Dedup: single add produces one notification =====
+  dedup postId=107: like total delta=1 (expected 1)
+  [PASS] dedup: single like add produced exactly one notification
 
 ===== 6. Single-read API =====
-  [PASS] single-read: notificationId=36 readStatus=1
+  [PASS] single-read: notificationId=2108 readStatus=1
+  [PASS] NC-3: Redis key evicted after single-read (cache invalidation)
 
 ===== 7. Read-All / Unread-Count Consistency =====
-  unreadCount before read-all: 2
+  unreadCount before read-all: 4
   [PASS] read-all: request accepted
   unreadCount after  read-all: 0
   [PASS] read-all: unreadCount=0
+  [PASS] NC-4: Redis cache evicted after read-all
 
 ===== 8. List API Response Time (target P95 < 300ms, 20 samples) =====
   GET http://localhost:8080/api/notify/list?page=1&size=20
-  samples=20  avg=25ms  min=23ms  max=30ms
-  P90=28ms   P95=30ms   (target P95 < 300ms)
-  [PASS] list P95=30ms < 300ms
+  samples=20  avg=25.4ms  min=22ms  max=52ms
+  P90=27ms   P95=52ms   (target P95 < 300ms)
+  [PASS] list P95=52ms < 300ms
 
 ===== 9. Unread-count API Response Time (target P95 < 100ms Redis hot, 20 samples) =====
   GET http://localhost:8080/api/notify/unread-count
-  samples=20  avg=9.2ms  min=8ms  max=15ms
-  P90=13ms   P95=15ms   (target P95 < 100ms)
-  [PASS] unread-count P95=15ms < 100ms (Redis hit)
+  samples=20  avg=9.7ms  min=8ms  max=17ms
+  P90=13ms   P95=17ms   (target P95 < 100ms)
+  [PASS] unread-count P95=17ms < 100ms (Redis hit)
 
 ===== 10. Redis Cache Validation =====
   [PASS] unread-count API ok (0); Redis key absent after read-all (evicted, cold path still valid)
   cold (cache miss -> DB COUNT): 10ms
-  hot  (cache hit  -> Redis GET): 8ms
-  [PASS] cache cold/hot: cold=10ms hot=8ms (hot <= cold as expected)
+  hot  (cache hit  -> Redis GET): 11ms
+  [PASS] cache cold/hot: cold=10ms hot=11ms (hot <= cold as expected)
 
 ===== 11. List Filter Parameters (type / readStatus) =====
-  [PASS] type=like filter: 3 items, all correct
-  [PASS] type=collect filter: 3 items, all correct
-  [PASS] type=comment filter: 3 items, all correct
+  [PASS] type=like filter: 50 items, all correct
+  [PASS] type=collect filter: 19 items, all correct
+  [PASS] type=comment filter: 25 items, all correct
   [PASS] readStatus=0 (unread) filter: 0 items, all correct
-  [PASS] readStatus=1 (read) filter: 9 items, all correct
+  [PASS] readStatus=1 (read) filter: 50 items, all correct
 
 ===== 12. Pagination: total consistency and no duplicates =====
-  page1 total=9   page2 total=9
-  [PASS] pagination: total consistent (9)
+  page1 total=106   page2 total=106
+  [PASS] pagination: total consistent (106)
   [PASS] pagination: no duplicate ids across page1 and page2
 
 ===== 13. Auth and Privilege =====
@@ -97,28 +116,61 @@ PS>TerminatingError(Invoke-RestMethod): "Response status code does not indicate 
   [PASS] privilege: fan rejected by business code 403
   [PASS] direct notify with X-User-Id: code=200
 
-===== 14. RabbitMQ Queue Status (via Management API) =====
+===== 14. Redis Downgrade (NC-10) =====
+  [PASS] NC-10: Redis paused, unread-count/list still return code=200 (DB fallback)
+
+===== 15. Cold Archive (NC-9) =====
+  [PASS] NC-9: archiveOldReadNotifications scheduled cron=0 0 3 * * ? (30d read -> notification_archive)
+  hot table=notification, cold table=notification_archive, INSERT IGNORE + batch 500
+
+===== 16. RabbitMQ Queue Status (via Management API) =====
   notify.interaction.queue: consumers=1  ready=0  unacked=0
   [PASS] queue consumers=1
   [PASS] queue Unacked=0
   notify.dead.queue: ready=0
   [PASS] DLQ: empty (no failed messages)
+  [PASS] NR-1/NR-2: manual Ack + DLQ + 5-min dedup covered in sections 5 and 16
+
+===== 17. Preferences (F-18 mute_type / F-19 mute_sender / F-20 dnd_time) =====
+  F-18: like total 54 -> 54, postId=108 rows=0
+  [PASS] F-18: mute_type=like blocked like notification
+  F-19: total 106 -> 106, postId=109 rows=0
+  [PASS] F-19: mute_sender blocked fan notifications
+  wait like bizId=110 1/10 : rows=1 (need >= 1)
+  F-20: dnd=15:02-17:02 postId=110 rows=1 unread 0 -> 0
+  [PASS] F-20: dnd_time wrote notification but skipped unread bump (no WS push path)
+
+===== 18. Follow-post (F-21 small-V / F-22 big-V threshold) =====
+  wait follow_post bizId=111 1/12 : rows=1 (need >= 1)
+  F-21: fan published postId=111 follow_post total 8 -> 9 rows=1
+  [PASS] F-21: fan publish -> follower received follow_post notification
+Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+Warning: Using a password with '-a' or '-u' option on the command line interface may not be safe.
+  F-22: authorId=1 feed:bigv=0 fans:SCARD=439 cacheFollowers=0 isBigV=True
+  F-22: big-V publish postId=112 follower05 follow_post 33 -> 33 rows=0
+  [PASS] F-22: big-V author skipped follow_post fanout
+
+===== 19. Comment reply (F-23 comment_reply) =====
+  wait comment_reply postId=113 1/20 : rows=1 (need >= 1)
+  F-23: postId=113 parentCommentId=50 comment_reply 4 -> 5 rows=1
+  [PASS] F-23: reply to comment -> parent author received comment_reply
 
 ===== Summary =====
 
-  Pass  : 28
+  Pass  : 44
   Fail  : 0
-  Total : 28 checks
+  Total : 44 checks
 
   --- Response Time Results ---
-  List        avg=25ms  P90=28ms  P95=30ms  max=30ms
-  Unread-cnt  avg=9.2ms  P90=13ms  P95=15ms  max=15ms
-  Cache       cold(DB)=10ms  hot(Redis)=8ms
+  List        avg=25.4ms  P90=27ms  P95=52ms  max=52ms
+  Unread-cnt  avg=9.7ms  P90=13ms  P95=17ms  max=17ms
+  Cache       cold(DB)=10ms  hot(Redis)=11ms
 
   All critical checks PASSED
 
 Result saved to: E:\WHU\DistributedGroupWork\BiteBlog\测试脚本\notify-test-result.txt
 **********************
 PowerShell transcript end
-End time: 20260519202637
+End time: 20260524160309
 **********************

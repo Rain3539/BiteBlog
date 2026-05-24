@@ -51,9 +51,32 @@ public class CommentService {
                         .set(Note::getUpdatedAt, LocalDateTime.now())
                         .setSql("comment_count = comment_count + 1"));
 
-        eventPublisher.publishInteraction(noteId, userId, note.getAuthorId(), "comment", "add");
+        Map<String, Object> extras = new HashMap<>();
+        extras.put("commentId", comment.getId());
+        if (content != null) {
+            extras.put("commentContent", truncateComment(content, 20));
+        }
+        if (parentId != null) {
+            extras.put("parentId", parentId);
+            Comment parent = commentMapper.selectById(parentId);
+            if (parent != null && parent.getUserId() != null) {
+                extras.put("parentCommentUserId", parent.getUserId());
+            }
+        }
+        eventPublisher.publishInteraction(noteId, userId, note.getAuthorId(), "comment", "add", extras);
 
         return comment.getId();
+    }
+
+    private static String truncateComment(String content, int maxLen) {
+        if (content == null) {
+            return "";
+        }
+        String trimmed = content.trim();
+        if (trimmed.length() <= maxLen) {
+            return trimmed;
+        }
+        return trimmed.substring(0, maxLen);
     }
 
     public Map<String, Object> getComments(Long noteId, int page, int size) {

@@ -10,13 +10,20 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class NotifyRabbitConfig {
 
+    public static final String POST_EXCHANGE = "biteblog.post";
     public static final String INTERACTION_EXCHANGE = "biteblog.interaction";
     public static final String NOTIFY_INTERACTION_QUEUE = "notify.interaction.queue";
+    public static final String NOTIFY_NOTE_PUBLISHED_QUEUE = "notify.note.published.queue";
 
     /** 死信交换机：消费异常的消息转投此处，避免永久丢失 */
     public static final String NOTIFY_DLX = "notify.dlx";
     /** 死信队列：运维可手动检查或重放 */
     public static final String NOTIFY_DLQ = "notify.dead.queue";
+
+    @Bean
+    public TopicExchange notifyPostExchange() {
+        return ExchangeBuilder.topicExchange(POST_EXCHANGE).durable(true).build();
+    }
 
     @Bean
     public TopicExchange notifyInteractionExchange() {
@@ -52,5 +59,20 @@ public class NotifyRabbitConfig {
         return BindingBuilder.bind(notifyInteractionQueue())
                 .to(notifyInteractionExchange())
                 .with("interaction.*");
+    }
+
+    @Bean
+    public Queue notifyNotePublishedQueue() {
+        return QueueBuilder.durable(NOTIFY_NOTE_PUBLISHED_QUEUE)
+                .withArgument("x-dead-letter-exchange", NOTIFY_DLX)
+                .withArgument("x-dead-letter-routing-key", NOTIFY_DLQ)
+                .build();
+    }
+
+    @Bean
+    public Binding notifyNotePublishedBinding() {
+        return BindingBuilder.bind(notifyNotePublishedQueue())
+                .to(notifyPostExchange())
+                .with("note.published");
     }
 }

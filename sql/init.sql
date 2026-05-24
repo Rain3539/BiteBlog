@@ -125,13 +125,14 @@ CREATE TABLE IF NOT EXISTS `notification` (
     `id`           BIGINT       NOT NULL AUTO_INCREMENT,
     `receiver_id`  BIGINT       NOT NULL COMMENT '接收者ID',
     `sender_id`    BIGINT       NOT NULL COMMENT '发送者ID',
-    `type`         VARCHAR(20)  NOT NULL COMMENT '通知类型(like/collect/comment/follow)',
+    `type`         VARCHAR(20)  NOT NULL COMMENT '通知类型(like/collect/comment/comment_reply/follow_post)',
     `biz_id`       BIGINT       DEFAULT NULL COMMENT '关联业务ID(笔记ID等)',
     `content`      VARCHAR(200) DEFAULT NULL COMMENT '通知摘要',
     `read_status`  TINYINT      NOT NULL DEFAULT 0 COMMENT '已读状态(0未读1已读)',
+    `is_retracted` TINYINT(1)   NOT NULL DEFAULT 0 COMMENT '是否已撤回(0正常1已撤回，列表不可见)',
     `created_at`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
-    INDEX `idx_receiver` (`receiver_id`, `read_status`),
+    INDEX `idx_receiver` (`receiver_id`, `read_status`, `is_retracted`),
     INDEX `idx_created` (`created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='通知表';
 
@@ -140,7 +141,7 @@ CREATE TABLE IF NOT EXISTS `notification_archive` (
     `id`           BIGINT       NOT NULL COMMENT '来自热表的原始ID，非自增',
     `receiver_id`  BIGINT       NOT NULL COMMENT '接收者ID',
     `sender_id`    BIGINT       NOT NULL COMMENT '发送者ID',
-    `type`         VARCHAR(20)  NOT NULL COMMENT '通知类型(like/collect/comment/follow)',
+    `type`         VARCHAR(20)  NOT NULL COMMENT '通知类型(like/collect/comment/comment_reply/follow_post)',
     `biz_id`       BIGINT       DEFAULT NULL COMMENT '关联业务ID',
     `content`      VARCHAR(200) DEFAULT NULL COMMENT '通知摘要',
     `read_status`  TINYINT      NOT NULL DEFAULT 1 COMMENT '归档时均已读',
@@ -149,6 +150,17 @@ CREATE TABLE IF NOT EXISTS `notification_archive` (
     PRIMARY KEY (`id`),
     INDEX `idx_archive_receiver` (`receiver_id`, `created_at`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='通知归档表（冷数据）';
+
+-- ==================== 通知偏好表（类型屏蔽/发送者屏蔽/勿扰时段）====================
+CREATE TABLE IF NOT EXISTS `notification_preference` (
+    `id`           BIGINT       NOT NULL AUTO_INCREMENT,
+    `user_id`      BIGINT       NOT NULL COMMENT '设置者（通知接收方）',
+    `pref_type`    VARCHAR(30)  NOT NULL COMMENT 'mute_type / mute_sender / dnd_time',
+    `pref_value`   VARCHAR(100) NOT NULL COMMENT 'like|collect|comment / senderId / HH:mm-HH:mm',
+    `created_at`   DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    INDEX `idx_user_type` (`user_id`, `pref_type`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='通知偏好设置表';
 
 -- ==================== 管理员审核日志表 ====================
 CREATE TABLE IF NOT EXISTS `admin_audit_log` (

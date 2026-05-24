@@ -32,5 +32,8 @@ public class Notification {
     /** 0 未读 1 已读 */
     private Integer readStatus;
 
+    /** 0 正常 1 已撤回（取消点赞/收藏后软删除，列表不展示） */
+    private Integer isRetracted;
+
     private LocalDateTime createdAt;
 }

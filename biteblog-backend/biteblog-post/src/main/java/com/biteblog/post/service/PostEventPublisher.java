@@ -41,6 +41,11 @@ public class PostEventPublisher {
     }
 
     public void publishInteraction(Long noteId, Long userId, Long authorId, String type, String action) {
+        publishInteraction(noteId, userId, authorId, type, action, null);
+    }
+
+    public void publishInteraction(Long noteId, Long userId, Long authorId, String type, String action,
+                                 Map<String, Object> extras) {
         Map<String, Object> event = new HashMap<>();
         event.put("noteId", noteId);
         event.put("userId", userId);
@@ -48,6 +53,9 @@ public class PostEventPublisher {
         event.put("type", type);
         event.put("action", action);
         event.put("timestamp", System.currentTimeMillis());
+        if (extras != null && !extras.isEmpty()) {
+            event.putAll(extras);
+        }
         sendJsonAfterCommit(PostRabbitConfig.INTERACTION_EXCHANGE, "interaction." + type, event);
     }
 

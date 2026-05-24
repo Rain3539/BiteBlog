@@ -16,3 +16,28 @@ export function markNotifyRead(id) {
 export function markAllNotifyRead() {
   return request.post('/notify/read-all')
 }
+
+/** 通知偏好 */
+export function getNotifyPreferences() {
+  return request.get('/notify/preference')
+}
+
+export function muteNotifyType(type) {
+  return request.post('/notify/preference/mute/type', { type })
+}
+
+export function muteNotifySender(senderId) {
+  return request.post('/notify/preference/mute/sender', { senderId })
+}
+
+export function setNotifyDnd(timeRange) {
+  return request.post('/notify/preference/dnd', { timeRange })
+}
+
+export function clearNotifyDnd() {
+  return request.delete('/notify/preference/dnd')
+}
+
+export function deleteNotifyPreference(id) {
+  return request.delete(`/notify/preference/${id}`)
+}

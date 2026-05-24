@@ -3,15 +3,18 @@
     <div class="notify-header">
       <h2>通知中心</h2>
       <div class="header-actions">
-        <el-tag v-if="wsConnected" type="success" size="small">实时已连接</el-tag>
-        <el-tag v-else type="info" size="small">实时未连接</el-tag>
         <span class="unread">未读 {{ unreadCount }}</span>
-        <el-button type="primary" link :loading="loading" @click="loadList(1)">刷新</el-button>
+        <el-tooltip content="刷新通知" placement="bottom">
+          <el-button :icon="Refresh" circle :loading="loading" @click="loadList(page)" />
+        </el-tooltip>
         <el-button type="primary" plain :disabled="unreadCount === 0" :loading="readAllLoading" @click="handleReadAll">
           全部已读
         </el-button>
+        <el-button :icon="Setting" circle title="通知设置" @click="prefDrawerVisible = true" />
       </div>
     </div>
+
+    <NotifyPreferenceDrawer ref="prefDrawerRef" v-model="prefDrawerVisible" />
 
     <el-alert
       v-if="wsHint"
@@ -68,6 +71,15 @@
             >
               标为已读
             </el-button>
+            <el-button
+              v-if="row.senderId"
+              type="info"
+              link
+              size="small"
+              @click.stop="handleMuteSender(row)"
+            >
+              屏蔽此人
+            </el-button>
             <span v-if="!row.bizId" class="no-link-hint">（无关联笔记）</span>
           </div>
         </el-card>
@@ -84,14 +96,20 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
 import SockJS from 'sockjs-client'
 import { Client } from '@stomp/stompjs'
 import { ElMessage } from 'element-plus'
-import { getNotifyList, getNotifyUnreadCount, markNotifyRead, markAllNotifyRead } from '../api/notify'
+import { Setting, Refresh } from '@element-plus/icons-vue'
+import { getNotifyList, markNotifyRead, markAllNotifyRead } from '../api/notify'
+import NotifyPreferenceDrawer from '../components/NotifyPreferenceDrawer.vue'
+import { useNotifyStore } from '../stores/notify'
 import { getToken } from '../utils/auth'
 
 const router = useRouter()
+const notifyStore = useNotifyStore()
+const { unreadCount } = storeToRefs(notifyStore)
 
 const loading = ref(false)
 const readAllLoading = ref(false)
@@ -100,13 +118,13 @@ const list = ref([])
 const total = ref(0)
 const page = ref(1)
 const pageSize = 20
-const unreadCount = ref(0)
 
 /** 当前激活的 Tab：all / unread / like / collect / comment */
 const activeTab = ref('all')
 
-const wsConnected = ref(false)
 const wsHint = ref('')
+const prefDrawerVisible = ref(false)
+const prefDrawerRef = ref(null)
 let stompClient = null
 
 const notifyWsOrigin = import.meta.env.VITE_NOTIFY_WS_ORIGIN || 'http://localhost:8087'
@@ -114,7 +132,14 @@ const notifyWsOrigin = import.meta.env.VITE_NOTIFY_WS_ORIGIN || 'http://localhos
 const totalPages = computed(() => Math.max(1, Math.ceil(total.value / pageSize)))
 
 function typeLabel(type) {
-  const map = { like: '点赞', collect: '收藏', comment: '评论', follow: '关注' }
+  const map = {
+    like: '点赞',
+    collect: '收藏',
+    comment: '评论',
+    comment_reply: '回复',
+    follow: '关注',
+    follow_post: '新笔记'
+  }
   return map[type] || type || '通知'
 }
 
@@ -134,15 +159,6 @@ function buildFilterParams(p) {
   return params
 }
 
-async function refreshUnread() {
-  try {
-    const res = await getNotifyUnreadCount()
-    unreadCount.value = Number(res.data?.unreadCount ?? 0)
-  } catch {
-    unreadCount.value = 0
-  }
-}
-
 async function loadList(p) {
   page.value = p
   loading.value = true
@@ -156,7 +172,7 @@ async function loadList(p) {
   } finally {
     loading.value = false
   }
-  await refreshUnread()
+  await notifyStore.refreshUnread()
 }
 
 function onTabChange() {
@@ -174,7 +190,7 @@ async function handleCardClick(row) {
     markNotifyRead(row.notificationId)
       .then(() => {
         row.readStatus = 1
-        if (unreadCount.value > 0) unreadCount.value -= 1
+        notifyStore.decrementUnread()
       })
       .catch(() => {})
   }
@@ -198,6 +214,7 @@ async function handleReadAll() {
   readAllLoading.value = true
   try {
     await markAllNotifyRead()
+    notifyStore.clearUnread()
     ElMessage.success('已全部标为已读')
     await loadList(page.value)
   } catch {
@@ -205,6 +222,11 @@ async function handleReadAll() {
   } finally {
     readAllLoading.value = false
   }
+}
+
+async function handleMuteSender(row) {
+  if (!row.senderId || !prefDrawerRef.value) return
+  await prefDrawerRef.value.muteSenderById(row.senderId)
 }
 
 function connectWs() {
@@ -221,7 +243,6 @@ function connectWs() {
     heartbeatIncoming: 10000,
     heartbeatOutgoing: 10000,
     onConnect: () => {
-      wsConnected.value = true
       stompClient.subscribe('/user/queue/notify', (message) => {
         try {
           const payload = JSON.parse(message.body)
@@ -230,7 +251,8 @@ function connectWs() {
             const matchTab =
               activeTab.value === 'all' ||
               (activeTab.value === 'unread' && payload.readStatus === 0) ||
-              activeTab.value === payload.type
+              activeTab.value === payload.type ||
+              (activeTab.value === 'comment' && payload.type === 'comment_reply')
             if (matchTab) {
               list.value.unshift({
                 notificationId: payload.notificationId,
@@ -245,22 +267,20 @@ function connectWs() {
               total.value += 1
             }
             if (payload.readStatus === 0) {
-              unreadCount.value += 1
+              notifyStore.incrementUnread()
             }
           }
         } catch {
-          refreshUnread()
+          notifyStore.refreshUnread()
           loadList(1)
         }
       })
     },
-    onDisconnect: () => { wsConnected.value = false },
+    onDisconnect: () => {},
     onStompError: (frame) => {
       console.warn('STOMP error', frame.headers['message'])
-      wsConnected.value = false
     },
     onWebSocketError: () => {
-      wsConnected.value = false
       wsHint.value =
         `无法连接通知 WebSocket（默认 ${notifyWsOrigin}）。` +
         '请确认 notify-service 已启动，或在前端配置 VITE_NOTIFY_WS_ORIGIN。'
@@ -274,7 +294,6 @@ function disconnectWs() {
     try { stompClient.deactivate() } catch { /* noop */ }
     stompClient = null
   }
-  wsConnected.value = false
 }
 
 onMounted(async () => {
@@ -334,11 +353,9 @@ onUnmounted(() => { disconnectWs() })
 .row-actions {
   margin-top: 8px;
 }
-/* 未读通知左侧蓝色竖线 */
 .unread.el-card {
   border-left: 3px solid var(--el-color-primary);
 }
-/* 有关联笔记时整行显示手型，提示可点击 */
 .clickable {
   cursor: pointer;
   transition: box-shadow 0.15s;

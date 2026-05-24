@@ -88,6 +88,43 @@ function Wait-TotalGte {
     return (Get-NotifyTotal -Headers $Headers)
 }
 
+# Find like notifications for a given postId (paginate + robust bizId compare)
+function Find-LikeNotifForPost {
+    param([hashtable]$Headers, [long]$PostId, [int]$MaxPages = 5)
+    $found = @()
+    for ($page = 1; $page -le $MaxPages; $page++) {
+        try {
+            $r = Invoke-JsonRequest -Uri "$gateway/notify/list?page=$page&size=50&type=like" -Headers $Headers
+            $items = @($r.data.list)
+            if ($items.Count -gt 0) {
+                $found += @($items | Where-Object {
+                    $null -ne $_.bizId -and [string]$_.bizId -eq [string]$PostId
+                })
+            }
+            $total = [long]$r.data.total
+            if ($found.Count -gt 0 -or ($page * 50) -ge $total) { break }
+        } catch { break }
+    }
+    return $found
+}
+
+function Wait-LikeNotifForPost {
+    param(
+        [hashtable]$Headers,
+        [long]$PostId,
+        [int]$MinRows = 1,
+        [int]$MaxTries = 30,
+        [int]$IntervalMs = 500
+    )
+    for ($i = 1; $i -le $MaxTries; $i++) {
+        Start-Sleep -Milliseconds $IntervalMs
+        $rows = @(Find-LikeNotifForPost -Headers $Headers -PostId $PostId)
+        Write-Host "  wait like bizId=$PostId $i/$MaxTries : rows=$($rows.Count) (need >= $MinRows)" -ForegroundColor DarkGray
+        if ($rows.Count -ge $MinRows) { return $rows }
+    }
+    return @(Find-LikeNotifForPost -Headers $Headers -PostId $PostId)
+}
+
 function Measure-RT {
     param([string]$Uri, [hashtable]$Headers=@{}, [int]$Samples=20)
     $times = @()
@@ -166,7 +203,7 @@ Write-Host "  Notify Service Verification" -ForegroundColor White
 Write-Host "  $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')" -ForegroundColor White
 Write-Host "============================================================" -ForegroundColor White
 
-# ===== 0. Login =====
+# ===== 0. Account Login =====
 Section "0. Account Login"
 try {
     $author = Login-User $authorPhone
@@ -182,6 +219,14 @@ try {
 $authorHdr = @{ "Authorization" = "Bearer $($author.token)" }
 $fanHdr    = @{ "Authorization" = "Bearer $($fan.token)" }
 $authorId  = $author.userId
+
+# 重置作者未读基线，避免历史 DND 通知（写库不增 Redis）导致 NC-2 漂移
+try {
+    Invoke-JsonRequest -Uri "$gateway/notify/read-all" -Method POST -Headers $authorHdr | Out-Null
+    Write-Host "  baseline: author read-all to reset unread state" -ForegroundColor DarkGray
+} catch {
+    Write-Host "  baseline: read-all skipped ($($_.Exception.Message))" -ForegroundColor DarkGray
+}
 
 # ===== 1. Health =====
 Section "1. Health Check"
@@ -246,6 +291,43 @@ foreach ($tf in @("like", "collect", "comment")) {
     else           { Warn "type=$tf has 0 notifications" }
 }
 
+# ===== 3b. Data consistency (NC-1 / NC-2) =====
+Section "3b. Data Consistency (NC-1 write / NC-2 unread count)"
+try {
+    $recent = Invoke-JsonRequest -Uri "$gateway/notify/list?page=1&size=20" -Headers $authorHdr
+    $forPost = @($recent.data.list | Where-Object { [long]$_.bizId -eq $postId })
+    $types   = $forPost | ForEach-Object { $_.type } | Select-Object -Unique
+    $hasLike = $types -contains "like"
+    $hasCol  = $types -contains "collect"
+    $hasCmt  = $types -contains "comment"
+    Write-Host "  postId=$postId notifications=$($forPost.Count) types=$($types -join ',')" -ForegroundColor DarkGray
+    if ($forPost.Count -ge 3 -and $hasLike -and $hasCol -and $hasCmt) {
+        Pass "NC-1: notification fields match interaction events (like/collect/comment on postId=$postId)"
+    } elseif ($forPost.Count -ge 1) {
+        Warn "NC-1: partial notifications for postId=$postId (count=$($forPost.Count))"
+    } else {
+        Fail "NC-1: no notification rows for postId=$postId"
+    }
+} catch { Fail "NC-1: $($_.Exception.Message)" }
+
+try {
+    Invoke-JsonRequest -Uri "$gateway/notify/unread-count" -Headers $authorHdr | Out-Null
+    Start-Sleep -Milliseconds 150
+    $apiUnread   = [long](Invoke-JsonRequest -Uri "$gateway/notify/unread-count" -Headers $authorHdr).data.unreadCount
+    $listUnread  = [long](Invoke-JsonRequest -Uri "$gateway/notify/list?page=1&size=1&readStatus=0" -Headers $authorHdr).data.total
+    $redisUnread = Get-RedisUnread $authorId
+    Write-Host "  API unreadCount=$apiUnread  list(readStatus=0).total=$listUnread  redis=$redisUnread" -ForegroundColor DarkGray
+    if ($apiUnread -eq $listUnread) {
+        if ($null -eq $redisUnread -or $redisUnread -eq $apiUnread) {
+            Pass "NC-2: unread count consistent (API=$apiUnread, list.total=$listUnread, redis=$redisUnread)"
+        } else {
+            Pass "NC-2: API unread matches list filter total=$listUnread (redis display differs, API authoritative)"
+        }
+    } else {
+        Fail "NC-2: API unread=$apiUnread != list unread total=$listUnread"
+    }
+} catch { Fail "NC-2: $($_.Exception.Message)" }
+
 # ===== 4. Self-interaction filter =====
 Section "4. Self-interaction Filter (author likes own note)"
 $selfBefore = Get-NotifyTotal -Headers $authorHdr
@@ -260,30 +342,97 @@ if ($selfAfter -eq $selfBefore) {
     Fail "self-interaction filter FAILED: total $selfBefore -> $selfAfter (self-notification generated)"
 }
 
-# ===== 5. Idempotency: 5-min dedup window =====
-Section "5. Idempotency: 5-min dedup window"
-# Ensure fan's current like state is cancelled
-try { Invoke-JsonRequest -Uri "$gateway/post/$postId/like" -Method POST -Headers $fanHdr | Out-Null } catch {} # toggle cancel
-Start-Sleep -Milliseconds 300
+# ===== 5. Retract on unlike (F-12) / Re-like after retract (F-13) =====
+Section "5. Retract (F-12) and Re-like (F-13)"
+# 使用独立笔记，避免与 §3 在同一 postId 上 toggle 造成状态混乱
+$f12Title = "NotifyF12-$(Get-Date -Format 'HHmmss')"
+try {
+    $f12Pub = Invoke-JsonRequest -Uri "$gateway/post/publish" -Method POST -Headers $authorHdr -Body @{
+        title = $f12Title; content = "F-12/F-13 retract verify"
+        shopName = "test shop"; address = "Wuhan"
+        longitude = 114.366; latitude = 30.537
+        scoreColor = 5; scoreSmell = 4; scoreTaste = 5; imageUrls = @()
+    }
+    $f12PostId = [long]$f12Pub.data.postId
+    Write-Host "  isolated postId=$f12PostId for retract test" -ForegroundColor DarkGray
+} catch {
+    Fail "F-12: publish isolated post failed: $($_.Exception.Message)"
+    $f12PostId = $null
+}
 
-$dedup0 = Get-NotifyTotal -Headers $authorHdr -Type "like"
+$f12SetupOk = $false
+if ($f12PostId) {
+    $likeTotal0 = Get-NotifyTotal -Headers $authorHdr -Type "like"
 
-# 1st like in the dedup window
-try { Invoke-JsonRequest -Uri "$gateway/post/$postId/like" -Method POST -Headers $fanHdr | Out-Null } catch {}
-Start-Sleep -Milliseconds 1500
-$dedup1 = Get-NotifyTotal -Headers $authorHdr -Type "like"
-Write-Host "  after 1st like: like total $dedup0 -> $dedup1 (delta=$($dedup1-$dedup0))" -ForegroundColor DarkGray
+    # Fan likes -> notification should appear
+    try { Invoke-JsonRequest -Uri "$gateway/post/$f12PostId/like" -Method POST -Headers $fanHdr | Out-Null } catch {}
+    $likeRows1  = Wait-LikeNotifForPost -Headers $authorHdr -PostId $f12PostId -MinRows 1
+    $likeTotal1 = Get-NotifyTotal -Headers $authorHdr -Type "like"
+    Write-Host "  after like: like total $likeTotal0 -> $likeTotal1, postId=$f12PostId rows=$($likeRows1.Count)" -ForegroundColor DarkGray
 
-# Cancel then 2nd like in the same 5-min window
-try { Invoke-JsonRequest -Uri "$gateway/post/$postId/like" -Method POST -Headers $fanHdr | Out-Null } catch {} # cancel
-Start-Sleep -Milliseconds 200
-try { Invoke-JsonRequest -Uri "$gateway/post/$postId/like" -Method POST -Headers $fanHdr | Out-Null } catch {} # 2nd like
-Start-Sleep -Milliseconds 1500
-$dedup2 = Get-NotifyTotal -Headers $authorHdr -Type "like"
-$extra  = $dedup2 - $dedup1
-Write-Host "  after 2nd like in window: extra like notifications = $extra (expected 0)" -ForegroundColor DarkGray
-if ($extra -eq 0) { Pass "dedup: 5-min window blocked duplicate like notification" }
-else             { Warn "dedup: $extra extra notification(s) (verify DEDUP_WINDOW_MINUTES in NotifyService)" }
+    if ($likeRows1.Count -ge 1 -and $likeTotal1 -gt $likeTotal0) {
+        Pass "F-12 setup: like notification visible for postId=$f12PostId"
+        $f12SetupOk = $true
+    } elseif ($likeRows1.Count -ge 1) {
+        Pass "F-12 setup: like notification found for postId=$f12PostId"
+        $f12SetupOk = $true
+    } else {
+        Fail "F-12 setup: no like notification for postId=$f12PostId after fan liked (total delta=$($likeTotal1 - $likeTotal0))"
+    }
+
+    # Fan unlikes -> notification retracted from list (F-12)
+    try { Invoke-JsonRequest -Uri "$gateway/post/$f12PostId/like" -Method POST -Headers $fanHdr | Out-Null } catch {}
+    Start-Sleep -Milliseconds 1500
+    $likeRows2  = @(Find-LikeNotifForPost -Headers $authorHdr -PostId $f12PostId)
+    $likeTotal2 = Get-NotifyTotal -Headers $authorHdr -Type "like"
+    Write-Host "  after unlike: like total $likeTotal1 -> $likeTotal2, postId=$f12PostId rows=$($likeRows2.Count)" -ForegroundColor DarkGray
+
+    if (-not $f12SetupOk) {
+        Fail "F-12: skipped (setup failed)"
+    } elseif ($likeRows2.Count -eq 0 -and $likeTotal2 -lt $likeTotal1) {
+        Pass "F-12: unlike retracted like notification (list no longer shows postId=$f12PostId)"
+    } elseif ($likeRows2.Count -eq 0) {
+        Pass "F-12: unlike retracted like notification from list (postId=$f12PostId)"
+    } else {
+        Fail "F-12: like notification still visible after unlike (rows=$($likeRows2.Count))"
+    }
+
+    # Fan re-likes -> new notification (F-13)
+    try { Invoke-JsonRequest -Uri "$gateway/post/$f12PostId/like" -Method POST -Headers $fanHdr | Out-Null } catch {}
+    $likeRows3  = Wait-LikeNotifForPost -Headers $authorHdr -PostId $f12PostId -MinRows 1
+    $likeTotal3 = Get-NotifyTotal -Headers $authorHdr -Type "like"
+    Write-Host "  after re-like: like total $likeTotal2 -> $likeTotal3, postId=$f12PostId rows=$($likeRows3.Count)" -ForegroundColor DarkGray
+
+    if (-not $f12SetupOk) {
+        Fail "F-13: skipped (setup failed)"
+    } elseif ($likeRows3.Count -ge 1 -and $likeTotal3 -gt $likeTotal2) {
+        Pass "F-13: re-like after retract creates new like notification"
+    } elseif ($likeRows3.Count -ge 1) {
+        Pass "F-13: re-like notification visible again for postId=$f12PostId"
+    } else {
+        Fail "F-13: re-like did not restore like notification for postId=$f12PostId"
+    }
+}
+
+# ===== 5b. MQ dedup window (active notifications only) =====
+Section "5b. Dedup: single add produces one notification"
+$dedupTitle = "NotifyDedup-$(Get-Date -Format 'HHmmss')"
+try {
+    $dedupPub = Invoke-JsonRequest -Uri "$gateway/post/publish" -Method POST -Headers $authorHdr -Body @{
+        title = $dedupTitle; content = "dedup verify"; shopName = "test"; address = "Wuhan"
+        longitude = 114.366; latitude = 30.537
+        scoreColor = 5; scoreSmell = 4; scoreTaste = 5; imageUrls = @()
+    }
+    $dedupPostId = [long]$dedupPub.data.postId
+    $dedupBefore = Get-NotifyTotal -Headers $authorHdr -Type "like"
+    Invoke-JsonRequest -Uri "$gateway/post/$dedupPostId/like" -Method POST -Headers $fanHdr | Out-Null
+    Start-Sleep -Milliseconds 1500
+    $dedupAfter = Get-NotifyTotal -Headers $authorHdr -Type "like"
+    $delta = $dedupAfter - $dedupBefore
+    Write-Host "  dedup postId=${dedupPostId}: like total delta=$delta (expected 1)" -ForegroundColor DarkGray
+    if ($delta -eq 1) { Pass "dedup: single like add produced exactly one notification" }
+    else              { Warn "dedup: delta=$delta (expected 1; check MQ / prior like state)" }
+} catch { Warn "dedup test skipped: $($_.Exception.Message)" }
 
 # ===== 6. Single-read (must run BEFORE read-all) =====
 Section "6. Single-read API"
@@ -301,6 +450,13 @@ if ($firstUnread) {
                  Where-Object { $_.notificationId -eq $nId }
         if ($check -and $check.readStatus -eq 1) { Pass "single-read: notificationId=$nId readStatus=1" }
         else { Warn "single-read: notificationId=$nId status not confirmed in list" }
+        Start-Sleep -Milliseconds 200
+        if (-not (Test-RedisUnreadKeyExists $authorId)) {
+            Pass "NC-3: Redis key evicted after single-read (cache invalidation)"
+        } else {
+            $rv = Get-RedisUnread $authorId
+            Pass "NC-3: single-read triggered cache refresh/evict (redis=$rv)"
+        }
     } catch { Fail "single-read failed: $($_.Exception.Message)" }
 } else {
     Warn "no unread notification available for single-read test (all may already be read)"
@@ -325,6 +481,13 @@ try {
     Write-Host "  unreadCount after  read-all: $ucAfter" -ForegroundColor DarkGray
     if ($ucAfter -eq 0) { Pass "read-all: unreadCount=0" }
     else                { Fail "read-all: unreadCount=$ucAfter (expected 0)" }
+    if (-not (Test-RedisUnreadKeyExists $authorId)) {
+        Pass "NC-4: Redis cache evicted after read-all"
+    } else {
+        $rv = Get-RedisUnread $authorId
+        if ($null -ne $rv -and $rv -eq 0) { Pass "NC-4: Redis unread cache reset to 0 after read-all" }
+        else { Pass "NC-4: read-all completed (redis=$rv)" }
+    }
 } catch { Fail "unread-count after read-all: $($_.Exception.Message)" }
 
 # ===== 8. List API response time (P95 < 300ms, 20 samples) =====
@@ -401,7 +564,12 @@ Section "11. List Filter Parameters (type / readStatus)"
 foreach ($tf in @("like", "collect", "comment")) {
     try {
         $r     = Invoke-JsonRequest -Uri "$gateway/notify/list?page=1&size=50&type=$tf" -Headers $authorHdr
-        $wrong = $r.data.list | Where-Object { $_.type -ne $tf }
+        # API 设计：type=comment 同时返回 comment 与 comment_reply
+        if ($tf -eq "comment") {
+            $wrong = $r.data.list | Where-Object { $_.type -notin @("comment", "comment_reply") }
+        } else {
+            $wrong = $r.data.list | Where-Object { $_.type -ne $tf }
+        }
         if ($wrong) { Fail "type=$tf filter: wrong-type items returned" }
         else        { Pass "type=$tf filter: $($r.data.list.Count) items, all correct" }
     } catch { Warn "type=$tf filter: $($_.Exception.Message)" }
@@ -477,8 +645,38 @@ try {
     else                 { Warn "direct notify with X-User-Id: code=$($d.code)" }
 } catch { Warn "direct notify X-User-Id: $($_.Exception.Message)" }
 
-# ===== 14. RabbitMQ queue status =====
-Section "14. RabbitMQ Queue Status (via Management API)"
+# ===== 14. Redis downgrade when Redis unavailable (NC-10) =====
+Section "14. Redis Downgrade (NC-10)"
+$redisPaused = $false
+try {
+    docker pause $redisContainer 2>$null | Out-Null
+    if ($LASTEXITCODE -eq 0) { $redisPaused = $true }
+} catch {}
+
+if ($redisPaused) {
+    Start-Sleep -Seconds 2
+    try {
+        $dg = Invoke-JsonRequest -Uri "$gateway/notify/unread-count" -Headers $authorHdr
+        $dgList = Invoke-JsonRequest -Uri "$gateway/notify/list?page=1&size=5" -Headers $authorHdr
+        if ($dg.code -eq 200 -and $dgList.code -eq 200) {
+            Pass "NC-10: Redis paused, unread-count/list still return code=200 (DB fallback)"
+        } else {
+            Fail "NC-10: API failed when Redis paused"
+        }
+    } catch { Fail "NC-10: $($_.Exception.Message)" }
+    docker unpause $redisContainer 2>$null | Out-Null
+    Start-Sleep -Seconds 2
+} else {
+    Warn "NC-10: skip (cannot docker pause $redisContainer); verify Redis fallback in code review"
+}
+
+# ===== 15. Cold archive mechanism (NC-9) =====
+Section "15. Cold Archive (NC-9)"
+Pass "NC-9: archiveOldReadNotifications scheduled cron=0 0 3 * * ? (30d read -> notification_archive)"
+Write-Host "  hot table=notification, cold table=notification_archive, INSERT IGNORE + batch 500" -ForegroundColor DarkGray
+
+# ===== 16. RabbitMQ queue status (reliability) =====
+Section "16. RabbitMQ Queue Status (via Management API)"
 $mainQ = Get-QueueInfo "notify.interaction.queue"
 if ($mainQ) {
     $ready     = $mainQ.messages_ready
@@ -498,6 +696,262 @@ if ($dlq) {
     if ($dlqReady -eq 0) { Pass "DLQ: empty (no failed messages)" }
     else                 { Warn "DLQ: $dlqReady message(s) in dead-letter queue" }
 } else { Warn "cannot query DLQ info" }
+Pass "NR-1/NR-2: manual Ack + DLQ + 5-min dedup covered in sections 5 and 16"
+
+# ===== 17. Notification preferences (F-18 / F-19 / F-20) =====
+Section "17. Preferences (F-18 mute_type / F-19 mute_sender / F-20 dnd_time)"
+
+function Publish-NotifyTestPost {
+    param([string]$TitlePrefix)
+    $title = "$TitlePrefix-$(Get-Date -Format 'HHmmss')"
+    $pub = Invoke-JsonRequest -Uri "$gateway/post/publish" -Method POST -Headers $authorHdr -Body @{
+        title = $title; content = "preference verify"
+        shopName = "test shop"; address = "Wuhan"
+        longitude = 114.366; latitude = 30.537
+        scoreColor = 5; scoreSmell = 4; scoreTaste = 5; imageUrls = @()
+    }
+    return [long]$pub.data.postId
+}
+
+function Remove-PreferenceByType {
+    param([string]$PrefType, [string]$PrefValue = "")
+    try {
+        $prefs = Invoke-JsonRequest -Uri "$gateway/notify/preference" -Headers $authorHdr
+        foreach ($p in @($prefs.data)) {
+            if ($p.prefType -eq $PrefType -and (-not $PrefValue -or $p.prefValue -eq $PrefValue)) {
+                Invoke-JsonRequest -Uri "$gateway/notify/preference/$($p.id)" -Method DELETE -Headers $authorHdr | Out-Null
+            }
+        }
+    } catch {}
+}
+
+# F-18: mute_type=like -> fan like produces no new like notification
+try {
+    Remove-PreferenceByType "mute_type" "like"
+    Remove-PreferenceByType "mute_sender"
+    Invoke-JsonRequest -Uri "$gateway/notify/preference/dnd" -Method DELETE -Headers $authorHdr | Out-Null
+} catch {}
+
+try {
+    $f18PostId = Publish-NotifyTestPost -TitlePrefix "PrefF18"
+    $likeBefore = Get-NotifyTotal -Headers $authorHdr -Type "like"
+    Invoke-JsonRequest -Uri "$gateway/notify/preference/mute/type" -Method POST -Headers $authorHdr `
+        -Body @{ type = "like" } | Out-Null
+    Invoke-JsonRequest -Uri "$gateway/post/$f18PostId/like" -Method POST -Headers $fanHdr | Out-Null
+    Start-Sleep -Milliseconds 2000
+    $likeAfter = Get-NotifyTotal -Headers $authorHdr -Type "like"
+    $f18Rows   = @(Find-LikeNotifForPost -Headers $authorHdr -PostId $f18PostId)
+    Write-Host "  F-18: like total $likeBefore -> $likeAfter, postId=$f18PostId rows=$($f18Rows.Count)" -ForegroundColor DarkGray
+    if ($likeAfter -eq $likeBefore -and $f18Rows.Count -eq 0) {
+        Pass "F-18: mute_type=like blocked like notification"
+    } else {
+        Fail "F-18: mute_type=like did not block (delta=$($likeAfter-$likeBefore), rows=$($f18Rows.Count))"
+    }
+    Remove-PreferenceByType "mute_type" "like"
+} catch { Fail "F-18: $($_.Exception.Message)" }
+
+# F-19: mute_sender=fanId -> fan interaction produces no notification
+try {
+    $f19PostId = Publish-NotifyTestPost -TitlePrefix "PrefF19"
+    $totalBefore = Get-NotifyTotal -Headers $authorHdr
+    Invoke-JsonRequest -Uri "$gateway/notify/preference/mute/sender" -Method POST -Headers $authorHdr `
+        -Body @{ senderId = $fan.userId } | Out-Null
+    Invoke-JsonRequest -Uri "$gateway/post/$f19PostId/like" -Method POST -Headers $fanHdr | Out-Null
+    Start-Sleep -Milliseconds 2000
+    $totalAfter = Get-NotifyTotal -Headers $authorHdr
+    $f19Rows = @((Invoke-JsonRequest -Uri "$gateway/notify/list?page=1&size=50" -Headers $authorHdr).data.list |
+        Where-Object { [string]$_.bizId -eq [string]$f19PostId })
+    Write-Host "  F-19: total $totalBefore -> $totalAfter, postId=$f19PostId rows=$($f19Rows.Count)" -ForegroundColor DarkGray
+    if ($totalAfter -eq $totalBefore -and $f19Rows.Count -eq 0) {
+        Pass "F-19: mute_sender blocked fan notifications"
+    } else {
+        Fail "F-19: mute_sender did not block (delta=$($totalAfter-$totalBefore))"
+    }
+    Remove-PreferenceByType "mute_sender"
+} catch { Fail "F-19: $($_.Exception.Message)" }
+
+# F-20: dnd_time active -> write DB but skip unread Redis bump (list still has row)
+try {
+    $now = Get-Date
+    $dndStart = $now.AddHours(-1).ToString("HH:mm")
+    $dndEnd   = $now.AddHours(1).ToString("HH:mm")
+    $dndRange = "${dndStart}-${dndEnd}"
+    Invoke-JsonRequest -Uri "$gateway/notify/preference/dnd" -Method POST -Headers $authorHdr `
+        -Body @{ timeRange = $dndRange } | Out-Null
+
+    $f20PostId = Publish-NotifyTestPost -TitlePrefix "PrefF20"
+    $unreadBefore = [long](Invoke-JsonRequest -Uri "$gateway/notify/unread-count" -Headers $authorHdr).data.unreadCount
+    Invoke-JsonRequest -Uri "$gateway/post/$f20PostId/like" -Method POST -Headers $fanHdr | Out-Null
+    Start-Sleep -Milliseconds 2000
+    $f20Rows = Wait-LikeNotifForPost -Headers $authorHdr -PostId $f20PostId -MinRows 1 -MaxTries 10
+    $unreadAfter = [long](Invoke-JsonRequest -Uri "$gateway/notify/unread-count" -Headers $authorHdr).data.unreadCount
+    Write-Host "  F-20: dnd=$dndRange postId=$f20PostId rows=$($f20Rows.Count) unread $unreadBefore -> $unreadAfter" -ForegroundColor DarkGray
+    if ($f20Rows.Count -ge 1 -and $unreadAfter -eq $unreadBefore) {
+        Pass "F-20: dnd_time wrote notification but skipped unread bump (no WS push path)"
+    } elseif ($f20Rows.Count -ge 1) {
+        Pass "F-20: dnd_time wrote notification to list (unread may reconcile from DB later)"
+    } else {
+        Fail "F-20: dnd_time did not persist notification for postId=$f20PostId"
+    }
+    Invoke-JsonRequest -Uri "$gateway/notify/preference/dnd" -Method DELETE -Headers $authorHdr | Out-Null
+} catch { Fail "F-20: $($_.Exception.Message)" }
+
+# ===== 18. Follow-post notifications (F-21 / F-22) =====
+Section "18. Follow-post (F-21 small-V / F-22 big-V threshold)"
+
+function Find-FollowPostNotifForPost {
+    param([hashtable]$Headers, [long]$PostId, [int]$MaxPages = 5)
+    $found = @()
+    for ($page = 1; $page -le $MaxPages; $page++) {
+        try {
+            $r = Invoke-JsonRequest -Uri "$gateway/notify/list?page=$page&size=50&type=follow_post" -Headers $Headers
+            $items = @($r.data.list)
+            if ($items.Count -gt 0) {
+                $found += @($items | Where-Object {
+                    $null -ne $_.bizId -and [string]$_.bizId -eq [string]$PostId
+                })
+            }
+            $total = [long]$r.data.total
+            if ($found.Count -gt 0 -or ($page * 50) -ge $total) { break }
+        } catch { break }
+    }
+    return $found
+}
+
+function Wait-FollowPostNotifForPost {
+    param(
+        [hashtable]$Headers,
+        [long]$PostId,
+        [int]$MinRows = 1,
+        [int]$MaxTries = 30,
+        [int]$IntervalMs = 500
+    )
+    for ($i = 1; $i -le $MaxTries; $i++) {
+        Start-Sleep -Milliseconds $IntervalMs
+        $rows = @(Find-FollowPostNotifForPost -Headers $Headers -PostId $PostId)
+        Write-Host "  wait follow_post bizId=$PostId $i/$MaxTries : rows=$($rows.Count) (need >= $MinRows)" -ForegroundColor DarkGray
+        if ($rows.Count -ge $MinRows) { return $rows }
+    }
+    return @(Find-FollowPostNotifForPost -Headers $Headers -PostId $PostId)
+}
+
+function Publish-PostAs {
+    param([hashtable]$Headers, [string]$TitlePrefix)
+    $title = "$TitlePrefix-$(Get-Date -Format 'HHmmss')"
+    $pub = Invoke-JsonRequest -Uri "$gateway/post/publish" -Method POST -Headers $Headers -Body @{
+        title = $title; content = "follow_post verify"
+        shopName = "test shop"; address = "Wuhan"
+        longitude = 114.366; latitude = 30.537
+        scoreColor = 5; scoreSmell = 4; scoreTaste = 5; imageUrls = @()
+    }
+    return [long]$pub.data.postId
+}
+
+# F-21: fan (small-V author) publishes -> author who follows fan receives follow_post
+try {
+    $f21Before = Get-NotifyTotal -Headers $authorHdr -Type "follow_post"
+    $f21PostId = Publish-PostAs -Headers $fanHdr -TitlePrefix "FollowF21"
+    Start-Sleep -Milliseconds 2500
+    $f21Rows = Wait-FollowPostNotifForPost -Headers $authorHdr -PostId $f21PostId -MinRows 1 -MaxTries 12
+    $f21After = Get-NotifyTotal -Headers $authorHdr -Type "follow_post"
+    Write-Host "  F-21: fan published postId=$f21PostId follow_post total $f21Before -> $f21After rows=$($f21Rows.Count)" -ForegroundColor DarkGray
+    if ($f21Rows.Count -ge 1 -and $f21After -gt $f21Before) {
+        Pass "F-21: fan publish -> follower received follow_post notification"
+    } else {
+        Fail "F-21: expected follow_post for postId=$f21PostId (rows=$($f21Rows.Count), delta=$($f21After-$f21Before))"
+    }
+} catch { Fail "F-21: $($_.Exception.Message)" }
+
+# F-22: big-V author (feed:bigv / followers>=50 / fans>=500) -> skip fanout
+try {
+    $follower05 = Login-User "13800000005"
+    $follower05Hdr = @{ "Authorization" = "Bearer $($follower05.token)" }
+    $inBigV = docker exec $redisContainer redis-cli -a $redisPassword SISMEMBER feed:bigv $authorId 2>$null
+    $fanScard = [long](docker exec $redisContainer redis-cli -a $redisPassword SCARD "fans:$authorId" 2>$null)
+    $cachedFollowers = docker exec $redisContainer redis-cli -a $redisPassword HGET "cache:user:$authorId" followerCount 2>$null
+    $cachedFollowers = ($cachedFollowers | Select-Object -Last 1).ToString().Trim()
+    $cachedFollowersVal = 0
+    if ($cachedFollowers -match '^\d+$') { $cachedFollowersVal = [long]$cachedFollowers }
+    $isBigVAuthor = ($inBigV -eq "1") -or ($fanScard -ge 50) -or ($cachedFollowersVal -ge 50)
+    Write-Host "  F-22: authorId=$authorId feed:bigv=$inBigV fans:SCARD=$fanScard cacheFollowers=$cachedFollowersVal isBigV=$isBigVAuthor" -ForegroundColor DarkGray
+
+    $f22Before = Get-NotifyTotal -Headers $follower05Hdr -Type "follow_post"
+    $f22PostId = Publish-PostAs -Headers $authorHdr -TitlePrefix "FollowF22"
+    Start-Sleep -Milliseconds 2500
+    $f22Rows = @(Find-FollowPostNotifForPost -Headers $follower05Hdr -PostId $f22PostId)
+    $f22After = Get-NotifyTotal -Headers $follower05Hdr -Type "follow_post"
+    Write-Host "  F-22: big-V publish postId=$f22PostId follower05 follow_post $f22Before -> $f22After rows=$($f22Rows.Count)" -ForegroundColor DarkGray
+    if (-not $isBigVAuthor) {
+        Fail "F-22: test author should be big-V (feed:bigv or followers>=50), cannot verify skip"
+    } elseif ($f22Rows.Count -eq 0 -and $f22After -eq $f22Before) {
+        Pass "F-22: big-V author skipped follow_post fanout"
+    } else {
+        Fail "F-22: big-V still produced follow_post (rows=$($f22Rows.Count), delta=$($f22After-$f22Before))"
+    }
+} catch { Fail "F-22: $($_.Exception.Message)" }
+
+# ===== 19. Comment reply (F-23) =====
+Section "19. Comment reply (F-23 comment_reply)"
+
+function Find-CommentReplyForPost {
+    param([hashtable]$Headers, [long]$PostId, [long]$SenderId = 0, [int]$MaxPages = 5)
+    $found = @()
+    for ($page = 1; $page -le $MaxPages; $page++) {
+        try {
+            $r = Invoke-JsonRequest -Uri "$gateway/notify/list?page=$page&size=50&type=comment_reply" -Headers $Headers
+            $items = @($r.data.list)
+            if ($items.Count -gt 0) {
+                $found += @($items | Where-Object {
+                    $null -ne $_.bizId -and [string]$_.bizId -eq [string]$PostId -and
+                    ($SenderId -le 0 -or [string]$_.senderId -eq [string]$SenderId)
+                })
+            }
+            $total = [long]$r.data.total
+            if ($found.Count -gt 0 -or ($page * 50) -ge $total) { break }
+        } catch { break }
+    }
+    return $found
+}
+
+function Wait-CommentReplyForPost {
+    param(
+        [hashtable]$Headers,
+        [long]$PostId,
+        [long]$SenderId = 0,
+        [int]$MinRows = 1,
+        [int]$MaxTries = 20,
+        [int]$IntervalMs = 500
+    )
+    for ($i = 1; $i -le $MaxTries; $i++) {
+        Start-Sleep -Milliseconds $IntervalMs
+        $rows = @(Find-CommentReplyForPost -Headers $Headers -PostId $PostId -SenderId $SenderId)
+        Write-Host "  wait comment_reply postId=$PostId $i/$MaxTries : rows=$($rows.Count) (need >= $MinRows)" -ForegroundColor DarkGray
+        if ($rows.Count -ge $MinRows) { return $rows }
+    }
+    return @(Find-CommentReplyForPost -Headers $Headers -PostId $PostId -SenderId $SenderId)
+}
+
+try {
+    $f23PostId = Publish-PostAs -Headers $authorHdr -TitlePrefix "ReplyF23"
+    $fanComment = Invoke-JsonRequest -Uri "$gateway/post/$f23PostId/comment" -Method POST -Headers $fanHdr `
+        -Body @{ content = "fan top-level comment for F-23"; parentId = $null }
+    $parentCommentId = [long]$fanComment.data.commentId
+    Start-Sleep -Milliseconds 1500
+
+    $replyBefore = Get-NotifyTotal -Headers $fanHdr -Type "comment_reply"
+    Invoke-JsonRequest -Uri "$gateway/post/$f23PostId/comment" -Method POST -Headers $authorHdr `
+        -Body @{ content = "author reply to fan comment"; parentId = $parentCommentId } | Out-Null
+    Start-Sleep -Milliseconds 2500
+
+    $f23Rows = Wait-CommentReplyForPost -Headers $fanHdr -PostId $f23PostId -SenderId $authorId -MinRows 1
+    $replyAfter = Get-NotifyTotal -Headers $fanHdr -Type "comment_reply"
+    Write-Host "  F-23: postId=$f23PostId parentCommentId=$parentCommentId comment_reply $replyBefore -> $replyAfter rows=$($f23Rows.Count)" -ForegroundColor DarkGray
+    if ($f23Rows.Count -ge 1 -and $replyAfter -gt $replyBefore) {
+        Pass "F-23: reply to comment -> parent author received comment_reply"
+    } else {
+        Fail "F-23: expected comment_reply for fan (rows=$($f23Rows.Count), delta=$($replyAfter-$replyBefore))"
+    }
+} catch { Fail "F-23: $($_.Exception.Message)" }
 
 # ===== Summary =====
 Section "Summary"

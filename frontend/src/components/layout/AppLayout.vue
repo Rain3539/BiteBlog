@@ -43,30 +43,23 @@
 
 <script setup>
 import { ref, watch, onMounted } from 'vue'
+import { storeToRefs } from 'pinia'
 import { useRoute, useRouter } from 'vue-router'
 import { Bell, Search, Plus } from '@element-plus/icons-vue'
 import { useUserStore } from '../../stores/user'
+import { useNotifyStore } from '../../stores/notify'
 import SearchOverlay from '../SearchOverlay.vue'
-import { logout, getToken } from '../../utils/auth'
-import { getNotifyUnreadCount } from '../../api/notify'
+import { logout } from '../../utils/auth'
 
 const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
-const unreadCount = ref(0)
+const notifyStore = useNotifyStore()
+const { unreadCount } = storeToRefs(notifyStore)
 const showSearch = ref(false)
 
 async function refreshNotifyBadge() {
-  if (!getToken()) {
-    unreadCount.value = 0
-    return
-  }
-  try {
-    const res = await getNotifyUnreadCount()
-    unreadCount.value = Number(res.data?.unreadCount ?? 0)
-  } catch {
-    unreadCount.value = 0
-  }
+  await notifyStore.refreshUnread()
 }
 
 onMounted(() => {
@@ -75,8 +68,7 @@ onMounted(() => {
 
 watch(
   () => route.fullPath,
-  (newPath, oldPath) => {
-    // 离开通知页时刷新（已读后角标归零）；其他路由切换也顺带刷新
+  () => {
     refreshNotifyBadge()
   }
 )
