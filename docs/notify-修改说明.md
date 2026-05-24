@@ -230,7 +230,7 @@ Post 服务互动成功（like/collect/comment）
 3. 先写冷表再删热表，失败可重试；
 4. **未读通知不归档**，保证用户历史未读不丢失。
 
-### 4.6 取消互动撤回（OPT-1）
+### 4.6 取消互动撤回
 
 用户取消点赞/收藏时，Post 发送 `action=remove`：
 
@@ -244,7 +244,7 @@ LikeService/FavoriteService → interaction.like/collect + action=remove
 
 评论删除目前 Post 侧无 `action=remove` 事件，不在撤回范围内。用户再次点赞可产生新通知。
 
-### 4.7 评论回复专项通知（OPT-5）
+### 4.7 评论回复专项通知
 
 Post `CommentService` 在 MQ 事件中附加 `commentId`、`parentId`、`parentCommentUserId`、`commentContent`（截断 20 字）：
 
@@ -256,7 +256,7 @@ Post `CommentService` 在 MQ 事件中附加 `commentId`、`parentId`、`parentC
 
 前端 Tab `type=comment` 会同时展示 `comment` 与 `comment_reply`。
 
-### 4.8 关注者发帖通知（OPT-6）
+### 4.8 关注者发帖通知
 
 消费 Post `note.published` 事件（队列 `notify.note.published.queue`）：
 
@@ -269,7 +269,7 @@ Post `CommentService` 在 MQ 事件中附加 `commentId`、`parentId`、`parentC
               → saveAndPush(fanId, authorId, "follow_post", noteId, "发布了新笔记")
 ```
 
-### 4.9 通知偏好（OPT-4）
+### 4.9 通知偏好
 
 `NotifyPreferenceService.check()` 在 `saveAndPush` 写库前执行：
 

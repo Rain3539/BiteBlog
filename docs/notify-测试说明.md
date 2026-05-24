@@ -68,7 +68,7 @@ JMeter：`jmeter/notify-service-test.jmx`，报告目录 `jmeter/notifyservice-r
 | P95 | **52ms** |
 | 最大（max） | 52ms |
 
-- **结论**: ✅ P95=52ms，远优于 300ms 目标（2026-05-24 16:02 `notify-test-result.txt`）。本项仅作单用户基线，**不能**替代 F-11 的并发结论。
+- **结论**: P95=52ms，远优于 300ms 目标（2026-05-24 16:02 `notify-test-result.txt`）。本项仅作单用户基线，**不能**替代 F-11 的并发结论。
 
 ---
 
@@ -85,7 +85,7 @@ JMeter：`jmeter/notify-service-test.jmx`，报告目录 `jmeter/notifyservice-r
 | P95 | **17ms** |
 | 最大（max） | 17ms |
 
-- **结论**: ✅ P95=17ms，远优于 100ms 目标；`StringRedisTemplate` 纯整数字符串 GET 命中避免 DB `COUNT(*)` 扫描。
+- **结论**: P95=17ms，远优于 100ms 目标；`StringRedisTemplate` 纯整数字符串 GET 命中避免 DB `COUNT(*)` 扫描。
 
 ---
 
@@ -99,7 +99,7 @@ JMeter：`jmeter/notify-service-test.jmx`，报告目录 `jmeter/notifyservice-r
 | 冷路径（cache miss → DB COUNT） | **10ms** | read-all 后 key 不存在，触发 `SELECT COUNT(*)` 并 SET 回填 |
 | 热路径（cache hit → Redis GET） | **11ms** | key 存在，直接 GET 纯整数字符串返回 |
 
-- **结论**: ✅ Cache-Aside 生效；Redis 值为纯整数字符串（非 Jackson 编码）。本地 RT 受负载波动影响，以热路径不显著劣于冷路径为准。
+- **结论**: Cache-Aside 生效；Redis 值为纯整数字符串（非 Jackson 编码）。本地 RT 受负载波动影响，以热路径不显著劣于冷路径为准。
 
 ---
 
@@ -117,7 +117,7 @@ JMeter：`jmeter/notify-service-test.jmx`，报告目录 `jmeter/notifyservice-r
 | MQ 消费延迟 | **≤ 1s**（第 2 次轮询命中） |
 | 新增 notification 记录 | 3 条（like / collect / comment 各 1 条） |
 
-- **结论**: ✅ Post → RabbitMQ → Notify 整条链路延迟 < 1s，满足秒级要求。
+- **结论**: Post → RabbitMQ → Notify 整条链路延迟 < 1s，满足秒级要求。
 
 ---
 
@@ -136,7 +136,7 @@ JMeter：`jmeter/notify-service-test.jmx`，报告目录 `jmeter/notifyservice-r
 | Unacked | 0 | 已 basicAck |
 | `notify.dead.queue` Ready | 0 | 无失败消息进入死信 |
 
-- **结论**: ✅ 手动 Ack + DLQ 有效；对应 `可靠性测试说明.md` 第 3.1 节。
+- **结论**: 手动 Ack + DLQ 有效；对应 `可靠性测试说明.md` 第 3.1 节。
 
 ---
 
@@ -145,7 +145,7 @@ JMeter：`jmeter/notify-service-test.jmx`，报告目录 `jmeter/notifyservice-r
 **要求**: 同一用户对同一笔记在 5 分钟内重复点赞，仅产生 1 条通知  
 **方法**: 先取消点赞，再快速连续点赞两次（间隔 < 5 分钟）
 
-- **结论**: ✅ 覆盖 `NC-5` 与可靠性说明 3.2 幂等窗口；去重仅查 `is_retracted=0` 记录。
+- **结论**: 覆盖 `NC-5` 与可靠性说明 3.2 幂等窗口；去重仅查 `is_retracted=0` 记录。
 
 ---
 
@@ -154,7 +154,7 @@ JMeter：`jmeter/notify-service-test.jmx`，报告目录 `jmeter/notifyservice-r
 **要求**: 作者对自己笔记操作不产生通知  
 **方法**: bb_bigv_01 对自己发布的笔记执行点赞
 
-- **结论**: ✅ `authorId == userId` 时直接 ack 跳过；覆盖 `NC-6`。
+- **结论**: `authorId == userId` 时直接 ack 跳过；覆盖 `NC-6`。
 
 ---
 
@@ -171,7 +171,7 @@ JMeter：`jmeter/notify-service-test.jmx`，报告目录 `jmeter/notifyservice-r
 | `type=comment` | 返回项 type 为 `comment` **或** `comment_reply` | API 设计：`comment` Tab 合并展示回复类通知；脚本按 `-notin @("comment","comment_reply")` 校验 |
 | `readStatus=0/1` | 返回项 readStatus 均正确 | 已通过 |
 
-- **结论**: ✅ 双列排序保证跨页稳定（`NC-7`）；§11 过滤与 OPT-5 `comment_reply` 行为一致。
+- **结论**: 双列排序保证跨页稳定（`NC-7`）；§11 过滤与 OPT-5 `comment_reply` 行为一致。
 
 ---
 
@@ -187,7 +187,7 @@ JMeter：`jmeter/notify-service-test.jmx`，报告目录 `jmeter/notifyservice-r
 | NC-4 | read-all 后 `unreadCount=0`，Redis **SET "0"**（非 DEL key） |
 | NC-10 | `docker pause` Redis 后 list/unread-count 仍 code=200 |
 
-- **结论**: ✅ 与 `数据一致性测试说明.md` Notify 章节一致；OPT-2 精准维护策略已落地。
+- **结论**: 与 `数据一致性测试说明.md` Notify 章节一致；OPT-2 精准维护策略已落地。
 
 ---
 
@@ -202,7 +202,7 @@ JMeter：`jmeter/notify-service-test.jmx`，报告目录 `jmeter/notifyservice-r
 | 越权已读 | fan token 调 author 通知 `/{id}/read` | 业务 code 403 |
 | 直连 notify | `X-User-Id` 请求 8087 | code=200 |
 
-- **结论**: ✅ 三项安全验证通过。
+- **结论**: 三项安全验证通过。
 
 ---
 
@@ -237,7 +237,7 @@ Remove-Item -Recurse -Force jmeter\notifyservice-report -ErrorAction SilentlyCon
 jmeter -g jmeter/notify-service-result.jtl -o jmeter/notifyservice-report
 ```
 
-- **结论**: ✅ **200 线程 × 25 循环**下 10000 次业务请求零错误，满足并发可靠性要求。  
+- **结论**: **200 线程 × 25 循环**下 10000 次业务请求零错误，满足并发可靠性要求。  
   - `unread-count` 并发 P95=**6ms**，远优于 100ms 目标。  
   - `list` 并发 P95=**341ms**，在 200 线程重压下略高于单用户 300ms 基线；单用户基线 F-1 P95=**52ms** 仍达标。验收以 `notify-service截图.png` 与 JTL 为准。
 
@@ -253,7 +253,7 @@ after unlike: like total 40 -> 39, postId=78 rows=0
 [PASS] F-12: unlike retracted like notification
 ```
 
-- **结论**: ✅ `is_retracted=1` 软撤回生效；若原未读则 Redis DECR。
+- **结论**: `is_retracted=1` 软撤回生效；若原未读则 Redis DECR。
 
 ---
 
@@ -267,7 +267,7 @@ after re-like: like total 39 -> 40, postId=78 rows=1
 [PASS] F-13: re-like after retract creates new like notification
 ```
 
-- **结论**: ✅ 撤回与再点赞流程自洽。
+- **结论**: 撤回与再点赞流程自洽。
 
 ---
 
@@ -276,7 +276,7 @@ after re-like: like total 39 -> 40, postId=78 rows=1
 **要求**: 设置 `mute_type=like` 后，粉丝点赞不产生新 like 通知  
 **方法**: 作者调用 `POST /notify/preference/mute/type {type:"like"}`，粉丝对新笔记点赞
 
-- **结论**: ✅ 消费端 `CheckResult.MUTED` 直接丢弃，不写库。
+- **结论**: 消费端 `CheckResult.MUTED` 直接丢弃，不写库。
 
 ---
 
@@ -285,7 +285,7 @@ after re-like: like total 39 -> 40, postId=78 rows=1
 **要求**: 设置 `mute_sender=fanId` 后，该粉丝任何互动不产生通知  
 **方法**: 作者屏蔽粉丝 userId=4，粉丝执行 collect 等互动
 
-- **结论**: ✅ 按发送者维度全类型屏蔽生效。
+- **结论**: 按发送者维度全类型屏蔽生效。
 
 ---
 
@@ -299,7 +299,7 @@ F-20: dnd=00:12-02:12 postId=82 rows=1 unread 0 -> 0
 [PASS] F-20: dnd_time wrote notification but skipped unread bump
 ```
 
-- **结论**: ✅ DND 写库可见、角标不增；已知 UX：DND 期间 DB 未读可能大于 Redis 角标，依赖对账或用户已读修正。
+- **结论**: DND 写库可见、角标不增；已知 UX：DND 期间 DB 未读可能大于 Redis 角标，依赖对账或用户已读修正。
 
 ---
 
@@ -308,7 +308,7 @@ F-20: dnd=00:12-02:12 postId=82 rows=1 unread 0 -> 0
 **要求**: 小 V 用户（非大 V）发帖，其粉丝收到 `follow_post` 通知  
 **方法**: 作者关注粉丝 bb_user_04，粉丝发布新笔记，作者轮询 `type=follow_post`
 
-- **结论**: ✅ `note.published` → `notify.note.published.queue` → fanout 生效。
+- **结论**: `note.published` → `notify.note.published.queue` → fanout 生效。
 
 ---
 
@@ -323,7 +323,7 @@ F-22: big-V publish postId=112 follower05 follow_post 33 -> 33 rows=0
 [PASS] F-22: big-V author skipped follow_post fanout
 ```
 
-- **结论**: ✅ 大 V 判定与 Feed 一致，避免 fanout 写入风暴。  
+- **结论**: 大 V 判定与 Feed 一致，避免 fanout 写入风暴。  
 - **注意**: 若 notify-service 未加载含「粉丝 ≥50 跳过」的版本，439 粉丝的大 V 会误 fanout（仅 fans≥500 才跳过的旧逻辑）；失败时请重新编译并重启 notify-service 后重跑。
 
 ---
@@ -333,7 +333,7 @@ F-22: big-V publish postId=112 follower05 follow_post 33 -> 33 rows=0
 **要求**: 回复他人评论后，父评论作者收到 `comment_reply` 通知  
 **方法**: 粉丝发顶级评论 → 作者回复该评论 → 轮询粉丝通知列表 `type=comment_reply`
 
-- **结论**: ✅ Post MQ 扩展字段 `parentCommentUserId`、`commentContent` 被 Notify 正确消费。
+- **结论**: Post MQ 扩展字段 `parentCommentUserId`、`commentContent` 被 Notify 正确消费。
 
 ---
 
