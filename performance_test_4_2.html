@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <title>BiteBlog 性能测试结果</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      background: #e0e0e0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      padding: 16px 0;
+      min-height: 100vh;
+    }
+
+    /* PPT 16:9 画布 */
+    .slide {
+      width: 960px;
+      height: 540px;
+      background: #fff;
+      display: flex;
+      flex-direction: column;
+      padding: 28px 32px 24px;
+      overflow: hidden;
+    }
+
+    /* 标题 */
+    .eyebrow {
+      font-size: 11px;
+      color: #548135;
+      font-weight: 500;
+      letter-spacing: 0.06em;
+      flex-shrink: 0;
+    }
+
+    .title {
+      font-size: 16px;
+      font-weight: 600;
+      color: #1a1a1a;
+      margin-top: 2px;
+      flex-shrink: 0;
+    }
+
+    .sub {
+      font-size: 12px;
+      color: #888;
+      margin-top: 2px;
+      flex-shrink: 0;
+    }
+
+    .section-label {
+      font-size: 12px;
+      font-weight: 500;
+      color: #548135;
+      letter-spacing: 0.05em;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+      flex-shrink: 0;
+    }
+
+    .section-label::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: #d6e8c8;
+    }
+
+    /* ══════════════════════════════
+   PAGE 1 — 条形图
+══════════════════════════════ */
+    .bar-list {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      flex-shrink: 0;
+    }
+
+    .bar-row {
+      display: grid;
+      grid-template-columns: 130px 1fr 60px;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .bar-label {
+      font-size: 11.5px;
+      color: #555;
+      text-align: right;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .bar-track {
+      height: 18px;
+      background: #eef6e8;
+      border-radius: 4px;
+      position: relative;
+      overflow: visible;
+    }
+
+    .bar-target {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      background: #d6e8c8;
+      border-radius: 4px;
+    }
+
+    .bar-actual {
+      position: absolute;
+      top: 3px;
+      bottom: 3px;
+      background: #548135;
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      min-width: 6px;
+    }
+
+    .bar-actual.star {
+      background: #2d6a19;
+    }
+
+    .bar-val {
+      font-size: 12px;
+      font-weight: 600;
+      color: #333;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    .bar-val .unit {
+      font-size: 10px;
+      font-weight: 400;
+      color: #999;
+    }
+
+    /* 图例 */
+    .legend {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      margin-bottom: 6px;
+      flex-shrink: 0;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      color: #888;
+    }
+
+    .leg-box {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+    }
+
+    .leg-target {
+      background: #d6e8c8;
+    }
+
+    .leg-actual {
+      background: #548135;
+    }
+
+    /* 高亮卡 */
+    .highlights {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 10px;
+      flex-shrink: 0;
+    }
+
+    .hl-card {
+      border-radius: 6px;
+      background: #f4f9ef;
+      border: 1px solid #d6e8c8;
+      padding: 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .hl-num {
+      font-size: 22px;
+      font-weight: 700;
+      color: #548135;
+      line-height: 1.1;
+    }
+
+    .hl-name {
+      font-size: 11.5px;
+      color: #555;
+    }
+
+    .hl-desc {
+      font-size: 10.5px;
+      color: #999;
+      margin-top: 1px;
+    }
+
+    /* ══════════════════════════════
+   PAGE 2 — JMeter 卡片
+══════════════════════════════ */
+    .jmeter-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 9px;
+      flex-shrink: 0;
+    }
+
+    .jm-card {
+      border-radius: 6px;
+      border: 1px solid #d6e8c8;
+      overflow: hidden;
+    }
+
+    .jm-head {
+      background: #548135;
+      padding: 9px 14px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .jm-service {
+      font-size: 13px;
+      font-weight: 500;
+      color: #fff;
+    }
+
+    .jm-threads {
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.7);
+    }
+
+    .jm-body {
+      padding: 10px 13px;
+      background: #f4f9ef;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+    }
+
+    .jm-hero {
+      display: flex;
+      gap: 10px;
+      align-items: flex-end;
+    }
+
+    .jm-metric {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+    }
+
+    .jm-big {
+      font-size: 22px;
+      font-weight: 700;
+      color: #548135;
+      line-height: 1;
+    }
+
+    .jm-unit {
+      font-size: 10px;
+      color: #999;
+    }
+
+    .jm-mlabel {
+      font-size: 10px;
+      color: #888;
+      margin-top: 2px;
+    }
+
+    .jm-divider {
+      width: 1px;
+      background: #d6e8c8;
+      align-self: stretch;
+    }
+
+    .jm-stats {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      flex: 1;
+    }
+
+    .jm-stat {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .jm-skey {
+      font-size: 11px;
+      color: #999;
+    }
+
+    .jm-sval {
+      font-size: 11px;
+      font-weight: 500;
+      color: #444;
+    }
+
+    .jm-footer {
+      font-size: 10px;
+      color: #aaa;
+      border-top: 1px solid #d6e8c8;
+      padding-top: 7px;
+      margin-top: 2px;
+      font-style: italic;
+    }
+
+    /* 压测总结横条 */
+    .summary-bar {
+      border-radius: 6px;
+      border: 1px solid #d6e8c8;
+      background: #f4f9ef;
+      padding: 12px 18px;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      flex-wrap: wrap;
+      flex-shrink: 0;
+    }
+
+    .sum-item {
+      display: flex;
+      flex-direction: column;
+      gap: 1px;
+      align-items: center;
+    }
+
+    .sum-val {
+      font-size: 18px;
+      font-weight: 700;
+      color: #548135;
+      line-height: 1;
+    }
+
+    .sum-key {
+      font-size: 10px;
+      color: #999;
+      white-space: nowrap;
+    }
+
+    .sum-div {
+      width: 1px;
+      height: 32px;
+      background: #d6e8c8;
+      flex-shrink: 0;
+    }
+  </style>
+</head>
+
+<body>
+
+  <!-- ═══════════════════ PAGE 1 ═══════════════════ -->
+  <div class="slide" style="padding: 22px 28px 18px;">
+    <div style="flex-shrink:0;">
+      <div class="eyebrow">4.2 性能测试 · 第一页</div>
+      <div class="title">单接口响应时间基线</div>
+      <div class="sub">curl 采样 · 各接口实测值 vs 目标值</div>
+    </div>
+
+    <div style="flex:1; display:flex; flex-direction:column; justify-content:center; min-height:0;">
+      <div class="section-label" style="margin-bottom:8px;">响应时间对比</div>
+      <div class="legend">
+        <div class="legend-item">
+          <div class="leg-box leg-target"></div>目标值
+        </div>
+        <div class="legend-item">
+          <div class="leg-box leg-actual"></div>实测值
+        </div>
+      </div>
+
+      <div class="bar-list" id="barList"></div>
+    </div>
+
+    <div style="flex-shrink:0;">
+      <div class="section-label">性能亮点</div>
+      <div class="highlights">
+        <div class="hl-card">
+          <div class="hl-num">6ms</div>
+          <div class="hl-name">POI 搜索（缓存命中）</div>
+          <div class="hl-desc">Redis 缓存 126× 加速，接近内存直读</div>
+        </div>
+        <div class="hl-card">
+          <div class="hl-num">15ms</div>
+          <div class="hl-name">附近探店查询</div>
+          <div class="hl-desc">Redis GEO 纯内存计算，目标达成率 5%</div>
+        </div>
+        <div class="hl-card">
+          <div class="hl-num">33ms</div>
+          <div class="hl-name">笔记详情</div>
+          <div class="hl-desc">Cache-Aside 热路径，目标达成率 11%</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════ PAGE 2 ═══════════════════ -->
+  <div class="slide" style="padding: 22px 28px 18px;">
+    <div style="flex-shrink:0;">
+      <div class="eyebrow">4.2 性能测试 · 第二页</div>
+      <div class="title">JMeter 并发压测结果</div>
+      <div class="sub">峰值 800 并发 · 多服务吞吐量与错误率</div>
+    </div>
+
+    <div style="flex:1; display:flex; flex-direction:column; justify-content:center; min-height:0;">
+      <div class="section-label" style="margin-bottom:8px;">各服务压测指标</div>
+      <div class="jmeter-grid">
+
+        <!-- Post -->
+        <div class="jm-card">
+          <div class="jm-head">
+            <span class="jm-service">Post Service</span>
+            <span class="jm-threads">200 线程 × 4 组</span>
+          </div>
+          <div class="jm-body">
+            <div class="jm-hero">
+              <div class="jm-metric">
+                <div class="jm-big">315<span style="font-size:13px">/s</span></div>
+                <div class="jm-mlabel">吞吐量</div>
+              </div>
+              <div class="jm-divider"></div>
+              <div class="jm-stats">
+                <div class="jm-stat"><span class="jm-skey">总样本</span><span class="jm-sval">17,401</span></div>
+                <div class="jm-stat"><span class="jm-skey">错误率</span><span class="jm-sval"
+                    style="color:#548135">0.02%</span></div>
+                <div class="jm-stat"><span class="jm-skey">峰值并发</span><span class="jm-sval">800</span></div>
+              </div>
+            </div>
+            <div class="jm-footer">ES 搜索 P50=863ms 最稳定</div>
+          </div>
+        </div>
+
+        <!-- Feed -->
+        <div class="jm-card">
+          <div class="jm-head">
+            <span class="jm-service">Feed Service</span>
+            <span class="jm-threads">800 线程 × 5 循环</span>
+          </div>
+          <div class="jm-body">
+            <div class="jm-hero">
+              <div class="jm-metric">
+                <div class="jm-big">864<span style="font-size:13px">/s</span></div>
+                <div class="jm-mlabel">吞吐量</div>
+              </div>
+              <div class="jm-divider"></div>
+              <div class="jm-stats">
+                <div class="jm-stat"><span class="jm-skey">总样本</span><span class="jm-sval">4,000</span></div>
+                <div class="jm-stat"><span class="jm-skey">错误率</span><span class="jm-sval"
+                    style="color:#548135">0%</span></div>
+                <div class="jm-stat"><span class="jm-skey">P50 / P95 / P99</span><span class="jm-sval">8 / ≤42 /
+                    ≤92ms</span></div>
+              </div>
+            </div>
+            <div class="jm-footer">800 线程零错误，P95 仅 42ms</div>
+          </div>
+        </div>
+
+        <!-- Rank -->
+        <div class="jm-card">
+          <div class="jm-head">
+            <span class="jm-service">Rank Service</span>
+            <span class="jm-threads">200 线程 × 25 循环</span>
+          </div>
+          <div class="jm-body">
+            <div class="jm-hero">
+              <div class="jm-metric">
+                <div class="jm-big">149<span style="font-size:13px">/s</span></div>
+                <div class="jm-mlabel">吞吐量</div>
+              </div>
+              <div class="jm-divider"></div>
+              <div class="jm-stats">
+                <div class="jm-stat"><span class="jm-skey">总样本</span><span class="jm-sval">10,000</span></div>
+                <div class="jm-stat"><span class="jm-skey">错误率</span><span class="jm-sval"
+                    style="color:#548135">0%</span></div>
+                <div class="jm-stat"><span class="jm-skey"> P95</span><span class="jm-sval">1159ms</span>
+                </div>
+              </div>
+            </div>
+            <div class="jm-footer">Redis 单线程+MySQL 连接池竞争，P95 偏高</div>
+          </div>
+        </div>
+
+        <!-- Location -->
+        <div class="jm-card">
+          <div class="jm-head">
+            <span class="jm-service">Location Service</span>
+            <span class="jm-threads">200 线程 × 25 循环</span>
+          </div>
+          <div class="jm-body">
+            <div class="jm-hero">
+              <div class="jm-metric">
+                <div class="jm-big">659<span style="font-size:13px">/s</span></div>
+                <div class="jm-mlabel">吞吐量</div>
+              </div>
+              <div class="jm-divider"></div>
+              <div class="jm-stats">
+                <div class="jm-stat"><span class="jm-skey">总样本</span><span class="jm-sval">25,000</span></div>
+                <div class="jm-stat"><span class="jm-skey">错误率</span><span class="jm-sval"
+                    style="color:#548135">0%</span></div>
+                <div class="jm-stat"><span class="jm-skey">P95</span><span class="jm-sval">268ms</span></div>
+              </div>
+            </div>
+            <div class="jm-footer">GEO 纯内存快速，平均受 POI 外部调用拖高</div>
+          </div>
+        </div>
+
+        <!-- Notify -->
+        <div class="jm-card">
+          <div class="jm-head">
+            <span class="jm-service">Notify Service</span>
+            <span class="jm-threads">200 线程 × 25 循环</span>
+          </div>
+          <div class="jm-body">
+            <div class="jm-hero">
+              <div class="jm-metric">
+                <div class="jm-big">614<span style="font-size:13px">/s</span></div>
+                <div class="jm-mlabel">吞吐量</div>
+              </div>
+              <div class="jm-divider"></div>
+              <div class="jm-stats">
+                <div class="jm-stat"><span class="jm-skey">总样本</span><span class="jm-sval">10,000</span></div>
+                <div class="jm-stat"><span class="jm-skey">错误率</span><span class="jm-sval"
+                    style="color:#548135">0%</span></div>
+                <div class="jm-stat"><span class="jm-skey">list / unread P95</span><span class="jm-sval">341 /
+                    6ms</span></div>
+              </div>
+            </div>
+            <div class="jm-footer">unread 极低延迟，list 受200线程重压偏高</div>
+          </div>
+        </div>
+
+        <!-- Recommend -->
+        <div class="jm-card">
+          <div class="jm-head">
+            <span class="jm-service">Recommend Service</span>
+            <span class="jm-threads">200 线程 × 10 轮</span>
+          </div>
+          <div class="jm-body">
+            <div class="jm-hero">
+              <div class="jm-metric">
+                <div class="jm-big">519<span style="font-size:13px">/s</span></div>
+                <div class="jm-mlabel">吞吐量</div>
+              </div>
+              <div class="jm-divider"></div>
+              <div class="jm-stats">
+                <div class="jm-stat"><span class="jm-skey">总样本</span><span class="jm-sval">10,000</span></div>
+                <div class="jm-stat"><span class="jm-skey">错误率</span><span class="jm-sval"
+                    style="color:#548135">0%</span></div>
+                <div class="jm-stat"><span class="jm-skey">P95</span><span class="jm-sval">236ms</span></div>
+              </div>
+            </div>
+            <div class="jm-footer">P95=724ms，标签+城市召回 568ms 最重路径</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div style="flex-shrink:0;">
+      <div class="section-label">压测总结</div>
+      <div class="summary-bar">
+        <div class="sum-item">
+          <div class="sum-val">6</div>
+          <div class="sum-key">服务完成压测</div>
+        </div>
+        <div class="sum-div"></div>
+        <div class="sum-item">
+          <div class="sum-val">76,401</div>
+          <div class="sum-key">总样本数</div>
+        </div>
+        <div class="sum-div"></div>
+        <div class="sum-item">
+          <div class="sum-val">0.005%</div>
+          <div class="sum-key">综合错误率</div>
+        </div>
+        <div class="sum-div"></div>
+        <div class="sum-item">
+          <div class="sum-val">864/s</div>
+          <div class="sum-key">最高吞吐（Feed）</div>
+        </div>
+        <div class="sum-div"></div>
+        <div class="sum-item">
+          <div class="sum-val">800</div>
+          <div class="sum-key">峰值并发（Post）</div>
+        </div>
+        <div class="sum-div"></div>
+        <div class="sum-item">
+          <div class="sum-val">8ms</div>
+          <div class="sum-key">Feed P50 延迟</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 条形图数据：[标签, 实测ms, 目标ms]
+    const bars = [
+      ['笔记详情', 33, 300],
+      ['ES 全文搜索', 67, 800],
+      ['点赞切换', 45, 300],
+      ['Feed 流', 168, 300],
+      ['热榜 Top10', 85, 100],
+      ['附近探店', 15, 300],
+      ['POI（缓存命中）', 6, null],
+      ['通知列表', 52, 300],
+      ['未读计数', 10, 100],
+      ['冷启动推荐', 190, 600],
+      ['个性化推荐', 208, 600],
+    ];
+
+    const MAX = 850;
+    const list = document.getElementById('barList');
+
+    bars.forEach(([label, actual, target]) => {
+      const row = document.createElement('div');
+      row.className = 'bar-row';
+
+      const lbl = document.createElement('div');
+      lbl.className = 'bar-label';
+      lbl.textContent = label;
+
+      const track = document.createElement('div');
+      track.className = 'bar-track';
+
+      if (target) {
+        const tBar = document.createElement('div');
+        tBar.className = 'bar-target';
+        tBar.style.width = (target / MAX * 100) + '%';
+        track.appendChild(tBar);
+      }
+
+      const aBar = document.createElement('div');
+      aBar.className = 'bar-actual' + (actual <= 10 ? ' star' : '');
+      aBar.style.width = Math.max(actual / MAX * 100, 0.8) + '%';
+      track.appendChild(aBar);
+
+      const val = document.createElement('div');
+      val.className = 'bar-val';
+      val.innerHTML = `${actual}<span class="unit">ms</span>`;
+
+      row.appendChild(lbl);
+      row.appendChild(track);
+      row.appendChild(val);
+      list.appendChild(row);
+    });
+  </script>
+
+</body>
+
+</html>

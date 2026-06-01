@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>BiteBlog 系统挑战四象限</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: #e0e0e0;
+  display: flex; justify-content: center; align-items: center;
+  min-height: 100vh;
+}
+
+/* PPT 16:9 画布 */
+.slide {
+  width: 960px;
+  height: 540px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 32px 20px;
+  overflow: hidden;
+}
+
+.slide-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111;
+  flex-shrink: 0;
+  margin-bottom: 10px;
+}
+
+/* 2×2 网格，撑满剩余高度 */
+.quad-grid {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+  gap: 8px;
+  min-height: 0;
+}
+
+/* 象限卡片 */
+.quad-card {
+  background: #fafafa;
+  border: 1px solid #e8e8e8;
+  border-radius: 5px;
+  padding: 10px 14px 10px;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+/* 卡片标题行 */
+.quad-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  margin-bottom: 6px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #eee;
+}
+
+.quad-bar {
+  width: 3px;
+  height: 24px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.bar-perf  { background: #639922; }
+.bar-avail { background: #378ADD; }
+.bar-rel   { background: #BA7517; }
+.bar-cons  { background: #7F77DD; }
+
+.quad-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: #1a1a1a;
+  line-height: 1.2;
+}
+.quad-sub {
+  font-size: 11px;
+  color: #999;
+  line-height: 1.2;
+}
+
+/* 条目列表，撑满剩余空间 */
+.row-list {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-evenly;
+  min-height: 0;
+}
+
+.row-item {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.row-dot {
+  width: 3px; height: 3px;
+  border-radius: 50%;
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+.dot-perf  { background: #639922; }
+.dot-avail { background: #378ADD; }
+.dot-rel   { background: #BA7517; }
+.dot-cons  { background: #7F77DD; }
+
+.row-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.row-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: #333;
+  line-height: 1.3;
+}
+.row-name span {
+  font-weight: 400;
+  font-size: 11px;
+  color: #888;
+  margin-left: 2px;
+}
+
+/* 标签 */
+.affected {
+  display: inline-flex;
+  gap: 3px;
+  flex-wrap: wrap;
+  margin-top: 2px;
+}
+.chip {
+  font-size: 10px;
+  padding: 0 6px;
+  border-radius: 10px;
+  border: 0.5px solid;
+  line-height: 1.6;
+  white-space: nowrap;
+}
+
+.chip-perf  { color: #3B6D11; background: #EEF5E4; border-color: #C0DD97; }
+.chip-avail { color: #185FA5; background: #EBF3FB; border-color: #B5D4F4; }
+.chip-rel   { color: #854F0B; background: #FDF5E7; border-color: #FAC775; }
+.chip-cons  { color: #534AB7; background: #F3F2FD; border-color: #CECBF6; }
+</style>
+</head>
+<body>
+
+<div class="slide">
+  <div class="slide-title">BiteBlog 核心挑战 — 四象限概览</div>
+
+  <div class="quad-grid">
+
+    <!-- 性能 -->
+    <div class="quad-card">
+      <div class="quad-header">
+        <div class="quad-bar bar-perf"></div>
+        <div>
+          <div class="quad-label">性能挑战</div>
+          <div class="quad-sub">高并发读 · 写扩散 · 空间计算</div>
+        </div>
+      </div>
+      <div class="row-list">
+        <div class="row-item">
+          <div class="row-dot dot-perf"></div>
+          <div class="row-content">
+            <div class="row-name">高并发读压力<span>— 详情、热榜、Feed 直查 MySQL 无法支撑</span></div>
+            <div class="affected"><span class="chip chip-perf">Post</span><span class="chip chip-perf">Rank</span><span class="chip chip-perf">Feed</span></div>
+          </div>
+        </div>
+        <div class="row-item">
+          <div class="row-dot dot-perf"></div>
+          <div class="row-content">
+            <div class="row-name">Feed 写入放大<span>— 大 V 发布触发数万粉丝 inbox 写扩散</span></div>
+            <div class="affected"><span class="chip chip-perf">Feed</span></div>
+          </div>
+        </div>
+        <div class="row-item">
+          <div class="row-dot dot-perf"></div>
+          <div class="row-content">
+            <div class="row-name">全文搜索延迟<span>— 中文分词+多字段，LIKE 效率极低</span></div>
+            <div class="affected"><span class="chip chip-perf">Post</span></div>
+          </div>
+        </div>
+        <div class="row-item">
+          <div class="row-dot dot-perf"></div>
+          <div class="row-content">
+            <div class="row-name">空间查询 & 实时推荐<span>— 球面距离 / ItemCF 在线扫表不可行</span></div>
+            <div class="affected"><span class="chip chip-perf">Location</span><span class="chip chip-perf">Recommend</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 可用性 -->
+    <div class="quad-card">
+      <div class="quad-header">
+        <div class="quad-bar bar-avail"></div>
+        <div>
+          <div class="quad-label">可用性挑战</div>
+          <div class="quad-sub">单点故障 · 缓存雪崩 · 超时</div>
+        </div>
+      </div>
+      <div class="row-list">
+        <div class="row-item">
+          <div class="row-dot dot-avail"></div>
+          <div class="row-content">
+            <div class="row-name">ES 单点风险<span>— 搜索与推荐强依赖 ES，宕机直接 500</span></div>
+            <div class="affected"><span class="chip chip-avail">Post</span><span class="chip chip-avail">Recommend</span></div>
+          </div>
+        </div>
+        <div class="row-item">
+          <div class="row-dot dot-avail"></div>
+          <div class="row-content">
+            <div class="row-name">Redis 缓存雪崩<span>— 大量 key 同时过期，请求穿透至 MySQL</span></div>
+            <div class="affected"><span class="chip chip-avail">Post</span><span class="chip chip-avail">Feed</span><span class="chip chip-avail">Rank</span></div>
+          </div>
+        </div>
+        <div class="row-item">
+          <div class="row-dot dot-avail"></div>
+          <div class="row-content">
+            <div class="row-name">RabbitMQ 消息丢失<span>— Broker 重启或消费异常，下游数据不一致</span></div>
+            <div class="affected"><span class="chip chip-avail">全部服务</span></div>
+          </div>
+        </div>
+        <div class="row-item">
+          <div class="row-dot dot-avail"></div>
+          <div class="row-content">
+            <div class="row-name">Feign 无断路器<span>— 依赖服务不可用时，调用方被拖慢直至超时</span></div>
+            <div class="affected"><span class="chip chip-avail">Recommend</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 可靠性 -->
+    <div class="quad-card">
+      <div class="quad-header">
+        <div class="quad-bar bar-rel"></div>
+        <div>
+          <div class="quad-label">可靠性挑战</div>
+          <div class="quad-sub">脏事件 · 并发冲突 · 重复投递</div>
+        </div>
+      </div>
+      <div class="row-list">
+        <div class="row-item">
+          <div class="row-dot dot-rel"></div>
+          <div class="row-content">
+            <div class="row-name">事务边界与消息<span>— MySQL 回滚后 MQ 已发出，下游收到脏事件</span></div>
+            <div class="affected"><span class="chip chip-rel">Post</span></div>
+          </div>
+        </div>
+        <div class="row-item">
+          <div class="row-dot dot-rel"></div>
+          <div class="row-content">
+            <div class="row-name">跨服务时序差<span>— Post 事务刚提交，下游消费时可能查不到</span></div>
+            <div class="affected"><span class="chip chip-rel">Location</span><span class="chip chip-rel">Recommend</span></div>
+          </div>
+        </div>
+        <div class="row-item">
+          <div class="row-dot dot-rel"></div>
+          <div class="row-content">
+            <div class="row-name">消息重复投递<span>— MQ 重试导致同一互动产生多条重复通知</span></div>
+            <div class="affected"><span class="chip chip-rel">Notify</span></div>
+          </div>
+        </div>
+        <div class="row-item">
+          <div class="row-dot dot-rel"></div>
+          <div class="row-content">
+            <div class="row-name">并发写冲突<span>— 点赞/收藏高并发下 SELECT-UPDATE 丢失更新</span></div>
+            <div class="affected"><span class="chip chip-rel">Post</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 一致性 -->
+    <div class="quad-card">
+      <div class="quad-header">
+        <div class="quad-bar bar-cons"></div>
+        <div>
+          <div class="quad-label">一致性挑战</div>
+          <div class="quad-sub">三副本同步 · 逻辑删除传播</div>
+        </div>
+      </div>
+      <div class="row-list">
+        <div class="row-item">
+          <div class="row-dot dot-cons"></div>
+          <div class="row-content">
+            <div class="row-name">MySQL / Redis / ES 三副本<span>— 发布、删除、互动后异构存储存在同步延迟</span></div>
+            <div class="affected"><span class="chip chip-cons">Post</span><span class="chip chip-cons">Rank</span><span class="chip chip-cons">Recommend</span></div>
+          </div>
+        </div>
+        <div class="row-item">
+          <div class="row-dot dot-cons"></div>
+          <div class="row-content">
+            <div class="row-name">逻辑删除传播<span>— 删除后缓存、搜索引擎、GEO 均需同步清理</span></div>
+            <div class="affected"><span class="chip chip-cons">Post</span><span class="chip chip-cons">Feed</span><span class="chip chip-cons">Location</span></div>
+          </div>
+        </div>
+        <div class="row-item">
+          <div class="row-dot dot-cons"></div>
+          <div class="row-content">
+            <div class="row-name">Feed inbox 不一致<span>— fanout 推送中途中断，部分粉丝收不到</span></div>
+            <div class="affected"><span class="chip chip-cons">Feed</span></div>
+          </div>
+        </div>
+        <div class="row-item">
+          <div class="row-dot dot-cons"></div>
+          <div class="row-content">
+            <div class="row-name">榜单分数漂移<span>— 事件丢失致缓存热度分与数据库真实值偏离</span></div>
+            <div class="affected"><span class="chip chip-cons">Rank</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</body>
+</html>

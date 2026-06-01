@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>BiteBlog 一致性与可靠性测试结果</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  background: #e0e0e0;
+  display: flex; flex-direction: column; align-items: center; gap: 16px;
+  padding: 16px 0;
+  min-height: 100vh;
+}
+
+/* PPT 16:9 画布 */
+.slide {
+  width: 960px;
+  height: 540px;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  padding: 20px 28px 16px;
+  overflow: hidden;
+}
+
+/* 标题 */
+.eyebrow {
+  font-size: 11px;
+  color: #548135;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  flex-shrink: 0;
+}
+
+.title {
+  font-size: 16px;
+  font-weight: 600;
+  color: #1a1a1a;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.sub {
+  font-size: 12px;
+  color: #888;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+/* ── 分组徽章区 ── */
+.groups {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.group {
+  display: flex;
+  gap: 0;
+  align-items: stretch;
+}
+
+.group-label {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #548135;
+  border-radius: 6px 0 0 6px;
+  padding: 4px 7px;
+}
+
+.group-label-text {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  font-size: 10px;
+  font-weight: 500;
+  color: #fff;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.group-label.e2e { background: #2d6a19; }
+
+.group-body {
+  flex: 1;
+  border: 1px solid #d6e8c8;
+  border-left: none;
+  border-radius: 0 6px 6px 0;
+  padding: 7px 10px;
+  background: #f4f9ef;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 7px;
+  align-content: flex-start;
+}
+
+/* 徽章 */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #fff;
+  border: 1px solid #d6e8c8;
+  border-radius: 20px;
+  padding: 3px 8px 3px 5px;
+  font-size: 11px;
+  color: #444;
+  white-space: nowrap;
+}
+
+.badge-id {
+  font-size: 9.5px;
+  font-family: "SF Mono", "Cascadia Code", "Consolas", monospace;
+  font-weight: 600;
+  color: #fff;
+  background: #548135;
+  border-radius: 12px;
+  padding: 1px 5px;
+  white-space: nowrap;
+}
+
+.badge-id.e2e { background: #2d6a19; }
+
+.badge-check {
+  font-size: 10px;
+  color: #548135;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* ── 总结横条 ── */
+.summary-bar {
+  border-radius: 6px;
+  border: 1px solid #d6e8c8;
+  background: #f4f9ef;
+  padding: 8px 14px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  flex-shrink: 0;
+}
+
+.sum-item {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  align-items: center;
+}
+
+.sum-val {
+  font-size: 18px;
+  font-weight: 700;
+  color: #548135;
+  line-height: 1;
+}
+
+.sum-key {
+  font-size: 9.5px;
+  color: #999;
+  white-space: nowrap;
+}
+
+.sum-div {
+  width: 1px;
+  height: 24px;
+  background: #d6e8c8;
+  flex-shrink: 0;
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════ PAGE 1: 4.3 一致性测试 ═══════════════════ -->
+<div class="slide">
+  <div style="flex-shrink:0; margin-bottom: 8px;">
+    <div class="eyebrow">4.3 一致性测试结果</div>
+    <div class="title">14 项全部通过</div>
+    <div class="sub">覆盖事务原子性、缓存同步、跨服务数据一致性、端到端全链路</div>
+  </div>
+
+  <div class="groups">
+
+    <div class="group">
+      <div class="group-label"><span class="group-label-text">Post</span></div>
+      <div class="group-body">
+        <span class="badge"><span class="badge-id">PC-1</span>发布事务原子性<span class="badge-check">&#10003;</span></span>
+        <span class="badge"><span class="badge-id">PC-2</span>Cache-Aside 缓存（冷39→热29ms）<span class="badge-check">&#10003;</span></span>
+        <span class="badge"><span class="badge-id">PC-3</span>ES 搜索同步 &lt;1.5s<span class="badge-check">&#10003;</span></span>
+        <span class="badge"><span class="badge-id">PC-4</span>ES 降级返空列表<span class="badge-check">&#10003;</span></span>
+        <span class="badge"><span class="badge-id">PC-5</span>逻辑删除过滤不可见<span class="badge-check">&#10003;</span></span>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="group-label"><span class="group-label-text">Feed</span></div>
+      <div class="group-body">
+        <span class="badge"><span class="badge-id">FC-1</span>Fanout 写入粉丝收件箱<span class="badge-check">&#10003;</span></span>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="group-label"><span class="group-label-text">Rank</span></div>
+      <div class="group-body">
+        <span class="badge"><span class="badge-id">RC-1</span>发布入榜（note.published → ZSet）<span class="badge-check">&#10003;</span></span>
+        <span class="badge"><span class="badge-id">RC-2</span>互动热度刷新（点赞+3/收藏+5/评论+4）<span class="badge-check">&#10003;</span></span>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="group-label"><span class="group-label-text">Location</span></div>
+      <div class="group-body">
+        <span class="badge"><span class="badge-id">LC-1</span>发布 → GEO 写入 → 附近可查<span class="badge-check">&#10003;</span></span>
+        <span class="badge"><span class="badge-id">LC-2</span>删除 → GEO 坐标清除<span class="badge-check">&#10003;</span></span>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="group-label"><span class="group-label-text">Notify</span></div>
+      <div class="group-body">
+        <span class="badge"><span class="badge-id">NC-1</span>互动 → 通知记录写入<span class="badge-check">&#10003;</span></span>
+        <span class="badge"><span class="badge-id">NC-5</span>幂等去重（5 分钟窗口）<span class="badge-check">&#10003;</span></span>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="group-label e2e"><span class="group-label-text">端到端</span></div>
+      <div class="group-body">
+        <span class="badge"><span class="badge-id e2e">E2E-1</span>笔记发布 → Feed 全链路<span class="badge-check">&#10003;</span></span>
+        <span class="badge"><span class="badge-id e2e">E2E-11</span>点赞 → 榜单+通知+推荐三服务联动<span class="badge-check">&#10003;</span></span>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="summary-bar" style="margin-top:auto;">
+    <div class="sum-item"><div class="sum-val">14</div><div class="sum-key">测试项总数</div></div>
+    <div class="sum-div"></div>
+    <div class="sum-item"><div class="sum-val">14</div><div class="sum-key">全部通过</div></div>
+    <div class="sum-div"></div>
+    <div class="sum-item"><div class="sum-val">0</div><div class="sum-key">失败项</div></div>
+    <div class="sum-div"></div>
+    <div class="sum-item"><div class="sum-val">&lt;1.5s</div><div class="sum-key">MQ 最大同步延迟</div></div>
+    <div class="sum-div"></div>
+    <div class="sum-item"><div class="sum-val">5</div><div class="sum-key">覆盖服务数</div></div>
+    <div class="sum-div"></div>
+    <div class="sum-item"><div class="sum-val">2</div><div class="sum-key">E2E 全链路</div></div>
+  </div>
+</div>
+
+<!-- ═══════════════════ PAGE 2: 4.4 可靠性测试 ═══════════════════ -->
+<div class="slide">
+  <div style="flex-shrink:0; margin-bottom: 10px;">
+    <div class="eyebrow">4.4 可靠性测试结果</div>
+    <div class="title">10 项全部通过</div>
+    <div class="sub">覆盖降级兜底、事务保障、幂等去重、缓存自愈、跨服务重试</div>
+  </div>
+
+  <div class="groups">
+
+    <div class="group">
+      <div class="group-label"><span class="group-label-text">事务保障</span></div>
+      <div class="group-body">
+        <span class="badge"><span class="badge-id">PC-4</span>事务回滚后消息不发出，杜绝脏数据<span class="badge-check">&#10003;</span></span>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="group-label"><span class="group-label-text">降级兜底</span></div>
+      <div class="group-body">
+        <span class="badge"><span class="badge-id">P-8</span>ES 不可用时返回空列表，不报 500<span class="badge-check">&#10003;</span></span>
+        <span class="badge"><span class="badge-id">F-6</span>Feed Redis 不可用，降级查询数据库<span class="badge-check">&#10003;</span></span>
+        <span class="badge"><span class="badge-id">R-10</span>推荐三级降级链（榜单→热门池→数据库）<span class="badge-check">&#10003;</span></span>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="group-label"><span class="group-label-text">缓存自愈</span></div>
+      <div class="group-body">
+        <span class="badge"><span class="badge-id">F-7</span>Rank 缓存为空时自动重建<span class="badge-check">&#10003;</span></span>
+        <span class="badge"><span class="badge-id">F-8</span>Rank 定时重建，队列消费无积压<span class="badge-check">&#10003;</span></span>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="group-label"><span class="group-label-text">消息可靠性</span></div>
+      <div class="group-body">
+        <span class="badge"><span class="badge-id">N-5</span>手动确认 + 死信队列，失败消息不丢失<span class="badge-check">&#10003;</span></span>
+        <span class="badge"><span class="badge-id">N-6</span>通知幂等去重（5 分钟窗口四字段）<span class="badge-check">&#10003;</span></span>
+      </div>
+    </div>
+
+    <div class="group">
+      <div class="group-label"><span class="group-label-text">幂等与重试</span></div>
+      <div class="group-body">
+        <span class="badge"><span class="badge-id">P-11</span>点赞 5 次操作，净变化量 = 1，幂等正确<span class="badge-check">&#10003;</span></span>
+        <span class="badge"><span class="badge-id">L-9</span>GEO 写入等待事务提交，5 次重试补偿<span class="badge-check">&#10003;</span></span>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="summary-bar" style="margin-top:auto;">
+    <div class="sum-item"><div class="sum-val">10</div><div class="sum-key">测试项总数</div></div>
+    <div class="sum-div"></div>
+    <div class="sum-item"><div class="sum-val">10</div><div class="sum-key">全部通过</div></div>
+    <div class="sum-div"></div>
+    <div class="sum-item"><div class="sum-val">0</div><div class="sum-key">失败项</div></div>
+    <div class="sum-div"></div>
+    <div class="sum-item"><div class="sum-val">3</div><div class="sum-key">降级路径验证</div></div>
+    <div class="sum-div"></div>
+    <div class="sum-item"><div class="sum-val">5</div><div class="sum-key">覆盖服务数</div></div>
+    <div class="sum-div"></div>
+    <div class="sum-item"><div class="sum-val">delta=1</div><div class="sum-key">点赞幂等净变化量</div></div>
+  </div>
+</div>
+
+</body>
+</html>
