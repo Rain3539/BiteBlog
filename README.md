@@ -6,6 +6,10 @@
 
 BiteBlog 是一个基于微服务架构的美食探店社区平台，支持探店笔记发布、关注 Feed 流、个性化推荐、附近探店、热度排行、实时通知等功能。
 
+**项目文档**：
+
+[软件需求说明书](docs/BiteBlog软件需求说明书.docx) · [概要设计说明书](docs/BiteBlog概要设计说明书.docx) · [测试分析报告](docs/BiteBlog测试分析报告.docx) · [答辩汇报 PPT](docs/BiteBlog汇报ppt.pptx)
+
 ## 技术栈
 
 - **前端**: Vue 3 + Vite + Element Plus + Pinia
@@ -290,11 +294,4 @@ curl http://localhost:8080/api/rank/top10
 └── frontend/                   # 前端项目
 ```
 
-## 文档
-
-- [架构设计](docs/architecture.md)
-- [接口规范](docs/api-convention.md)
-- [开发指南](docs/development-guide.md)
-- [需求文档](docs/分布式美食探店社区平台_软件需求说明书_推荐ES版.docx)
-- [概要设计](docs/分布式美食探店社区平台_概要设计说明书_ES推荐版.docx)
 
