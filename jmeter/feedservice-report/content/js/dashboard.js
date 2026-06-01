@@ -173,7 +173,7 @@ $(document).ready(function() {
     });
 
     // Creates APDEX table
-    createTable($("#apdexTable"), {"supportsControllersDiscrimination": true, "overall": {"data": [1.0, 500, 1500, "Total"], "isController": false}, "titles": ["Apdex", "T (Toleration threshold)", "F (Frustration threshold)", "Label"], "items": [{"data": [1.0, 500, 1500, "GET /feed/timeline"], "isController": false}]}, function(index, item){
+    createTable($("#apdexTable"), {"supportsControllersDiscrimination": true, "overall": {"data": [0.981375, 500, 1500, "Total"], "isController": false}, "titles": ["Apdex", "T (Toleration threshold)", "F (Frustration threshold)", "Label"], "items": [{"data": [0.981375, 500, 1500, "GET /feed/timeline"], "isController": false}]}, function(index, item){
         switch(index){
             case 0:
                 item = item.toFixed(3);
@@ -187,7 +187,7 @@ $(document).ready(function() {
     }, [[0, 0]], 3);
 
     // Create statistics table
-    createTable($("#statisticsTable"), {"supportsControllersDiscrimination": true, "overall": {"data": ["Total", 4000, 0, 0.0, 12.711499999999942, 5, 130, 8.0, 20.0, 42.0, 98.92999999999847, 862.4407072013798, 4147.031612157719, 128.01854247520484], "isController": false}, "titles": ["Label", "#Samples", "FAIL", "Error %", "Average", "Min", "Max", "Median", "90th pct", "95th pct", "99th pct", "Transactions/s", "Received", "Sent"], "items": [{"data": ["GET /feed/timeline", 4000, 0, 0.0, 12.711499999999942, 5, 130, 8.0, 20.0, 42.0, 98.92999999999847, 862.4407072013798, 4147.031612157719, 128.01854247520484], "isController": false}]}, function(index, item){
+    createTable($("#statisticsTable"), {"supportsControllersDiscrimination": true, "overall": {"data": ["Total", 4000, 0, 0.0, 72.1497499999996, 4, 1242, 8.0, 107.0, 221.89999999999964, 1155.9699999999993, 857.6329331046312, 4041.0007588041385, 127.3048885077187], "isController": false}, "titles": ["Label", "#Samples", "FAIL", "Error %", "Average", "Min", "Max", "Median", "90th pct", "95th pct", "99th pct", "Transactions/s", "Received", "Sent"], "items": [{"data": ["GET /feed/timeline", 4000, 0, 0.0, 72.1497499999996, 4, 1242, 8.0, 107.0, 221.89999999999964, 1155.9699999999993, 857.6329331046312, 4041.0007588041385, 127.3048885077187], "isController": false}]}, function(index, item){
         switch(index){
             // Errors pct
             case 3:

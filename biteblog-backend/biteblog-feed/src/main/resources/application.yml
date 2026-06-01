@@ -1,11 +1,5 @@
 server:
   port: 8083
-  tomcat:
-    threads:
-      max: 1000
-      min-spare: 50
-    accept-count: 500
-    max-connections: 10000
 
 spring:
   application:
@@ -19,20 +13,11 @@ spring:
     username: root
     password: root123456
     driver-class-name: com.mysql.cj.jdbc.Driver
-    hikari:
-      maximum-pool-size: 200
-      minimum-idle: 20
-      connection-timeout: 5000
   data:
     redis:
       host: localhost
       port: 6379
       password: redis123456
-      lettuce:
-        pool:
-          max-active: 200
-          max-idle: 50
-          min-idle: 10
   rabbitmq:
     host: localhost
     port: 5672
