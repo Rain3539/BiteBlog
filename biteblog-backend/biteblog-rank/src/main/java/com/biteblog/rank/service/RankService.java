@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.biteblog.rank.dto.RankItemVO;
 import com.biteblog.rank.entity.Note;
 import com.biteblog.rank.mapper.NoteMapper;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -23,11 +25,13 @@ import java.util.stream.Collectors;
 public class RankService {
     private final NoteMapper noteMapper;
     private final StringRedisTemplate redisTemplate;
+    private final ObjectMapper objectMapper;
 
     private static final DateTimeFormatter DATE_KEY_FORMATTER = DateTimeFormatter.ISO_LOCAL_DATE;
     private static final String DAILY_KEY_PREFIX = "rank:daily:";
     private static final String WEEKLY_KEY = "rank:weekly";
     private static final String ALL_KEY = "rank:all";
+    private static final String ITEM_KEY_PREFIX = "rank:item:";
     private static final Set<String> TYPES = Set.of("daily", "weekly", "all");
     private static final int MAX_CACHE_SIZE = 200;
     private static final int MAX_REBUILD_CANDIDATES = 1000;
@@ -79,6 +83,7 @@ public class RankService {
 
         List<Note> notes = noteMapper.selectList(wrapper);
         for (Note note : notes) {
+            cacheRankItem(note);
             putScore(key, note.getId(), calculateScore(note));
         }
         trim(key);
@@ -91,6 +96,7 @@ public class RankService {
             return;
         }
         double score = calculateScore(note);
+        cacheRankItem(note);
         for (String type : TYPES) {
             if (shouldJoin(type, note.getCreatedAt())) {
                 String key = rankKey(type);
@@ -104,6 +110,7 @@ public class RankService {
         if (noteId == null) {
             return;
         }
+        redisTemplate.delete(itemKey(noteId));
         for (String type : TYPES) {
             removeScore(rankKey(type), noteId);
         }
@@ -119,6 +126,7 @@ public class RankService {
             return;
         }
         double score = calculateScore(note);
+        cacheRankItem(note);
         for (String type : TYPES) {
             String key = rankKey(type);
             if (shouldJoin(type, note.getCreatedAt())) {
@@ -157,9 +165,7 @@ public class RankService {
         if (ids.isEmpty()) {
             return List.of();
         }
-        Map<Long, Note> noteMap = noteMapper.selectBatchIds(ids).stream()
-                .filter(n -> Objects.equals(n.getStatus(), 1))
-                .collect(Collectors.toMap(Note::getId, n -> n));
+        Map<Long, RankItemVO> itemMap = getCachedRankItems(ids);
 
         List<RankItemVO> result = new ArrayList<>();
         Set<Long> seen = new HashSet<>();
@@ -170,22 +176,14 @@ public class RankService {
                 redisTemplate.opsForZSet().remove(key, tuple.getValue());
                 continue;
             }
-            Note note = noteMap.get(id);
-            if (note == null) {
+            RankItemVO cached = itemMap.get(id);
+            if (cached == null) {
                 removeNote(id);
                 continue;
             }
-            RankItemVO vo = new RankItemVO();
+            RankItemVO vo = copyRankItem(cached);
             vo.setRankNo(rank++);
-            vo.setPostId(note.getId());
-            vo.setAuthorId(note.getAuthorId());
-            vo.setTitle(note.getTitle());
-            vo.setShopName(note.getShopName());
-            vo.setLikeCount(defaultZero(note.getLikeCount()));
-            vo.setCollectCount(defaultZero(note.getCollectCount()));
-            vo.setCommentCount(defaultZero(note.getCommentCount()));
             vo.setHotScore(tuple.getScore());
-            vo.setCreatedAt(note.getCreatedAt());
             result.add(vo);
         }
         return result;
@@ -273,5 +271,90 @@ public class RankService {
             log.warn("Invalid rank member found in Redis: {}", value);
             return null;
         }
+    }
+
+    private Map<Long, RankItemVO> getCachedRankItems(List<Long> ids) {
+        List<String> keys = ids.stream().map(this::itemKey).collect(Collectors.toList());
+        List<String> values = redisTemplate.opsForValue().multiGet(keys);
+        Map<Long, RankItemVO> result = new HashMap<>();
+        List<Long> missingIds = new ArrayList<>();
+
+        for (int i = 0; i < ids.size(); i++) {
+            Long id = ids.get(i);
+            String json = values == null ? null : values.get(i);
+            RankItemVO item = readRankItem(id, json);
+            if (item == null) {
+                missingIds.add(id);
+            } else {
+                result.put(id, item);
+            }
+        }
+
+        if (!missingIds.isEmpty()) {
+            List<Note> notes = noteMapper.selectBatchIds(missingIds);
+            for (Note note : notes) {
+                if (Objects.equals(note.getStatus(), 1)) {
+                    RankItemVO item = toRankItem(note);
+                    result.put(note.getId(), item);
+                    cacheRankItem(item);
+                }
+            }
+        }
+        return result;
+    }
+
+    private RankItemVO readRankItem(Long id, String json) {
+        if (json == null || json.isBlank()) {
+            return null;
+        }
+        try {
+            return objectMapper.readValue(json, RankItemVO.class);
+        } catch (JsonProcessingException e) {
+            log.warn("Invalid rank item cache found: noteId={}", id);
+            redisTemplate.delete(itemKey(id));
+            return null;
+        }
+    }
+
+    private void cacheRankItem(Note note) {
+        cacheRankItem(toRankItem(note));
+    }
+
+    private void cacheRankItem(RankItemVO item) {
+        try {
+            redisTemplate.opsForValue().set(itemKey(item.getPostId()), objectMapper.writeValueAsString(item));
+        } catch (JsonProcessingException e) {
+            log.warn("Failed to cache rank item: noteId={}", item.getPostId(), e);
+        }
+    }
+
+    private RankItemVO toRankItem(Note note) {
+        RankItemVO vo = new RankItemVO();
+        vo.setPostId(note.getId());
+        vo.setAuthorId(note.getAuthorId());
+        vo.setTitle(note.getTitle());
+        vo.setShopName(note.getShopName());
+        vo.setLikeCount(defaultZero(note.getLikeCount()));
+        vo.setCollectCount(defaultZero(note.getCollectCount()));
+        vo.setCommentCount(defaultZero(note.getCommentCount()));
+        vo.setCreatedAt(note.getCreatedAt());
+        return vo;
+    }
+
+    private RankItemVO copyRankItem(RankItemVO item) {
+        RankItemVO vo = new RankItemVO();
+        vo.setPostId(item.getPostId());
+        vo.setAuthorId(item.getAuthorId());
+        vo.setTitle(item.getTitle());
+        vo.setShopName(item.getShopName());
+        vo.setLikeCount(item.getLikeCount());
+        vo.setCollectCount(item.getCollectCount());
+        vo.setCommentCount(item.getCommentCount());
+        vo.setCreatedAt(item.getCreatedAt());
+        return vo;
+    }
+
+    private String itemKey(Long noteId) {
+        return ITEM_KEY_PREFIX + noteId;
     }
 }
