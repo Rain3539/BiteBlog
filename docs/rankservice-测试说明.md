@@ -4,7 +4,7 @@
 
 | 类别 | 要求 | 实现/验证 |
 |------|------|-----------|
-| 并发 | 热榜接口在 100 线程以上并发访问下稳定返回、零错误，并记录真实并发响应时间 | Redis ZSet 读榜；`F-1` 为单请求基线，`F-2` 为 200 线程并发压测 |
+| 并发 | 热榜接口在 100 线程以上并发访问下稳定返回、零错误，并记录真实并发响应时间 | Redis ZSet + 榜单摘要缓存读榜；`F-1` 为单请求基线，`F-2` 为 500 线程并发压测 |
 | 一致性 | Redis 榜单缓存与 MySQL `note` 表、RabbitMQ 事件保持最终一致 | 对应 `数据一致性测试说明.md` 中 Rank `RC-1` ~ `RC-9`；`F-3` ~ `F-6` 已覆盖核心链路 |
 | 可靠性 | Redis 缓存为空、异常或分数漂移时可恢复 | 对应 `可靠性测试说明.md` 第 5 节；`F-7`、`F-8` 验证缓存自愈与队列状态 |
 | 安全性 | 通过 Gateway 访问管理类操作时需要登录态 | `F-9` 验证公开接口和受保护接口边界 |
@@ -15,7 +15,7 @@
 | 编号 | 测试项 | 对应总说明编号 | 测试方式 | 结果 |
 |------|--------|----------------|----------|------|
 | F-1 | Top10 单请求基线响应时间 | 性能基线 | Gateway 连续调用 20 次 `GET /api/rank/top10?type=daily` | **通过** |
-| F-2 | JMeter 200 线程并发压测 | 并发/性能 | `rank-service-test.jmx` 配置 200 threads × 25 loops，压测 Top10/分页两个读接口；响应时间取并发运行生成的 `rank-service-result.jtl` | **通过（200 线程/0 错误）** |
+| F-2 | JMeter 500 线程并发压测 | 并发/性能 | `rank-service-test.jmx` 配置 500 threads × 25 loops，压测 Top10/分页两个读接口；响应时间取并发运行生成的 `rank-service-result.jtl` | **通过（500 线程/0 错误）** |
 | F-3 | 发布入榜一致性 | `RC-1` | 发布笔记后检查 `rank:daily:{date}` 分数 | **通过** |
 | F-4 | 互动刷新一致性 | `RC-2` | 点赞、收藏、评论后检查 Redis score 递增 | **通过** |
 | F-5 | 分页与排名返回一致性 | `RC-8` | `GET /api/rank/list?type=daily&page=1&size=50` | **通过** |
@@ -45,31 +45,31 @@
 ### F-2: JMeter 并发压测
 
 **要求**: JMeter 线程数量不少于 100，错误率为 0%，并记录并发运行下的真实响应时间。
-**方法**: 使用 `jmeter/rank-service-test.jmx`，Thread Group 配置为 `200` threads、`10s` ramp-up、`25` loops。并发项验证高频读路径，因此只启用 `GET /rank/top10` 与 `GET /rank/list` 两个读接口；响应时间取该 200 线程并发运行生成的 `jmeter/rank-service-result.jtl` 中 `elapsed/Latency` 聚合结果，不能使用 `F-1` 的单请求基线数据替代。为避免空榜导致每次读请求都触发 `ensureCache()` 重建，压测前先写入 20 条已发布测试笔记，并执行 `POST /rank/rebuild?type=daily`、`weekly`、`all` 预热 Redis ZSet。
+**方法**: 使用 `jmeter/rank-service-test.jmx`，Thread Group 配置为 `500` threads、`10s` ramp-up、`25` loops。并发项验证高频读路径，因此只启用 `GET /rank/top10` 与 `GET /rank/list` 两个读接口；响应时间取该 500 线程并发运行生成的 `jmeter/rank-service-result.jtl` 中 `elapsed/Latency` 聚合结果，不能使用 `F-1` 的单请求基线数据替代。为避免空榜导致每次读请求都触发 `ensureCache()` 重建，压测前先写入 80 条已发布测试笔记，并执行 `POST /rank/rebuild?type=daily`、`weekly`、`all` 预热 Redis ZSet 和 `rank:item:{postId}` 榜单摘要缓存。
 
 | 配置项 | 值 |
 |--------|----|
-| ThreadGroup.num_threads | 200 |
+| ThreadGroup.num_threads | 500 |
 | LoopController.loops | 25 |
 | ThreadGroup.ramp_time | 10s |
 | Sampler 数量 | 2 |
-| 预期总请求数 | 200 × 25 × 2 = 10000 |
+| 预期总请求数 | 500 × 25 × 2 = 25000 |
 
 | 指标 | 结果 |
 |------|------|
-| 样本数 | 10000 |
-| Max allThreads / grpThreads | 200 / 200 |
+| 样本数 | 25000 |
+| Max allThreads / grpThreads | 500 / 500 |
 | Error% | 0.00% |
-| 总平均响应时间 | 1159.65ms |
-| 总 P90 / P95 / P99 | 1398ms / 1411ms / 1446ms |
-| 吞吐量 | 149.14 req/s |
+| 总平均响应时间 | 842.35ms |
+| 总 P90 / P95 / P99 | 1041ms / 1054ms / 1072ms |
+| 吞吐量 | 490.47 req/s |
 
 | Sampler | Count | Avg | Min | Max | P90 | P95 | P99 |
 |---------|-------|-----|-----|-----|-----|-----|-----|
-| `GET /rank/top10?type=daily` | 5000 | 1160.60ms | 26ms | 1907ms | 1399ms | 1412ms | 1449ms |
-| `GET /rank/list?type=weekly&page=1&size=10` | 5000 | 1158.71ms | 50ms | 1517ms | 1397ms | 1410ms | 1443ms |
+| `GET /rank/top10?type=daily` | 12500 | 843.33ms | 17ms | 1097ms | 1036ms | 1051ms | 1070ms |
+| `GET /rank/list?type=weekly&page=1&size=10` | 12500 | 841.37ms | 39ms | 1099ms | 1036ms | 1051ms | 1070ms |
 
-- **结论**: 已按 200 线程真实并发重跑，`rank-service-result.jtl` 中 `allThreads/grpThreads` 最大值均达到 200，且 10000 个读请求全部成功。该结果为并发运行数据，不使用 `F-1` 的单请求平均值，也不再使用旧 10 线程结果。
+- **结论**: 已按 500 线程真实并发重跑，`rank-service-result.jtl` 中 `allThreads/grpThreads` 最大值均达到 500，且 25000 个读请求全部成功。平均响应时间为 842.35ms，满足 1000ms 以内的平均响应目标，但 P95 为 1054ms，不满足 100ms 以内目标。该结果为并发运行数据，不使用 `F-1` 的单请求平均值，也不再使用旧 10/200/800 线程结果。
 
 ### F-3: 发布入榜一致性（RC-1）
 
