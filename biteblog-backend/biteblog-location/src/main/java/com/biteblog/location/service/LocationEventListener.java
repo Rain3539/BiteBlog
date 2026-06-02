@@ -47,16 +47,21 @@ public class LocationEventListener {
     }
 
     private Map<String, Object> parseEvent(Message message, String eventName) {
-        try {
-            byte[] body = message.getBody();
-            String text = new String(body, StandardCharsets.UTF_8).trim();
-            if (text.startsWith("{")) {
+        byte[] body = message.getBody();
+        String text = new String(body, StandardCharsets.UTF_8).trim();
+        if (text.startsWith("{")) {
+            try {
                 return objectMapper.readValue(text, EVENT_TYPE);
+            } catch (Exception e) {
+                log.error("Failed to parse {} message as JSON: text={}", eventName, text, e);
+                throw new RuntimeException("Failed to parse " + eventName + " message", e);
             }
+        }
+        try {
             return deserializeMap(body);
         } catch (Exception e) {
-            log.error("Failed to parse {} message", eventName, e);
-            return Map.of();
+            log.error("Failed to deserialize {} message", eventName, e);
+            throw new RuntimeException("Failed to deserialize " + eventName + " message", e);
         }
     }
 

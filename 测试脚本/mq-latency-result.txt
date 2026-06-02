@@ -1,0 +1,18 @@
+﻿=============================================
+  BiteBlog MQ Event Latency Test
+  Time: 2026-06-02 19:00:24
+  Poll: 100ms  Max: 10000ms
+=============================================
+
+
+[19:00:24] Login: userId=12 (phone=13800000001)
+[19:00:24] Published: postId=174
+  Feed (inbox)             : 75ms (1polls)
+  Rank (rank:daily)        : 71ms (1polls)
+  Location (GEO)           : 73 (1polls)
+  ES (search)              : 22 (1polls)
+[19:00:44] Deleted: postId=174
+  Feed (feed:deleted)      : 78ms (1polls)
+  Rank (ZREM)              : 89ms (1polls)
+  Location (GEO ZREM)      : 75ms (1polls)
+  ES (gone)                : 8ms (1polls)

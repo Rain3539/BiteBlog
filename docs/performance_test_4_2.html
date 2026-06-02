@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><title>BiteBlog 性能测试结果</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:system-ui,sans-serif;background:#e0e0e0;display:flex;flex-direction:column;align-items:center;gap:16px;padding:16px 0}
+.slide{width:960px;background:#fff;padding:24px 32px}
+.eyebrow{font-size:11px;color:#548135;font-weight:500}
+.title{font-size:16px;font-weight:600;color:#1a1a1a;margin-top:2px}
+.sub{font-size:12px;color:#888;margin-top:2px}
+.section-label{font-size:12px;font-weight:500;color:#548135;display:flex;align-items:center;gap:10px;margin:10px 0}
+.section-label::after{content:"";flex:1;height:1px;background:#d6e8c8}
+.bar-list{display:flex;flex-direction:column;gap:5px}
+.bar-row{display:grid;grid-template-columns:150px 1fr 60px 80px;align-items:center;gap:10px}
+.bar-label{font-size:11px;color:#555;text-align:right}
+.bar-track{height:18px;background:#eef6e8;border-radius:4px;position:relative}
+.bar-target{position:absolute;top:0;bottom:0;background:#d6e8c8;border-radius:4px}
+.bar-actual{position:absolute;top:3px;bottom:3px;background:#548135;border-radius:3px;min-width:6px}
+.bar-actual.cold{background:#c49b3f}
+.bar-val{font-size:12px;font-weight:600;color:#333;text-align:right}
+.bar-cache{font-size:10px;color:#999}
+.legend{display:flex;gap:16px;align-items:center;margin-bottom:6px}
+.legend-item{display:flex;align-items:center;gap:5px;font-size:11px;color:#888}
+.leg-box{width:12px;height:12px;border-radius:2px}
+.leg-target{background:#d6e8c8}.leg-actual{background:#548135}.leg-cold{background:#c49b3f}
+.highlights{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.hl-card{border-radius:6px;background:#f4f9ef;border:1px solid #d6e8c8;padding:10px 12px}
+.hl-num{font-size:22px;font-weight:700;color:#548135}.hl-name{font-size:11.5px;color:#555}.hl-desc{font-size:10.5px;color:#999;margin-top:1px}
+.jmeter-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.jm-card{border-radius:6px;border:1px solid #d6e8c8;overflow:hidden}
+.jm-head{background:#548135;padding:9px 14px;display:flex;justify-content:space-between}
+.jm-service{font-size:13px;font-weight:500;color:#fff}
+.jm-threads{font-size:10px;color:rgba(255,255,255,.7)}
+.jm-body{padding:10px 13px;background:#f4f9ef}
+.jm-hero{display:flex;gap:10px;align-items:flex-end}
+.jm-metric{display:flex;flex-direction:column}
+.jm-big{font-size:22px;font-weight:700;color:#548135}
+.jm-mlabel{font-size:10px;color:#888}
+.jm-divider{width:1px;background:#d6e8c8;align-self:stretch}
+.jm-stats{display:flex;flex-direction:column;gap:5px;flex:1}
+.jm-stat{display:flex;justify-content:space-between}
+.jm-skey{font-size:11px;color:#999}.jm-sval{font-size:11px;font-weight:500;color:#444}
+.jm-footer{font-size:10px;color:#aaa;border-top:1px solid #d6e8c8;padding-top:7px;margin-top:2px;font-style:italic}
+.summary-bar{border-radius:6px;border:1px solid #d6e8c8;background:#f4f9ef;padding:12px 18px;display:flex;align-items:center;gap:18px}
+.sum-item{display:flex;flex-direction:column;align-items:center}
+.sum-val{font-size:18px;font-weight:700;color:#548135}
+.sum-key{font-size:10px;color:#999}
+.sum-div{width:1px;height:32px;background:#d6e8c8}
+</style></head>
+<body>
+
+<div class="slide">
+<div class="eyebrow">4.2 性能测试 · 第一页</div>
+<div class="title">单接口响应时间基线（curl 采样）</div>
+<div class="sub">绿色=缓存命中/热路径 | 棕色=含冷启动/MySQL回源/调用外部API | 灰底=目标值</div>
+<div class="section-label">响应时间对比</div>
+<div class="legend">
+<div class="legend-item"><div class="leg-box leg-target"></div>目标值</div>
+<div class="legend-item"><div class="leg-box leg-actual"></div>缓存命中 / 热路径</div>
+<div class="legend-item"><div class="leg-box leg-cold"></div>含冷启动 / API 调用</div>
+</div>
+<div class="bar-list" id="barList"></div>
+
+<div class="section-label">MQ 事件延迟 —— note.deleted 删除链路（100ms 轮询实测）</div>
+<div class="highlights">
+<div class="hl-card"><div class="hl-num">78ms</div><div class="hl-name">Feed 感知删除</div><div class="hl-desc">MQ → feed:deleted 集合 &lt; 100ms</div></div>
+<div class="hl-card"><div class="hl-num">75ms</div><div class="hl-name">Location GEO 感知删除</div><div class="hl-desc">MQ → ZREM 清除坐标 &lt; 100ms</div></div>
+<div class="hl-card"><div class="hl-num">89ms</div><div class="hl-name">Rank 日榜感知删除</div><div class="hl-desc">MQ → ZREM 下榜 &lt; 100ms</div></div>
+</div>
+</div>
+
+<div class="slide" style="margin-top:16px">
+<div class="eyebrow">4.2 性能测试 · 第二页</div>
+<div class="title">JMeter 并发压测结果</div>
+<div class="sub">全部默认连接池 (HikariCP=10, Lettuce=8) · 直连服务端口 (Post/Notify 经 Gateway)</div>
+<div class="section-label">各服务压测指标</div>
+<div class="jmeter-grid">
+
+<div class="jm-card">
+<div class="jm-head"><span class="jm-service">Post Service</span><span class="jm-threads">笔记详情查询</span></div>
+<div class="jm-body">
+<div class="jm-hero"><div class="jm-metric"><div class="jm-big">200x25</div><div class="jm-mlabel">线程配置</div></div>
+<div class="jm-divider"></div>
+<div class="jm-stats"><div class="jm-stat"><span class="jm-skey">总样本</span><span class="jm-sval">5,000</span></div>
+<div class="jm-stat"><span class="jm-skey">吞吐量</span><span class="jm-sval">238/s</span></div>
+<div class="jm-stat"><span class="jm-skey">P90 / P95</span><span class="jm-sval">3227 / 3326ms</span></div></div></div>
+<div class="jm-footer">接口: GET /api/post/1 · 经Gateway · 错误率0%</div></div></div>
+
+<div class="jm-card">
+<div class="jm-head"><span class="jm-service">Feed Service</span><span class="jm-threads">关注Feed流</span></div>
+<div class="jm-body">
+<div class="jm-hero"><div class="jm-metric"><div class="jm-big">1000x5</div><div class="jm-mlabel">线程配置</div></div>
+<div class="jm-divider"></div>
+<div class="jm-stats"><div class="jm-stat"><span class="jm-skey">总样本</span><span class="jm-sval">5,000</span></div>
+<div class="jm-stat"><span class="jm-skey">吞吐量</span><span class="jm-sval">1023/s</span></div>
+<div class="jm-stat"><span class="jm-skey">P90 / P95</span><span class="jm-sval">223 / 947ms</span></div></div></div>
+<div class="jm-footer">接口: GET /feed/timeline · 直连8083 · 错误率0%</div></div></div>
+
+<div class="jm-card">
+<div class="jm-head"><span class="jm-service">Rank Service</span><span class="jm-threads">日榜Top10</span></div>
+<div class="jm-body">
+<div class="jm-hero"><div class="jm-metric"><div class="jm-big">500x25</div><div class="jm-mlabel">线程配置</div></div>
+<div class="jm-divider"></div>
+<div class="jm-stats"><div class="jm-stat"><span class="jm-skey">总样本</span><span class="jm-sval">12,500</span></div>
+<div class="jm-stat"><span class="jm-skey">吞吐量</span><span class="jm-sval">490/s</span></div>
+<div class="jm-stat"><span class="jm-skey">P90 / P95</span><span class="jm-sval">1036 / 1051ms</span></div></div></div>
+<div class="jm-footer">接口: GET /rank/top10?type=daily · 直连8086 · 错误率0%</div></div></div>
+
+<div class="jm-card">
+<div class="jm-head"><span class="jm-service">Location Service</span><span class="jm-threads">附近探店 1km</span></div>
+<div class="jm-body">
+<div class="jm-hero"><div class="jm-metric"><div class="jm-big">200x25</div><div class="jm-mlabel">线程配置</div></div>
+<div class="jm-divider"></div>
+<div class="jm-stats"><div class="jm-stat"><span class="jm-skey">总样本</span><span class="jm-sval">5,000</span></div>
+<div class="jm-stat"><span class="jm-skey">吞吐量</span><span class="jm-sval">665/s</span></div>
+<div class="jm-stat"><span class="jm-skey">P90 / P95</span><span class="jm-sval">602 / 685ms</span></div></div></div>
+<div class="jm-footer">接口: GET /nearby/markers?radius=1 · 直连8085 · 错误率0%</div></div></div>
+
+<div class="jm-card">
+<div class="jm-head"><span class="jm-service">Notify Service</span><span class="jm-threads">通知列表查询</span></div>
+<div class="jm-body">
+<div class="jm-hero"><div class="jm-metric"><div class="jm-big">200x25</div><div class="jm-mlabel">线程配置</div></div>
+<div class="jm-divider"></div>
+<div class="jm-stats"><div class="jm-stat"><span class="jm-skey">总样本</span><span class="jm-sval">5,000</span></div>
+<div class="jm-stat"><span class="jm-skey">吞吐量</span><span class="jm-sval">614/s</span></div>
+<div class="jm-stat"><span class="jm-skey">P90 / P95</span><span class="jm-sval">309 / 341ms</span></div></div></div>
+<div class="jm-footer">接口: GET /api/notify/list · 经Gateway · 错误率0%</div></div></div>
+
+<div class="jm-card">
+<div class="jm-head"><span class="jm-service">Recommend Service</span><span class="jm-threads">默认推荐列表</span></div>
+<div class="jm-body">
+<div class="jm-hero"><div class="jm-metric"><div class="jm-big">200x10</div><div class="jm-mlabel">线程配置</div></div>
+<div class="jm-divider"></div>
+<div class="jm-stats"><div class="jm-stat"><span class="jm-skey">总样本</span><span class="jm-sval">2,000</span></div>
+<div class="jm-stat"><span class="jm-skey">吞吐量</span><span class="jm-sval">519/s</span></div>
+<div class="jm-stat"><span class="jm-skey">P90 / P95</span><span class="jm-sval">316 / 392ms</span></div></div></div>
+<div class="jm-footer">接口: GET /recommend/discover?size=20 · 直连8084 · 错误率0%</div></div></div>
+
+</div>
+
+<div class="section-label">压测总结</div>
+<div class="summary-bar">
+<div class="sum-item"><div class="sum-val">6</div><div class="sum-key">服务完成</div></div><div class="sum-div"></div>
+<div class="sum-item"><div class="sum-val">92,401</div><div class="sum-key">总样本数</div></div><div class="sum-div"></div>
+<div class="sum-item"><div class="sum-val">0.004%</div><div class="sum-key">综合错误率</div></div><div class="sum-div"></div>
+<div class="sum-item"><div class="sum-val">1023/s</div><div class="sum-key">最高吞吐 (Feed)</div></div><div class="sum-div"></div>
+<div class="sum-item"><div class="sum-val">1000</div><div class="sum-key">最大线程 (Feed)</div></div><div class="sum-div"></div>
+<div class="sum-item"><div class="sum-val">4ms</div><div class="sum-key">最小 P50 (Unread)</div></div>
+</div>
+</div>
+
+<script>
+const bars=[
+["笔记详情",33,300,"hit"],
+["ES全文搜索",67,800,"hit"],
+["点赞切换",45,300,null],
+["Feed流(含冷启动)",168,300,"cold"],
+["Feed流(热路径)",24,300,"hit"],
+["热榜Top10",85,100,"hit"],
+["附近探店",15,300,"hit"],
+["POI搜索(缓存命中)",6,null,"hit"],
+["POI搜索(调高德API)",757,null,"cold"],
+["通知列表",52,300,null],
+["未读计数",10,100,"hit"],
+["冷启动推荐",190,600,"hit"],
+["个性化推荐",208,600,"hit"]];
+const MAX=850;
+const list=document.getElementById("barList");
+bars.forEach(([label,actual,target,cache])=>{
+const row=document.createElement("div");row.className="bar-row";
+const lbl=document.createElement("div");lbl.className="bar-label";lbl.textContent=label;
+const track=document.createElement("div");track.className="bar-track";
+if(target){const t=document.createElement("div");t.className="bar-target";t.style.width=(target/MAX*100)+"%";track.appendChild(t);}
+const a=document.createElement("div");a.className="bar-actual"+(cache==="cold"?" cold":"")+(actual<=10?" star":"");a.style.width=Math.max(actual/MAX*100,0.8)+"%";track.appendChild(a);
+const v=document.createElement("div");v.className="bar-val";v.textContent=actual+"ms";
+const c=document.createElement("div");c.className="bar-cache";
+if(cache==="hit")c.textContent="缓存命中";else if(cache==="cold")c.textContent="含冷启动/API";
+row.appendChild(lbl);row.appendChild(track);row.appendChild(v);row.appendChild(c);
+list.appendChild(row);
+});
+</script>
+</body></html>
